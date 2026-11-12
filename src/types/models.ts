@@ -3,11 +3,11 @@
  *
  * Convenções:
  * - Datas: string `YYYY-MM-DD` (ISODate). Horas: `HH:mm` (TimeHHmm).
- * - IDs: string (prefixo por entidade, ex.: `emp_…`, `act_…`).
+ * - IDs: string (prefixo por entidade, ex.: `emp_…`, `prj_…`).
  * - Valores derivados (totais de PO, valor ponderado, etc.) NUNCA são persistidos;
  *   são calculados em `src/domain/*`.
- * - Relacionamentos são guardados como chaves estrangeiras opcionais; as relações
- *   inversas (ex.: atividades de uma PO) são resolvidas por selectors.
+ * - Relacionamentos são guardados como chaves estrangeiras; as relações
+ *   inversas (ex.: projetos de uma PO, materiais de uma linha de PO) são resolvidas por selectors.
  */
 
 export type ID = string;
@@ -31,27 +31,73 @@ export interface Employee {
   status: EmployeeStatus;
 }
 
-// ───────────────────────── Calendar ─────────────────────────
+// ───────────────────────── Schedule (Projetos) ─────────────────────────
 
 export type ServiceType = 'site_visit' | 'pickup' | 'delivery' | 'bench_repair' | 'installation';
 
-export type ActivityStatus = 'planned' | 'in_progress' | 'completed' | 'canceled';
+export type ProjectStatus = 'planned' | 'in_progress' | 'completed' | 'canceled';
 
-export interface CalendarActivity {
+/**
+ * Status de um material do projeto:
+ * - `to_buy`   → precisa ser comprado (sem PO)
+ * - `ordered`  → comprado, aguardando chegada
+ * - `received` → material disponível
+ * Quando vinculado a uma linha de PO (`poId` + `poLineId`) o status é DERIVADO da linha
+ * (`domain/schedule.ts → materialStatus`); o campo `status` vale apenas para itens sem PO.
+ */
+export type MaterialStatus = 'to_buy' | 'ordered' | 'received';
+
+export interface ProjectMaterial {
   id: ID;
-  employeeId: ID;
+  partNumber: string;
+  description: string;
+  quantity: number;
+  status: MaterialStatus;
+  /** Data em que o material é necessário (padrão: início do projeto). */
+  neededBy?: ISODate;
+  poId?: ID;
+  poLineId?: ID;
+}
+
+/** Projeto/serviço (ex.: reparo + instalação de um spindle num cliente). */
+export interface Project {
+  id: ID;
+  projectNumber: string;
   customer: string;
   address: string;
   serviceType: ServiceType;
   description: string;
-  date: ISODate;
-  startTime: TimeHHmm;
-  endTime: TimeHHmm;
-  /** Ordem da parada na rota diária do colaborador (1, 2, 3…). */
-  routeOrder: number;
-  status: ActivityStatus;
+  status: ProjectStatus;
+  /** Cor do retângulo no cronograma (identifica o projeto em várias linhas). */
+  color: string;
+  /** PO do cliente que originou o projeto. */
   poId?: ID;
   spindleId?: ID;
+  materials: ProjectMaterial[];
+}
+
+/**
+ * Alocação de um colaborador em um projeto por um período (a "barra" do cronograma).
+ * Fins de semana não são dias de trabalho: `startDate`/`endDate` são sempre dias úteis.
+ */
+export interface ProjectAssignment {
+  id: ID;
+  projectId: ID;
+  employeeId: ID;
+  startDate: ISODate;
+  endDate: ISODate;
+}
+
+export type AbsenceType = 'vacation' | 'leave' | 'training';
+
+/** Férias/afastamentos — bloqueiam a linha do colaborador no período. */
+export interface Absence {
+  id: ID;
+  employeeId: ID;
+  type: AbsenceType;
+  startDate: ISODate;
+  endDate: ISODate;
+  note: string;
 }
 
 // ───────────────────────── Purchase Orders ─────────────────────────
@@ -138,7 +184,9 @@ export interface ForecastItem {
 /** Estado completo persistido da aplicação (também é o formato do backup JSON). */
 export interface AppDatabase {
   employees: Employee[];
-  activities: CalendarActivity[];
+  projects: Project[];
+  assignments: ProjectAssignment[];
+  absences: Absence[];
   purchaseOrders: PurchaseOrder[];
   spindles: SpindleUnit[];
   forecast: ForecastItem[];

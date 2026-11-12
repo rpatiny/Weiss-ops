@@ -1,9 +1,11 @@
 import type {
-  ActivityStatus,
+  AbsenceType,
   AttachmentType,
   EmployeeStatus,
   POLineStatus,
+  MaterialStatus,
   POStatus,
+  ProjectStatus,
   QuoteStatus,
   ServiceType,
   SpindleStatus,
@@ -17,7 +19,9 @@ export type Tone = 'slate' | 'blue' | 'amber' | 'green' | 'red' | 'violet' | 'cy
 export interface EnumValues {
   employeeStatus: EmployeeStatus;
   serviceType: ServiceType;
-  activityStatus: ActivityStatus;
+  projectStatus: ProjectStatus;
+  materialStatus: MaterialStatus;
+  absenceType: AbsenceType;
   poStatus: POStatus;
   poLineStatus: POLineStatus;
   attachmentType: AttachmentType;
@@ -29,7 +33,9 @@ export type EnumKind = keyof EnumValues;
 export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
   employeeStatus: { active: 'green', inactive: 'slate' },
   serviceType: { site_visit: 'blue', pickup: 'amber', delivery: 'green', bench_repair: 'violet', installation: 'cyan' },
-  activityStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
+  projectStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
+  materialStatus: { to_buy: 'red', ordered: 'amber', received: 'green' },
+  absenceType: { vacation: 'cyan', leave: 'slate', training: 'violet' },
   poStatus: { open: 'blue', partial: 'amber', delivered: 'green', invoiced: 'violet', canceled: 'red' },
   poLineStatus: { open: 'blue', partial: 'amber', delivered: 'green', canceled: 'red' },
   attachmentType: { po_pdf: 'blue', invoice: 'green', other: 'slate' },

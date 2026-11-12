@@ -7,7 +7,8 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
-import { employeeService, upcomingOpenActivities } from '@/domain/employees';
+import { employeeService, upcomingAssignments } from '@/domain/employees';
+import { rangesOverlap } from '@/lib/dates';
 import { useI18n } from '@/i18n';
 import { addDays, todayISO } from '@/lib/dates';
 import { cn } from '@/lib/cn';
@@ -18,7 +19,7 @@ type StatusFilter = 'all' | Employee['status'];
 
 export function EmployeesPage() {
   const employees = useCollection('employees');
-  const activities = useCollection('activities');
+  const assignments = useCollection('assignments');
   const toast = useToast();
   const { t } = useI18n();
 
@@ -33,21 +34,21 @@ export function EmployeesPage() {
 
   const stats = useMemo(() => {
     const active = employees.filter((e) => e.status === 'active').length;
-    const week = activities.filter((a) => a.date >= today && a.date <= in7 && a.status !== 'canceled').length;
+    const week = assignments.filter((a) => rangesOverlap(a.startDate, a.endDate, today, in7)).length;
     return { total: employees.length, active, inactive: employees.length - active, week };
-  }, [employees, activities, today, in7]);
+  }, [employees, assignments, today, in7]);
 
   /** Contagem de atividades por colaborador (histórico total + futuras abertas). */
   const counts = useMemo(() => {
     const map = new Map<string, { total: number; upcoming: number }>();
     for (const e of employees) {
       map.set(e.id, {
-        total: activities.filter((a) => a.employeeId === e.id).length,
-        upcoming: upcomingOpenActivities(e.id, activities, today).length,
+        total: assignments.filter((a) => a.employeeId === e.id).length,
+        upcoming: upcomingAssignments(e.id, assignments, today).length,
       });
     }
     return map;
-  }, [employees, activities, today]);
+  }, [employees, assignments, today]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

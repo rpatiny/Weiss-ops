@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { CalendarClock, Check, Save } from 'lucide-react';
+import { CalendarClock, Check, Palmtree, Save } from 'lucide-react';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
@@ -11,15 +11,17 @@ import {
   emptyEmployee,
   employeeService,
   maskPhone,
-  upcomingOpenActivities,
+  upcomingAbsences,
+  upcomingAssignments,
   validateEmployee,
   type EmployeeDraft,
   type ValidationErrors,
 } from '@/domain/employees';
 import { EMPLOYEE_COLORS, enumLabel } from '@/domain/labels';
+import { businessDaysBetween } from '@/lib/dates';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
-import { formatDateShort } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import type { Employee } from '@/types/models';
 
 interface Props {
@@ -31,7 +33,9 @@ interface Props {
 
 export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
   const employees = useCollection('employees');
-  const activities = useCollection('activities');
+  const assignments = useCollection('assignments');
+  const projects = useCollection('projects');
+  const absences = useCollection('absences');
   const toast = useToast();
   const { t, locale } = useI18n();
   const isEdit = Boolean(employee);
@@ -69,7 +73,8 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
     if (touched) setErrors(validateEmployee(next, employees, employee?.id));
   };
 
-  const upcoming = employee ? upcomingOpenActivities(employee.id, activities) : [];
+  const upcoming = employee ? upcomingAssignments(employee.id, assignments) : [];
+  const empAbsences = employee ? upcomingAbsences(employee.id, absences) : [];
   const colorTakenBy = employees.find((e) => e.id !== employee?.id && e.color.toLowerCase() === draft.color.toLowerCase());
 
   const submit = (ev: FormEvent) => {
@@ -223,19 +228,48 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
               <p className="px-3 py-4 text-sm text-slate-500">{t('employees.form.noUpcoming')}</p>
             ) : (
               <ul className="max-h-60 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
-                {upcoming.slice(0, 15).map((a) => (
-                  <li key={a.id}>
-                    <a href={`#/calendar?open=${a.id}`} className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <span className="w-28 shrink-0 text-xs text-slate-500">{formatDateShort(a.date)}</span>
-                      <span className="w-24 shrink-0 font-mono text-xs text-slate-500">
-                        {a.startTime}–{a.endTime}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate" title={a.description}>
-                        <span className="font-medium">{a.customer}</span>
-                        <span className="text-slate-500"> · {enumLabel(t, 'serviceType', a.serviceType)}</span>
-                      </span>
-                      <StatusBadge kind="activityStatus" value={a.status} />
-                    </a>
+                {upcoming.slice(0, 15).map((a) => {
+                  const p = projects.find((x) => x.id === a.projectId);
+                  return (
+                    <li key={a.id}>
+                      <a href={`#/calendar?open=${a.projectId}`} className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: p?.color ?? '#64748b' }} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">
+                            <span className="font-mono text-xs text-slate-500">{p?.projectNumber}</span> {p?.customer}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {formatDate(a.startDate)} – {formatDate(a.endDate)} · {t('calendar.businessDays', { count: businessDaysBetween(a.startDate, a.endDate) })}
+                          </span>
+                        </span>
+                        {p && <StatusBadge kind="projectStatus" value={p.status} />}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {isEdit && (
+          <section className="rounded-lg border border-slate-200 dark:border-slate-800">
+            <h3 className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">
+              <Palmtree className="size-4 text-slate-400" />
+              {t('employees.form.absencesTitle')}
+              <Badge className="ml-auto">{empAbsences.length}</Badge>
+            </h3>
+            {empAbsences.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-slate-500">{t('employees.form.noAbsences')}</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {empAbsences.map((x) => (
+                  <li key={x.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <StatusBadge kind="absenceType" value={x.type} />
+                    <span>
+                      {formatDate(x.startDate)} – {formatDate(x.endDate)}
+                    </span>
+                    {x.note && <span className="truncate text-xs text-slate-500">{x.note}</span>}
                   </li>
                 ))}
               </ul>

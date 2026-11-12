@@ -3,7 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { ComingSoon } from '@/components/layout/ComingSoon';
 import { useRoute, type RoutePath } from '@/app/router';
 import { useI18n } from '@/i18n';
-import { CalendarPage } from '@/modules/calendar/CalendarPage';
+import { SchedulePage } from '@/modules/calendar/SchedulePage';
 import { EmployeesPage } from '@/modules/employees/EmployeesPage';
 import { SettingsPage } from '@/modules/settings/SettingsPage';
 
@@ -15,7 +15,7 @@ function Page({ path }: { path: RoutePath }) {
     case '/settings':
       return <SettingsPage />;
     case '/calendar':
-      return <CalendarPage />;
+      return <SchedulePage />;
     case '/purchase-orders':
       return <ComingSoon phase={3} icon={ClipboardList} title={t('app.nav.purchaseOrders')} description={t('comingSoon.poDescription')} />;
     case '/financial':

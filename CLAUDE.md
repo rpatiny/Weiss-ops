@@ -19,7 +19,8 @@ ordens de compra (POs) e hub financeiro (spindles, cotações, forecast). Dados 
 
 - React 18 + TypeScript (strict, `noUncheckedIndexedAccess`) + Vite
 - Tailwind CSS v4 (`@tailwindcss/vite`), dark mode por classe `.dark` em `<html>` (`@custom-variant dark`)
-- `lucide-react` (ícones), `@dnd-kit/core` (drag-and-drop), `recharts` (gráficos), `xlsx` (exportação Excel)
+- `lucide-react` (ícones), `recharts` (gráficos), `xlsx` (exportação Excel)
+- Drag-and-drop do cronograma com **pointer events nativos** (mover/redimensionar exige geometria por pixel; sem lib)
 - Sem router externo: roteador por hash em `src/app/router.ts` (`#/rota?open=<id>` para deep-link)
 
 > `xlsx` vem do registro npm (0.18.5) porque o CDN oficial do SheetJS está bloqueado neste ambiente.
@@ -50,14 +51,14 @@ src/
 ├─ domain/                  # Regras de negócio puras + serviços (comandos)
 │  ├─ labels.ts             # tons de badge por enum + enumLabel/enumOptions (rótulos vêm do i18n)
 │  ├─ employees.ts          # validação, selectors e employeeService
-│  └─ calendar.ts           # períodos, conflitos, rotas/Google Maps, activityService (move/reorder)
+│  └─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
 │  └─ ui/                   # Button, Badge/StatusBadge, Field/Input/Select, Drawer, Modal/ConfirmDialog, Toast, Popover, misc
 └─ modules/                 # Uma pasta por módulo/página
-   ├─ calendar/             # CalendarPage (DndContext), CalendarGridView, ScheduleView, ActivityCard,
-   │                        # ActivityDrawer, RouteDrawer, CalendarContext
+   ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
+   │                        # MaterialsTab, PurchaseDrawer (gera PO), AbsenceDrawer
    ├─ employees/            # EmployeesPage, EmployeeFormDrawer
    └─ settings/             # SettingsPage (reset/limpar; backup na Fase 5)
 ```
@@ -79,17 +80,23 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 
 ## Modelos (resumo — fonte da verdade: `src/types/models.ts`)
 
-| Entidade           | Campos-chave                                                                                  | Relações                         |
-| ------------------ | --------------------------------------------------------------------------------------------- | -------------------------------- |
-| `Employee`         | name, role, phone, email, color (hex), status `active\|inactive`                               | 1—N `CalendarActivity`           |
-| `CalendarActivity` | employeeId, customer, address, serviceType, date, startTime, endTime, routeOrder, status        | N—1 Employee; opc. PO e Spindle  |
-| `PurchaseOrder`    | poNumber, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Activity, 1—N Spindle   |
-| `POLineItem`       | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status  | embutido na PO                   |
-| `SpindleUnit`      | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue        | opc. N—1 PO; 1—N Activity        |
-| `ForecastItem`     | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                      | —                                |
+| Entidade            | Campos-chave                                                                                   | Relações                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `Employee`          | name, role, phone, email, color (hex), status `active\|inactive`                                | 1—N Assignment, 1—N Absence                |
+| `Project`           | projectNumber, customer, address, serviceType, description, status, color, materials[]         | opc. PO do cliente e Spindle; 1—N Assignment |
+| `ProjectMaterial`   | partNumber, description, quantity, status `to_buy\|ordered\|received`, neededBy                 | opc. `poId` + `poLineId` (PO de compra)    |
+| `ProjectAssignment` | projectId, employeeId, startDate, endDate (sempre dias úteis) — a "barra" do cronograma          | N—1 Project, N—1 Employee                  |
+| `Absence`           | employeeId, type `vacation\|leave\|training`, startDate, endDate, note — bloqueia a linha       | N—1 Employee                               |
+| `PurchaseOrder`     | poNumber, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Project (cliente), 1—N Material (compra) |
+| `POLineItem`        | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status   | embutido na PO                             |
+| `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue         | opc. N—1 PO; 1—N Project                   |
+| `ForecastItem`      | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                       | —                                          |
 
-**Relações bidirecionais**: só o lado "N" guarda a FK (`activity.poId`, `activity.spindleId`,
-`spindle.poId`). O lado inverso é resolvido por selectors (ex.: atividades de uma PO = filtro por `poId`).
+> O modelo original `CalendarActivity` (atividades diárias com horário/rota) foi substituído na v2 pelo
+> cronograma de projetos multi-dia. `APP_CONFIG.schemaVersion = 2`: bases v1 são recriadas com a demo.
+
+**Relações bidirecionais**: só o lado "N" guarda a FK (`project.poId`, `project.spindleId`, `material.poId/poLineId`,
+`spindle.poId`). O lado inverso é resolvido por selectors (ex.: projetos de uma PO = filtro por `poId`).
 
 **Valores derivados nunca são persistidos**: total da linha (`quantity × unitPrice`), total da PO,
 valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprovação, atrasos, conflitos.
@@ -98,7 +105,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 - **Datas** como string `YYYY-MM-DD` em horário local; use `src/lib/dates.ts` (nunca `new Date('YYYY-MM-DD')`, que é UTC).
 - **Horas** `HH:mm`; comparar via `timeToMinutes`.
-- **IDs**: `newId('emp' | 'act' | 'po' | 'pol' | 'att' | 'sp' | 'fc')`.
+- **IDs**: `newId('emp' | 'prj' | 'asg' | 'abs' | 'mat' | 'po' | 'pol' | 'att' | 'sp' | 'fc')`.
 - **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `pt-BR` / `BRL`); formate com `src/lib/format.ts`.
 - **Nenhum texto de UI hard-coded**: use `const { t } = useI18n()` e `t('modulo.chave', { var })`.
   Ao criar uma chave, adicione-a em `pt.ts` e o TypeScript exigirá a tradução em `en.ts` e `de.ts`.
@@ -124,24 +131,34 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   cor `#RRGGBB`. Inativos não aparecem para novos agendamentos (`selectActiveEmployees`), mas mantêm histórico.
   Exclusão só é permitida sem atividades vinculadas — caso contrário o sistema oferece **inativar**.
   Ao inativar alguém com atividades futuras, um aviso pede reatribuição na Agenda.
-- **Agenda & Rotas** (`domain/calendar.ts`):
-  - Visões: `week` (7 dias), `biweekly` (14), `month` (grade de semanas completas), `schedule` (colaborador × dias, 7 ou 14).
-  - **Conflito** = mesmo colaborador, mesmo dia, intervalos `[início, fim)` sobrepostos; canceladas são ignoradas.
-    Recalculado a cada mudança (cartão com borda vermelha, banner, KPI clicável que filtra só conflitos,
-    alerta ao vivo no formulário e toast após drag-and-drop).
-  - **Drag-and-drop** (`@dnd-kit/core`, colisão por ponteiro): ids de droppable `day|YYYY-MM-DD` e
-    `cell|employeeId|YYYY-MM-DD`. Atividades `completed`/`canceled` são travadas. Não é possível soltar em colaborador inativo.
-    A atividade movida vai para o fim da rota de destino e as rotas de origem/destino são renumeradas (1..n).
-  - **Rota do dia**: paradas ordenadas por `routeOrder` (↑/↓ ou "ordenar por horário"); URL
-    `https://www.google.com/maps/dir/End1/End2/...` (canceladas e sem endereço são excluídas; opção de partir/voltar à base `BASE_ADDRESS`).
-  - Inativos não aparecem para novos agendamentos, mas uma atividade antiga de um inativo continua editável.
-  - Deep-link: `#/calendar?open=<activityId>` abre a atividade. Chips de PO/Spindle navegam para
-    `#/purchase-orders?open=<poId>` / `#/financial?open=<spindleId>` (telas de destino nas Fases 3/4).
+- **Agenda & Rotas = Cronograma de projetos** (`domain/schedule.ts`):
+  - Grade estilo Gantt: colaboradores nas linhas × dias nas colunas; visões Semana / Quinzena / Mês.
+  - **Fins de semana não são dias de trabalho**: colunas estreitas e acinzentadas; alocações sempre começam/terminam
+    em dia útil (`snapForward`/`snapBackward`) e a duração é contada em dias úteis (`businessDaysBetween`).
+  - **Arraste** (pointer events): corpo da barra = mover (mantém a duração em dias úteis; também entre linhas = trocar
+    colaborador); bordas = redimensionar. Projetos `completed`/`canceled` ficam travados. Prévia em tempo real;
+    soltar sobre férias/ausência ou colaborador inativo é **bloqueado** (barra tracejada vermelha + toast).
+    Durante o arraste as linhas não encolhem (evita "pulo" sob o ponteiro).
+  - **Férias/ausências** (`Absence`): faixa hachurada com cadeado "Férias · até dd/mm" na linha; impede alocações.
+    Cadastrar férias por cima de alocações existentes é permitido com aviso (viram conflito).
+  - **Conflito** = mesmo colaborador com duas alocações sobrepostas → borda vermelha, banner, KPI que filtra.
+  - Sobreposições na mesma linha são empilhadas em raias (`computeLanes`).
+  - Ocupação por colaborador (dias alocados / dias úteis disponíveis − ausências) exibida na coluna de nomes.
+  - **Materiais do projeto**: status efetivo derivado da linha de PO vinculada (entregue → `received`; aberta → `ordered`;
+    sem PO → campo manual). Indicador no retângulo (🛒 a comprar / atrasado / 🚚 aguardando / ✓ OK) abre a aba Materiais.
+    "Pode atrasar o projeto" quando a previsão de chegada é posterior a `neededBy` (padrão: início do projeto).
+  - **Gerar pedido de compra**: cria uma PO de fornecedor (`PC-xxxxx`) com os materiais selecionados (preço sugerido =
+    última compra do mesmo part number) e vincula cada material à sua linha. "Confirmar recebimento" marca a LINHA da PO
+    como entregue (data real = hoje) e recalcula o status da PO.
+  - Deep-link: `#/calendar?open=<projectId>`. Links para `#/purchase-orders?open=<poId>` e `#/financial?open=<spindleId>`
+    (telas de destino nas Fases 3/4). Google Maps: link de busca pelo endereço do projeto.
 
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
 - [x] **Fase 1.5** — Internacionalização pt-BR / en-US / de-DE.
+- [x] **Fase 2.1** — Cronograma de projetos (Gantt) com dias úteis, férias bloqueando a linha, arrastar/redimensionar,
+      materiais por projeto com geração de PO de compra e confirmação de recebimento (substitui a agenda diária).
 - [x] **Fase 2** — Agenda & Rotas: visões Semanal / Quinzenal / Mensal / Grade Colaborador×Dias; filtros (colaboradores, status);
       drag-and-drop (entre dias e entre colaboradores na grade); ordem de paradas; link Google Maps multi-paradas;
       detecção/destaque de conflitos de horário em tempo real.

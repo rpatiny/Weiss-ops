@@ -11,7 +11,9 @@ type Repos = { [K in CollectionName]: Repository<EntityOf<K>> };
 /** Um repositório por coleção. Toda leitura/escrita da UI passa por aqui. */
 export const repos: Repos = {
   employees: new StoredRepository(driver, 'employees'),
-  activities: new StoredRepository(driver, 'activities'),
+  projects: new StoredRepository(driver, 'projects'),
+  assignments: new StoredRepository(driver, 'assignments'),
+  absences: new StoredRepository(driver, 'absences'),
   purchaseOrders: new StoredRepository(driver, 'purchaseOrders'),
   spindles: new StoredRepository(driver, 'spindles'),
   forecast: new StoredRepository(driver, 'forecast'),
@@ -28,17 +30,25 @@ interface Meta {
 const META_KEY = 'meta';
 
 export const db = {
-  /** Popula com dados de demonstração no primeiro acesso. */
+  /**
+   * Popula com dados de demonstração no primeiro acesso. Se a base local tiver um
+   * schema antigo (ex.: v1 com atividades diárias), é recriada com a demo atual.
+   */
   ensureInitialized(): void {
     const meta = driver.read<Meta>(META_KEY);
-    if (!meta) db.resetToDemo();
+    if (!meta || meta.schemaVersion < APP_CONFIG.schemaVersion) {
+      driver.remove('activities'); // coleção do schema v1
+      db.resetToDemo();
+    }
   },
 
   /** Snapshot completo (base do backup JSON / exportação Excel). */
   snapshot(): AppDatabase {
     return {
       employees: [...repos.employees.getAll()],
-      activities: [...repos.activities.getAll()],
+      projects: [...repos.projects.getAll()],
+      assignments: [...repos.assignments.getAll()],
+      absences: [...repos.absences.getAll()],
       purchaseOrders: [...repos.purchaseOrders.getAll()],
       spindles: [...repos.spindles.getAll()],
       forecast: [...repos.forecast.getAll()],
@@ -48,7 +58,9 @@ export const db = {
   /** Substitui TODO o estado. */
   load(data: AppDatabase, source: Meta['source']): void {
     repos.employees.replaceAll(data.employees);
-    repos.activities.replaceAll(data.activities);
+    repos.projects.replaceAll(data.projects);
+    repos.assignments.replaceAll(data.assignments);
+    repos.absences.replaceAll(data.absences);
     repos.purchaseOrders.replaceAll(data.purchaseOrders);
     repos.spindles.replaceAll(data.spindles);
     repos.forecast.replaceAll(data.forecast);
@@ -64,7 +76,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ employees: [], activities: [], purchaseOrders: [], spindles: [], forecast: [] }, 'empty');
+    db.load({ employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], spindles: [], forecast: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {

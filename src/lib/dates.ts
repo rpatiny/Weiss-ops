@@ -76,3 +76,45 @@ export function isWeekend(iso: string): boolean {
   const dow = parseISODate(iso).getDay();
   return dow === 0 || dow === 6;
 }
+
+// ───────── Dias úteis (seg–sex) ─────────
+
+export const isBusinessDay = (iso: string) => !isWeekend(iso);
+
+/** Próximo dia útil (o próprio dia, se já for útil). */
+export function snapForward(iso: string): string {
+  let d = iso;
+  while (isWeekend(d)) d = addDays(d, 1);
+  return d;
+}
+
+/** Dia útil anterior (o próprio dia, se já for útil). */
+export function snapBackward(iso: string): string {
+  let d = iso;
+  while (isWeekend(d)) d = addDays(d, -1);
+  return d;
+}
+
+/** Soma `n` dias úteis (n pode ser negativo). `addBusinessDays(seg, 0) = seg`. */
+export function addBusinessDays(iso: string, n: number): string {
+  let d = n >= 0 ? snapForward(iso) : snapBackward(iso);
+  const step = n >= 0 ? 1 : -1;
+  for (let left = Math.abs(n); left > 0; ) {
+    d = addDays(d, step);
+    if (!isWeekend(d)) left--;
+  }
+  return d;
+}
+
+/** Quantidade de dias úteis entre `a` e `b`, inclusive. */
+export function businessDaysBetween(a: string, b: string): number {
+  if (b < a) return 0;
+  let count = 0;
+  for (let d = a; d <= b; d = addDays(d, 1)) if (!isWeekend(d)) count++;
+  return count;
+}
+
+/** Interseção de intervalos fechados [aStart, aEnd] ∩ [bStart, bEnd]. */
+export function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}

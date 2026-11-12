@@ -3,13 +3,15 @@
  * Todas as datas são RELATIVAS ao dia em que o seed é gerado, para que a demo
  * sempre mostre atividades da semana, POs atrasadas, entregas do mês etc.
  */
-import { addDays, addMonths, startOfWeek, todayISO } from '@/lib/dates';
+import { addBusinessDays, addDays, addMonths, startOfWeek, todayISO } from '@/lib/dates';
 import type {
+  Absence,
   AppDatabase,
-  CalendarActivity,
   Employee,
   ForecastItem,
   POLineItem,
+  Project,
+  ProjectAssignment,
   PurchaseOrder,
   SpindleUnit,
 } from '@/types/models';
@@ -54,7 +56,6 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   const d = (n: number) => addDays(today, n);
   const m = (n: number, day = 0) => addDays(addMonths(today, n), day);
   const week = startOfWeek(today);
-  const w = (n: number) => addDays(week, n); // 0 = segunda desta semana
 
   // ───────────── Purchase Orders ─────────────
   const purchaseOrders: PurchaseOrder[] = [
@@ -108,6 +109,16 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
         line('pol_9', 1, 'SKF-7014CD/P4A', 'Rolamento de contato angular SKF 7014 CD/P4A (par)', 4, 2950, d(-4), 'delivered', d(-5)),
         line('pol_10', 2, 'SKF-7012ACD/HCP4A', 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', 2, 4380, d(-1), 'open'),
         line('pol_11', 3, 'KLU-ISOFLEX-NBU15', 'Graxa Klüber Isoflex NBU 15 (50g)', 10, 189, d(3), 'open'),
+      ],
+    },
+    {
+      id: 'po_cmp4471', poNumber: 'CIP-4471', customerOrVendor: 'Componentes Industriais Paulista (Fornecedor)', orderDate: d(-7),
+      requester: 'Juliana Prado', paymentTerms: '28 DDL', status: 'partial',
+      notes: 'Materiais para projetos IBAG HF 120 e Kessler DMS 120.',
+      attachments: [],
+      lines: [
+        line('cmp_1', 1, 'IBG-SEAL-KIT-HF120', 'Kit de vedação IBAG HF 120', 1, 1450, d(2), 'open'),
+        line('cmp_2', 2, 'HEID-ERN1387', 'Encoder Heidenhain ERN 1387 2048 ppr', 1, 6890, d(-3), 'delivered', d(-3)),
       ],
     },
     {
@@ -184,86 +195,127 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     { id: 'fc_8', customer: CUSTOMERS.textil.name, spindleModel: 'Weiss WS 170', description: 'Renegociação da cotação recusada', estimatedValue: 29900, expectedDate: m(4), probability: 20 },
   ];
 
-  // ───────────── Atividades (semana passada → +2 semanas) ─────────────
-  let n = 0;
-  const act = (
-    employeeId: string,
-    date: string,
-    startTime: string,
-    endTime: string,
-    routeOrder: number,
-    serviceType: CalendarActivity['serviceType'],
+  // ───────────── Projetos, alocações e férias ─────────────
+  // wd(n) = n dias úteis a partir da segunda-feira desta semana (n pode ser negativo).
+  const wd = (n: number) => addBusinessDays(week, n);
+  const shop = { name: 'Oficina SpindleOps (bancada)', address: SHOP_ADDRESS };
+  const statusFor = (start: string, end: string): Project['status'] =>
+    end < today ? 'completed' : start <= today ? 'in_progress' : 'planned';
+
+  const prj = (
+    n: number,
     customer: { name: string; address: string },
+    serviceType: Project['serviceType'],
     description: string,
-    status: CalendarActivity['status'],
-    links: { poId?: string; spindleId?: string } = {},
-  ): CalendarActivity => ({
-    id: `act_${String(++n).padStart(3, '0')}`,
-    employeeId,
-    date,
-    startTime,
-    endTime,
-    routeOrder,
-    serviceType,
+    color: string,
+    span: [string, string],
+    extra: Partial<Project> = {},
+  ): Project => ({
+    id: `prj_${String(n).padStart(3, '0')}`,
+    projectNumber: `PRJ-${today.slice(2, 4)}${today.slice(5, 7)}-${String(n).padStart(3, '0')}`,
     customer: customer.name,
     address: customer.address,
+    serviceType,
     description,
-    status,
-    ...links,
+    status: statusFor(span[0], span[1]),
+    color,
+    materials: [],
+    ...extra,
   });
 
-  const shop = { name: 'Oficina SpindleOps (bancada)', address: SHOP_ADDRESS };
-  const past = (offset: number) => (addDays(week, offset) < today ? 'completed' : 'planned') as CalendarActivity['status'];
+  const projects: Project[] = [
+    prj(1, CUSTOMERS.usinagem, 'bench_repair', 'Reparo completo + instalação spindle Fischer MFW-2310 (S/N FS-22871)', '#2563eb', [wd(-3), wd(12)], {
+      poId: 'po_4500918',
+      spindleId: 'sp_fs22871',
+      materials: [
+        { id: 'mat_01', partNumber: 'SKF-7014CD/P4A', description: 'Rolamento de contato angular SKF 7014 CD/P4A (par)', quantity: 2, status: 'ordered', poId: 'po_skf33012', poLineId: 'pol_9', neededBy: wd(-1) },
+        { id: 'mat_02', partNumber: 'SKF-7012ACD/HCP4A', description: 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', quantity: 1, status: 'ordered', poId: 'po_skf33012', poLineId: 'pol_10', neededBy: wd(1) },
+        { id: 'mat_03', partNumber: 'KLU-ISOFLEX-NBU15', description: 'Graxa Klüber Isoflex NBU 15 (50g)', quantity: 4, status: 'ordered', poId: 'po_skf33012', poLineId: 'pol_11', neededBy: wd(2) },
+        { id: 'mat_04', partNumber: 'FIS-RET-2310', description: 'Retentor labirinto dianteiro Fischer MFW-2310', quantity: 1, status: 'to_buy', neededBy: wd(3) },
+      ],
+    }),
+    prj(2, CUSTOMERS.moldes, 'bench_repair', 'Reparo spindle IBAG HF 120 (S/N IB-8812) + teste de vibração', '#7c3aed', [wd(5), wd(15)], {
+      poId: 'po_mmj0457',
+      spindleId: 'sp_ib8812',
+      materials: [
+        { id: 'mat_05', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', quantity: 1, status: 'ordered', poId: 'po_cmp4471', poLineId: 'cmp_1', neededBy: wd(5) },
+        { id: 'mat_06', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', quantity: 2, status: 'to_buy', neededBy: wd(7) },
+      ],
+    }),
+    prj(3, CUSTOMERS.metalforte, 'site_visit', 'Inspeção de alinhamento — linha de prensas + coleta motor WEG', '#d97706', [wd(-6), wd(2)], {
+      poId: 'po_mf2291',
+      spindleId: 'sp_weg30',
+      materials: [{ id: 'mat_07', partNumber: 'CU-ESM-1.2', description: 'Fio de cobre esmaltado 1,2 mm (kg)', quantity: 18, status: 'received' }],
+    }),
+    prj(4, CUSTOMERS.alfa, 'installation', 'Retrofit eletrospindle Kessler DMS 120 — diagnóstico, bancada e instalação', '#16a34a', [wd(0), wd(13)], {
+      poId: 'po_alf1120',
+      spindleId: 'sp_ks30419',
+      materials: [
+        { id: 'mat_08', partNumber: 'HEID-ERN1387', description: 'Encoder Heidenhain ERN 1387 2048 ppr', quantity: 1, status: 'ordered', poId: 'po_cmp4471', poLineId: 'cmp_2', neededBy: wd(10) },
+        { id: 'mat_09', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', quantity: 1, status: 'to_buy', neededBy: wd(10) },
+        { id: 'mat_10', partNumber: 'HSK-A63-CAL', description: 'Barra de calibração HSK-A63', quantity: 1, status: 'received' },
+      ],
+    }),
+    prj(5, CUSTOMERS.aeromec, 'site_visit', 'Levantamento técnico e pré-instalação spindle GMN HCS 170', '#db2777', [wd(-1), wd(5)], { spindleId: 'sp_gmn' }),
+    prj(6, CUSTOMERS.autopecas, 'site_visit', 'Revisão preventiva tornos Mazak QTN-250 (3 spindles)', '#0891b2', [wd(0), wd(14)], {
+      poId: 'po_avp8810',
+      spindleId: 'sp_mz1',
+      materials: [{ id: 'mat_11', partNumber: 'MAZ-REV-KIT', description: 'Kit revisão Mazak (rolamentos + vedações)', quantity: 3, status: 'to_buy', neededBy: wd(8) }],
+    }),
+    prj(7, CUSTOMERS.hidrotec, 'installation', 'Reinstalação servomotor Siemens 1FT7 + comissionamento', '#65a30d', [wd(-4), wd(-2)], { poId: 'po_hid5502', spindleId: 'sp_sie1ft7' }),
+    prj(8, CUSTOMERS.hidrotec, 'site_visit', 'Proposta de retrofit dos servomotores da linha de bombas', '#ea580c', [wd(6), wd(7)]),
+    prj(9, CUSTOMERS.textil, 'site_visit', 'Avaliação e renegociação Weiss WS 170', '#4f46e5', [wd(-15), wd(12)], { spindleId: 'sp_weiss' }),
+    prj(10, shop, 'bench_repair', 'Manutenção da bancada de balanceamento', '#64748b', [wd(16), wd(17)]),
+  ];
 
-  const activities: CalendarActivity[] = [
-    // Semana passada
-    act('emp_rafael', w(-7), '08:00', '10:00', 1, 'pickup', CUSTOMERS.moldes, 'Coleta spindle IBAG HF 120', 'completed', { spindleId: 'sp_ib8812', poId: 'po_mmj0457' }),
-    act('emp_rafael', w(-7), '11:00', '12:30', 2, 'pickup', CUSTOMERS.metalforte, 'Coleta motor WEG W22 30cv', 'completed', { spindleId: 'sp_weg30', poId: 'po_mf2291' }),
-    act('emp_carlos', w(-6), '09:00', '12:00', 1, 'site_visit', CUSTOMERS.alfa, 'Diagnóstico de ruído no eletrospindle Kessler', 'completed', { spindleId: 'sp_ks30419' }),
-    act('emp_juliana', w(-5), '08:00', '17:00', 1, 'bench_repair', shop, 'Desmontagem e inspeção IBAG HF 120', 'completed', { spindleId: 'sp_ib8812' }),
-    act('emp_patricia', w(-4), '14:00', '16:00', 1, 'site_visit', CUSTOMERS.aeromec, 'Reunião técnica — cotação GMN HCS 170', 'completed', { spindleId: 'sp_gmn' }),
-    act('emp_eduardo', w(-4), '08:00', '12:00', 1, 'site_visit', CUSTOMERS.textil, 'Avaliação Weiss WS 170 (último atendimento)', 'completed', { spindleId: 'sp_weiss' }),
+  let an = 0;
+  const asg = (projectId: string, employeeId: string, start: string, end: string): ProjectAssignment => ({
+    id: `asg_${String(++an).padStart(3, '0')}`,
+    projectId,
+    employeeId,
+    startDate: start,
+    endDate: end,
+  });
 
-    // Semana atual
-    act('emp_rafael', w(0), '07:30', '09:00', 1, 'pickup', CUSTOMERS.autopecas, 'Coleta 3 spindles Mazak QTN-250', past(0), { poId: 'po_avp8810', spindleId: 'sp_mz1' }),
-    act('emp_rafael', w(0), '10:30', '12:00', 2, 'delivery', CUSTOMERS.aeromec, 'Entrega documentação / certificado de teste', past(0), { poId: 'po_aer7731' }),
-    act('emp_rafael', w(0), '14:00', '15:30', 3, 'pickup', CUSTOMERS.hidrotec, 'Retirada de caixas de transporte vazias', past(0)),
-    act('emp_juliana', w(0), '08:00', '17:00', 1, 'bench_repair', shop, 'Troca de rolamentos Fischer MFW-2310 FS-22871', past(0), { spindleId: 'sp_fs22871', poId: 'po_4500918' }),
-    act('emp_carlos', w(1), '08:00', '11:00', 1, 'site_visit', CUSTOMERS.usinagem, 'Análise de vibração em máquina 5 eixos', past(1), { poId: 'po_4500918' }),
-    act('emp_carlos', w(1), '13:30', '16:00', 2, 'site_visit', CUSTOMERS.textil, 'Prospecção — renegociação Weiss WS 170', past(1)),
-    act('emp_marcos', w(1), '08:00', '12:00', 1, 'installation', CUSTOMERS.hidrotec, 'Reinstalação servomotor Siemens 1FT7', past(1), { spindleId: 'sp_sie1ft7', poId: 'po_hid5502' }),
-    act('emp_juliana', w(2), '08:00', '12:00', 1, 'bench_repair', shop, 'Balanceamento IBAG HF 120', past(2), { spindleId: 'sp_ib8812' }),
-    act('emp_juliana', w(2), '13:00', '17:00', 2, 'bench_repair', shop, 'Rebobinamento WEG W22 — montagem', past(2), { spindleId: 'sp_weg30' }),
-    act('emp_patricia', w(2), '09:00', '11:00', 1, 'site_visit', CUSTOMERS.moldes, 'Apresentação laudo Fanuc αiI 12', past(2), { spindleId: 'sp_fanuc' }),
-    act('emp_patricia', w(2), '14:00', '16:00', 2, 'site_visit', CUSTOMERS.aeromec, 'Follow-up cotação COT-2611-029', past(2), { spindleId: 'sp_gmn' }),
-    // Conflito proposital (Carlos, mesmo dia, horários sobrepostos)
-    act('emp_carlos', w(3), '08:30', '11:30', 1, 'site_visit', CUSTOMERS.metalforte, 'Inspeção de alinhamento — linha de prensas', past(3)),
-    act('emp_carlos', w(3), '11:00', '13:00', 2, 'site_visit', CUSTOMERS.moldes, 'Visita técnica — centro de usinagem Romi', past(3)),
-    act('emp_carlos', w(3), '15:00', '17:00', 3, 'delivery', CUSTOMERS.alfa, 'Entrega de laudo técnico Kessler', past(3), { spindleId: 'sp_ks30419' }),
-    act('emp_rafael', w(3), '08:00', '09:30', 1, 'pickup', CUSTOMERS.alfa, 'Coleta spindle Haas 40-Taper', past(3), { spindleId: 'sp_haas' }),
-    act('emp_rafael', w(3), '10:30', '12:00', 2, 'delivery', CUSTOMERS.usinagem, 'Entrega rolamentos sobressalentes', past(3), { poId: 'po_4500918' }),
-    act('emp_marcos', w(4), '08:00', '17:00', 1, 'installation', CUSTOMERS.usinagem, 'Instalação Fischer MFW-2310 FS-22904 + run-in', past(4), { spindleId: 'sp_fs22904', poId: 'po_4500918' }),
-    act('emp_juliana', w(4), '08:00', '16:00', 1, 'bench_repair', shop, 'Teste em bancada Fischer FS-22871 (run-in 6h)', past(4), { spindleId: 'sp_fs22871' }),
+  const assignments: ProjectAssignment[] = [
+    // Carlos — campo (conflito proposital: prj_004 × prj_005 em wd(3))
+    asg('prj_003', 'emp_carlos', wd(-6), wd(-4)),
+    asg('prj_004', 'emp_carlos', wd(0), wd(3)),
+    asg('prj_005', 'emp_carlos', wd(3), wd(5)),
+    asg('prj_006', 'emp_carlos', wd(8), wd(14)),
+    // Juliana — bancada
+    asg('prj_001', 'emp_juliana', wd(-3), wd(4)),
+    asg('prj_002', 'emp_juliana', wd(5), wd(9)),
+    asg('prj_004', 'emp_juliana', wd(10), wd(13)),
+    // Marcos — instalação (férias wd(1)..wd(10))
+    asg('prj_007', 'emp_marcos', wd(-4), wd(-2)),
+    asg('prj_001', 'emp_marcos', wd(11), wd(12)),
+    asg('prj_002', 'emp_marcos', wd(14), wd(15)),
+    // Patrícia — engenharia de aplicação
+    asg('prj_005', 'emp_patricia', wd(-1), wd(1)),
+    asg('prj_008', 'emp_patricia', wd(6), wd(7)),
+    asg('prj_009', 'emp_patricia', wd(12), wd(12)),
+    asg('prj_010', 'emp_patricia', wd(16), wd(17)),
+    // Rafael — logística (coletas/entregas curtas)
+    asg('prj_006', 'emp_rafael', wd(0), wd(0)),
+    asg('prj_003', 'emp_rafael', wd(2), wd(2)),
+    asg('prj_001', 'emp_rafael', wd(10), wd(10)),
+    asg('prj_002', 'emp_rafael', wd(11), wd(11)),
+    // Eduardo (inativo) — histórico
+    asg('prj_009', 'emp_eduardo', wd(-15), wd(-12)),
+  ];
 
-    // Próxima semana
-    act('emp_rafael', w(7), '07:30', '09:00', 1, 'delivery', CUSTOMERS.metalforte, 'Entrega motor WEG W22 30cv reparado', 'planned', { spindleId: 'sp_weg30', poId: 'po_mf2291' }),
-    act('emp_rafael', w(7), '10:00', '11:30', 2, 'delivery', CUSTOMERS.moldes, 'Entrega spindle IBAG HF 120', 'planned', { spindleId: 'sp_ib8812', poId: 'po_mmj0457' }),
-    act('emp_rafael', w(7), '13:30', '15:00', 3, 'pickup', CUSTOMERS.aeromec, 'Coleta spindle GMN HCS 170', 'planned', { spindleId: 'sp_gmn' }),
-    act('emp_marcos', w(8), '08:00', '12:00', 1, 'installation', CUSTOMERS.moldes, 'Instalação IBAG HF 120 + teste de vibração', 'planned', { spindleId: 'sp_ib8812', poId: 'po_mmj0457' }),
-    act('emp_carlos', w(8), '08:00', '10:00', 1, 'site_visit', CUSTOMERS.autopecas, 'Levantamento técnico tornos Mazak', 'planned', { poId: 'po_avp8810' }),
-    act('emp_carlos', w(8), '13:00', '15:00', 2, 'site_visit', CUSTOMERS.aeromec, 'Inspeção de máquina — pré-instalação GMN', 'planned', { spindleId: 'sp_gmn' }),
-    act('emp_juliana', w(9), '08:00', '17:00', 1, 'bench_repair', shop, 'Desmontagem Kessler DMS 120', 'planned', { spindleId: 'sp_ks30419', poId: 'po_alf1120' }),
-    act('emp_patricia', w(9), '10:00', '12:00', 1, 'site_visit', CUSTOMERS.hidrotec, 'Proposta retrofit servomotores', 'planned'),
-    act('emp_rafael', w(10), '08:00', '09:30', 1, 'delivery', CUSTOMERS.usinagem, 'Entrega Fischer MFW-2310 FS-22871', 'planned', { spindleId: 'sp_fs22871', poId: 'po_4500918' }),
-    act('emp_marcos', w(10), '10:00', '17:00', 1, 'installation', CUSTOMERS.usinagem, 'Instalação Fischer FS-22871', 'planned', { spindleId: 'sp_fs22871', poId: 'po_4500918' }),
-    act('emp_juliana', w(14), '08:00', '17:00', 1, 'bench_repair', shop, 'Montagem Kessler DMS 120', 'planned', { spindleId: 'sp_ks30419' }),
-    act('emp_marcos', w(16), '08:00', '16:00', 1, 'installation', CUSTOMERS.alfa, 'Instalação e alinhamento Kessler DMS 120', 'planned', { spindleId: 'sp_ks30419', poId: 'po_alf1120' }),
-    act('emp_carlos', w(17), '09:00', '12:00', 1, 'site_visit', CUSTOMERS.metalforte, 'Visita preventiva trimestral', 'planned'),
+  const absences: Absence[] = [
+    { id: 'abs_1', employeeId: 'emp_marcos', type: 'vacation', startDate: wd(1), endDate: wd(10), note: 'Férias' },
+    { id: 'abs_2', employeeId: 'emp_rafael', type: 'training', startDate: wd(15), endDate: wd(16), note: 'Treinamento NR-11' },
+    { id: 'abs_3', employeeId: 'emp_juliana', type: 'vacation', startDate: wd(25), endDate: wd(34), note: 'Férias' },
   ];
 
   return {
     employees: employees.map((e) => ({ ...e })),
-    activities,
+    projects,
+    assignments,
+    absences,
     purchaseOrders,
     spindles,
     forecast,

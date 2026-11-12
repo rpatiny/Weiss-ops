@@ -1,7 +1,7 @@
 import { repos } from '@/data/db';
 import { todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
-import type { CalendarActivity, Employee } from '@/types/models';
+import type { Absence, Employee, ProjectAssignment } from '@/types/models';
 import type { TranslationKey } from '@/i18n/types';
 
 export type EmployeeDraft = Omit<Employee, 'id'>;
@@ -59,15 +59,16 @@ const normalize = (d: EmployeeDraft): EmployeeDraft => ({
 export const selectActiveEmployees = (all: readonly Employee[]) =>
   all.filter((e) => e.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
-export function activitiesOf(employeeId: string, activities: readonly CalendarActivity[]) {
-  return activities.filter((a) => a.employeeId === employeeId);
+/** Alocações em andamento ou futuras (fim >= hoje), ordenadas por início. */
+export function upcomingAssignments(employeeId: string, assignments: readonly ProjectAssignment[], today = todayISO()) {
+  return assignments
+    .filter((a) => a.employeeId === employeeId && a.endDate >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
 
-/** Atividades futuras ainda não concluídas/canceladas. */
-export function upcomingOpenActivities(employeeId: string, activities: readonly CalendarActivity[], today = todayISO()) {
-  return activitiesOf(employeeId, activities)
-    .filter((a) => a.date >= today && (a.status === 'planned' || a.status === 'in_progress'))
-    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+/** Ausências em andamento ou futuras. */
+export function upcomingAbsences(employeeId: string, absences: readonly Absence[], today = todayISO()) {
+  return absences.filter((a) => a.employeeId === employeeId && a.endDate >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
 
 // ───────── Commands ─────────
@@ -87,11 +88,12 @@ export const employeeService = {
    * o colaborador deve ser inativado (preserva o histórico da agenda).
    */
   canDelete(id: string): { ok: boolean; activityCount: number } {
-    const activityCount = repos.activities.getAll().filter((a) => a.employeeId === id).length;
+    const activityCount = repos.assignments.getAll().filter((a) => a.employeeId === id).length;
     return { ok: activityCount === 0, activityCount };
   },
   remove(id: string): void {
     if (!employeeService.canDelete(id).ok) throw new Error('employees.validation.hasHistory');
+    repos.absences.replaceAll(repos.absences.getAll().filter((a) => a.employeeId !== id));
     repos.employees.remove(id);
   },
 };
