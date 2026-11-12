@@ -4,6 +4,9 @@ import { useCan, useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
 import { effectiveStatus, needsLogistics, openQty, requisitionItemViews } from '@/domain/requisitions';
 import { GRDrawer } from './process/GRDrawer';
+import { RequisitionWizardDrawer } from './process/RequisitionWizardDrawer';
+import { ExtensionFormDrawer } from '@/modules/extensions/ExtensionFormDrawer';
+import { FilePlus2, Globe2 } from 'lucide-react';
 import { ReceivingTab, RequisitionsTab } from './process/ProcessTabs';
 import { clearParams, useRoute } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
@@ -40,6 +43,8 @@ export function PurchaseOrdersPage() {
   const [drawer, setDrawer] = useState<{ id?: string } | null>(null);
   const [reqOpen, setReqOpen] = useState<string>();
   const [grPo, setGrPo] = useState<string>();
+  const [wizard, setWizard] = useState(false);
+  const [extForm, setExtForm] = useState(false);
   const reqParam = routePath === '/purchase-orders' ? params.get('req') : null;
   const grParam = routePath === '/purchase-orders' ? params.get('gr') : null;
   useEffect(() => {
@@ -100,11 +105,23 @@ export function PurchaseOrdersPage() {
         title={t('purchasing.title')}
         description={t('purchasing.description')}
         actions={
-          allowed('po.edit') && (
-            <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
-              {t('purchasing.newPO')}
-            </Button>
-          )
+          <>
+            {allowed('extension.request') && (
+              <Button icon={Globe2} className="border-indigo-300 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300" onClick={() => setExtForm(true)}>
+                {t('extensions.new')}
+              </Button>
+            )}
+            {allowed('requisition.create') && (
+              <Button variant="primary" icon={FilePlus2} onClick={() => setWizard(true)}>
+                {t('process.req.newButton')}
+              </Button>
+            )}
+            {allowed('po.edit') && (
+              <Button variant={allowed('requisition.create') ? 'secondary' : 'primary'} icon={Plus} onClick={() => setDrawer({})}>
+                {t('purchasing.newPO')}
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -143,6 +160,8 @@ export function PurchaseOrdersPage() {
 
       <PODrawer open={!!drawer} poId={drawer?.id} onClose={() => setDrawer(null)} onRegisterGR={(id) => { setDrawer(null); setGrPo(id); }} />
       <GRDrawer open={!!grPo} poId={grPo} onClose={() => setGrPo(undefined)} />
+      <RequisitionWizardDrawer open={wizard} onClose={() => setWizard(false)} onCreated={(id) => { setTab('requisitions'); setReqOpen(id); }} />
+      <ExtensionFormDrawer open={extForm} onClose={() => setExtForm(false)} />
     </>
   );
 }

@@ -23,7 +23,16 @@ export function Drawer({ open, onClose, title, subtitle, footer, children, width
   useEscape(open, onClose);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
+    // Portais propagam eventos pela árvore do React: isola envio/cliques deste painel dos componentes "pais"
+    // (ex.: um formulário dentro de outro formulário, ou um painel aberto a partir de uma linha clicável).
+    <div
+      className="fixed inset-0 z-50 flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      onSubmit={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       <div className="animate-fade-in absolute inset-0 bg-slate-950/50 backdrop-blur-[1px]" onClick={onClose} />
       <div className={cn('animate-slide-in-right relative flex h-full w-full flex-col bg-white shadow-2xl dark:bg-slate-900', widths[width])}>
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800">

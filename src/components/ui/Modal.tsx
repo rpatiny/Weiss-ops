@@ -17,7 +17,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   useEscape(open, onClose);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" onSubmit={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
       <div className="animate-fade-in absolute inset-0 bg-slate-950/50" onClick={onClose} />
       <div className="animate-pop-in card relative w-full max-w-md p-5 shadow-2xl">
         <h2 className="text-base font-semibold text-slate-900 dark:text-white">{title}</h2>

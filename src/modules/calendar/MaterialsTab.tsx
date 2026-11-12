@@ -17,6 +17,7 @@ import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
 import type { MaterialStatus, Project, ProjectMaterial } from '@/types/models';
 import { NewRequisitionDrawer } from '@/modules/purchasing/process/NewRequisitionDrawer';
+import { PlantBadge } from '@/modules/extensions/PlantBadge';
 
 type MaterialForm = Omit<ProjectMaterial, 'id'> & { id?: string };
 const emptyForm = (neededBy?: string): MaterialForm => ({ partNumber: '', description: '', quantity: 1, status: 'to_buy', neededBy });
@@ -292,6 +293,7 @@ function MaterialExtra({ item, partNumber, pd, status }: { item?: ReturnType<Ret
           )}
           {fastest && <span>· {t('purchasing.materials.buyToday', { date: formatDate(fastest.possibleDate) })}</span>}
           {!cat && <span className="text-slate-400">{t('purchasing.materials.notInCatalog')}</span>}
+          {partNumber && <PlantBadge partNumber={partNumber} prefill={{ description: item?.view.material.description, neededBy: item?.view.material.neededBy }} />}
         </p>
       )}
       {item && item.shared.length > 0 && (

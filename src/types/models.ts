@@ -214,6 +214,40 @@ export interface CatalogMaterial {
   description: string;
   unit: string;
   offers: SupplierOffer[];
+  /** Plantas/centros do SAP em que o material já está estendido (ex.: ['DE01', 'UK01']). */
+  plants?: string[];
+}
+
+// ───────────────────────── Extensão de material (SAP) ─────────────────────────
+
+/** Pedido para estender um material já existente em uma planta (ex.: DE01) para outra (ex.: UK01). */
+export type ExtensionStatus = 'requested' | 'in_progress' | 'extended' | 'rejected';
+
+export interface ExtensionEvent {
+  at: string;
+  userId: ID;
+  action: 'requested' | 'started' | 'extended' | 'rejected' | 'comment';
+  note: string;
+}
+
+export interface MaterialExtensionRequest {
+  id: ID;
+  number: string;
+  partNumber: string;
+  description: string;
+  /** Fornecedor que vende o material (ex.: fornecedor alemão). */
+  supplierId?: ID;
+  fromPlant: string;
+  toPlant: string;
+  projectId?: ID;
+  requestedBy: ID;
+  requestedAt: ISODate;
+  neededBy?: ISODate;
+  status: ExtensionStatus;
+  notes: string;
+  /** Referência no SAP ao concluir (ex.: nº do material/solicitação MDG). */
+  sapReference?: string;
+  history: ExtensionEvent[];
 }
 
 // ───────────────────────── Requisição de compra ─────────────────────────
@@ -309,6 +343,7 @@ export interface ForecastItem {
 export interface AppDatabase {
   users: User[];
   requisitions: PurchaseRequisition[];
+  extensions: MaterialExtensionRequest[];
   employees: Employee[];
   projects: Project[];
   assignments: ProjectAssignment[];

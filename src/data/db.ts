@@ -12,6 +12,7 @@ type Repos = { [K in CollectionName]: Repository<EntityOf<K>> };
 export const repos: Repos = {
   users: new StoredRepository(driver, 'users'),
   requisitions: new StoredRepository(driver, 'requisitions'),
+  extensions: new StoredRepository(driver, 'extensions'),
   employees: new StoredRepository(driver, 'employees'),
   projects: new StoredRepository(driver, 'projects'),
   assignments: new StoredRepository(driver, 'assignments'),
@@ -51,6 +52,7 @@ export const db = {
     return {
       users: [...repos.users.getAll()],
       requisitions: [...repos.requisitions.getAll()],
+      extensions: [...repos.extensions.getAll()],
       employees: [...repos.employees.getAll()],
       projects: [...repos.projects.getAll()],
       assignments: [...repos.assignments.getAll()],
@@ -67,6 +69,7 @@ export const db = {
   load(data: AppDatabase, source: Meta['source']): void {
     repos.users.replaceAll(data.users);
     repos.requisitions.replaceAll(data.requisitions);
+    repos.extensions.replaceAll(data.extensions);
     repos.employees.replaceAll(data.employees);
     repos.projects.replaceAll(data.projects);
     repos.assignments.replaceAll(data.assignments);
@@ -88,7 +91,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ users: buildSeed().users, requisitions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [] }, 'empty');
+    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {

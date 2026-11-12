@@ -12,6 +12,9 @@ import { useI18n } from '@/i18n';
 import { addDays } from '@/lib/dates';
 import { formatCurrency } from '@/lib/format';
 import { usePurchasingData } from '../usePurchasingData';
+import { plantState } from '@/domain/extensions';
+import { HOME_PLANT } from '@/lib/config';
+import { Globe2 } from 'lucide-react';
 
 interface Row {
   itemId: string;
@@ -26,6 +29,8 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
   const toast = useToast();
   const pd = usePurchasingData();
   const pr = useCollection('requisitions').find((r) => r.id === requisitionId);
+  const extensions = useCollection('extensions');
+  const blocked = (pn: string) => { const s = plantState(pn, pd.catalogByPN, extensions).state; return s === 'missing' || s === 'pending'; };
   const project = pr ? pd.projects.find((p) => p.id === pr.projectId) : undefined;
   const pendingItems = useMemo(() => {
     if (!pr) return [];
@@ -61,7 +66,7 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
       rs.map((r) => {
         const it = pendingItems.find((x) => x.id === r.itemId)!;
         const offered = !!pd.catalogByPN.get(normPN(it.partNumber))?.offers.some((o) => o.supplierId === sup);
-        return { ...r, unitPrice: priceFor(it.partNumber, sup), include: offered || suggested.length === 0 };
+        return { ...r, unitPrice: priceFor(it.partNumber, sup), include: (offered || suggested.length === 0) && !blocked(it.partNumber) };
       }),
     );
     const lead = Math.max(0, ...pendingItems.map((it) => pd.catalogByPN.get(normPN(it.partNumber))?.offers.find((o) => o.supplierId === sup)?.leadTimeDays ?? 0));
@@ -74,7 +79,7 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
     setPoNumber('');
     setNotes('');
     setOrderDate(pd.today);
-    setRows(pendingItems.map((it) => ({ itemId: it.id, include: true, quantity: it.quantity, unitPrice: 0 })));
+    setRows(pendingItems.map((it) => ({ itemId: it.id, include: !blocked(it.partNumber), quantity: it.quantity, unitPrice: 0 })));
     const first = suggested[0];
     if (first) setTimeout(() => applySupplier(first));
   }, [open, requisitionId]);
@@ -175,6 +180,11 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
                       <td className="td">
                         <p className="font-medium">{it.description}</p>
                         <p className="font-mono text-xs text-slate-500">{it.partNumber}</p>
+                        {blocked(it.partNumber) && (
+                          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600">
+                            <Globe2 className="size-3.5" /> {t('process.sapPO.notExtended', { plant: HOME_PLANT })}
+                          </p>
+                        )}
                       </td>
                       <td className="td">
                         <Input type="number" min={0} step="any" className="text-right" value={r.quantity} onChange={(e) => setRow(r.itemId, { quantity: Number(e.target.value) })} aria-label={t('purchasing.po.quantity')} />

@@ -14,6 +14,7 @@ import { addDays } from '@/lib/dates';
 import { formatCurrency, formatDate } from '@/lib/format';
 import type { SupplierOffer } from '@/types/models';
 import { usePurchasingData } from './usePurchasingData';
+import { SAP_PLANTS } from '@/lib/config';
 import { useCan } from '@/app/session';
 
 interface Props {
@@ -94,6 +95,22 @@ export function CatalogDrawer({ open, materialId, prefill, onClose }: Props) {
               {(id) => <Input id={id} value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} />}
             </Field>
           </div>
+
+          <Field label={t('extensions.plantsLabel')} hint={t('extensions.plantsHint')}>
+            {() => (
+              <div className="flex flex-wrap gap-2">
+                {SAP_PLANTS.map((pl) => {
+                  const on = (draft.plants ?? []).includes(pl.code);
+                  return (
+                    <label key={pl.code} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${on ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-300 dark:border-slate-700'}`}>
+                      <input type="checkbox" className="size-4 accent-indigo-600" checked={on} onChange={(e) => setDraft({ ...draft, plants: e.target.checked ? [...(draft.plants ?? []), pl.code] : (draft.plants ?? []).filter((x) => x !== pl.code) })} />
+                      <span className="font-mono">{pl.code}</span> <span className="text-slate-500">{pl.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </Field>
 
           <section>
             <div className="mb-2 flex items-center justify-between">

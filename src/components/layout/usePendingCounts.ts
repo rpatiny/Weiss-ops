@@ -21,3 +21,10 @@ export function usePendingCounts(): number {
     return prPending + lateLines;
   }, [user, requisitions, projects, pos]);
 }
+
+/** Pedidos de extensão em aberto (para quem executa: logística e master). */
+export function usePendingExtensions(): number {
+  const user = useCurrentUser();
+  const extensions = useCollection('extensions');
+  return useMemo(() => (!user || user.role === 'office' ? 0 : extensions.filter((x) => x.status === 'requested' || x.status === 'in_progress').length), [user, extensions]);
+}

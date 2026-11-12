@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n';
 import { SchedulePage } from '@/modules/calendar/SchedulePage';
 import { EmployeesPage } from '@/modules/employees/EmployeesPage';
 import { PurchaseOrdersPage } from '@/modules/purchasing/PurchaseOrdersPage';
+import { ExtensionsPage } from '@/modules/extensions/ExtensionsPage';
 import { SettingsPage } from '@/modules/settings/SettingsPage';
 
 function Page({ path }: { path: RoutePath }) {
@@ -21,6 +22,8 @@ function Page({ path }: { path: RoutePath }) {
       return <SchedulePage />;
     case '/purchase-orders':
       return <PurchaseOrdersPage />;
+    case '/extensions':
+      return <ExtensionsPage />;
     case '/financial':
       return <ComingSoon phase={4} icon={LineChart} title={t('app.nav.financial')} description={t('comingSoon.financialDescription')} />;
   }

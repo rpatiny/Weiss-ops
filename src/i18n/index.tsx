@@ -40,7 +40,13 @@ function lookup(dict: Dictionary, key: string): string | undefined {
 }
 
 export function translate(locale: Locale, key: TranslationKey, vars?: Record<string, string | number>): string {
-  const raw = lookup(DICTS[locale], key) ?? lookup(pt as Dictionary, key) ?? key;
+  let raw = lookup(DICTS[locale], key) ?? lookup(pt as Dictionary, key) ?? key;
+  // Plural: "singular || plural", escolhido pela quantidade (count, days, qty ou late).
+  if (raw.includes(' || ')) {
+    const n = Number(vars?.count ?? vars?.days ?? vars?.qty ?? vars?.late ?? 0);
+    const [one = raw, other = one] = raw.split(' || ');
+    raw = n === 1 ? one : other;
+  }
   return vars ? raw.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : raw;
 }
 

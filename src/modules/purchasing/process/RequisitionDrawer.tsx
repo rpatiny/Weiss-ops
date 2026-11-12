@@ -14,6 +14,7 @@ import { useI18n } from '@/i18n';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { usePurchasingData } from '../usePurchasingData';
 import { RegisterPODrawer } from './RegisterPODrawer';
+import { PlantBadge } from '@/modules/extensions/PlantBadge';
 
 interface Props {
   open: boolean;
@@ -132,6 +133,7 @@ export function RequisitionDrawer({ open, requisitionId, onClose }: Props) {
                         <StatusBadge kind="quoteState" value={quoteState(cat, pd.today)} />
                         {best?.supplier && best.refPrice !== undefined && <span>{t('process.req.bestQuote', { supplier: best.supplier.name, price: formatCurrency(best.refPrice) })}</span>}
                         {last && <span>{t('process.req.lastPaid', { price: formatCurrency(last.price) })}</span>}
+                        {(v.status === 'requested' || v.status === 'to_buy') && <PlantBadge partNumber={it.partNumber} prefill={{ description: it.description, projectId: pr.projectId, neededBy: pr.neededBy }} />}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">

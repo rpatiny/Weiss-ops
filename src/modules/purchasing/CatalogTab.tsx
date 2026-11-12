@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import { formatCurrency, formatDate } from '@/lib/format';
 import type { CatalogMaterial } from '@/types/models';
 import { CatalogDrawer } from './CatalogDrawer';
+import { PlantBadge } from '@/modules/extensions/PlantBadge';
 import { usePurchasingData } from './usePurchasingData';
 import { useCan } from '@/app/session';
 
@@ -112,6 +113,8 @@ export function CatalogTab() {
                     <td className="td">
                       <p className="font-mono text-xs text-slate-500">{r.partNumber || '—'}</p>
                       <p className="font-medium text-slate-900 dark:text-white">{r.description}</p>
+                      {r.cat?.plants?.length ? <p className="mt-0.5 font-mono text-[10px] text-slate-500">SAP: {r.cat.plants.join(' · ')}</p> : null}
+                      {r.partNumber && <span className="mt-1 block"><PlantBadge partNumber={r.partNumber} prefill={{ description: r.description }} /></span>}
                       {!r.cat && (
                         <span className="mt-1 inline-flex items-center gap-2">
                           <Badge tone="orange">{t('purchasing.materials.notInCatalog')}</Badge>

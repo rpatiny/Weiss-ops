@@ -55,7 +55,8 @@ src/
 │  ├─ employees.ts          # validação, selectors e employeeService
 │  ├─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
 │  ├─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
-│  └─ requisitions.ts       # requisição → PO do SAP → GR (processo de compras)
+│  ├─ requisitions.ts       # requisição → PO do SAP → GR (processo de compras)
+│  └─ extensions.ts         # pedidos de extensão de material no SAP (planta origem → HOME_PLANT)
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
@@ -64,7 +65,8 @@ src/
    ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
    │                        # MaterialsTab, PurchaseDrawer (gera PO), AbsenceDrawer
    ├─ auth/                 # LoginScreen
-   ├─ purchasing/process/   # RequisitionsTab, RequisitionDrawer, NewRequisitionDrawer, RegisterPODrawer,
+   ├─ extensions/           # ExtensionsPage (tela própria, visual índigo), ExtensionFormDrawer, PlantBadge
+   ├─ purchasing/process/   # RequisitionsTab, RequisitionDrawer, NewRequisitionDrawer, RequisitionWizardDrawer, RegisterPODrawer,
    │                        # ReceivingTab, GRDrawer
    ├─ purchasing/           # PurchaseOrdersPage (abas), PODrawer, CatalogTab/CatalogDrawer, ReadinessTab,
    │                        # SuppliersTab, usePurchasingData (lookups compartilhados com o cronograma)
@@ -105,7 +107,7 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 | `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue         | opc. N—1 PO; 1—N Project                   |
 | `ForecastItem`      | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                       | —                                          |
 
-> `APP_CONFIG.schemaVersion = 4` (v3: fornecedores, catálogo, `PurchaseOrder.kind`; v4: usuários, requisições, GR, material `requested`).
+> `APP_CONFIG.schemaVersion = 5` (v5: extensões de material e `CatalogMaterial.plants`). Antes: v4 (v3: fornecedores, catálogo, `PurchaseOrder.kind`; v4: usuários, requisições, GR, material `requested`).
 > O modelo original `CalendarActivity` (atividades diárias com horário/rota) foi substituído na v2 pelo
 > cronograma de projetos multi-dia. `APP_CONFIG.schemaVersion = 2`: bases v1 são recriadas com a demo.
 
@@ -204,6 +206,21 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Cada passo grava `history` (quem, quando, o quê); comentários livres de office e logística.
   - Badge no menu "Ordens de Compra" = requisições pendentes + linhas de compra vencidas sem GR (perfis master/logística).
 
+- **Extensão de material (SAP)** (`domain/extensions.ts`, tela `#/extensions`):
+  - Material existe numa planta (ex.: `DE01`, fornecedor alemão) mas não em `HOME_PLANT` (`UK01`, em `lib/config.ts`
+    junto com `SAP_PLANTS`). Sem extensão não há PO no SAP.
+  - `CatalogMaterial.plants` lista as plantas em que o material existe. `plantState()` → `ok` / `pending` (pedido aberto) /
+    `missing` / `unknown` (sem dados → sem alerta).
+  - Fluxo: qualquer perfil com `extension.request` pede (EXT-xxxxx) → logística/master (`extension.process`) inicia e conclui
+    com referência SAP → a planta destino é adicionada ao catálogo (cria o material se não existir). Histórico e comentários.
+  - `PlantBadge` mostra "Não estendido para UK01" + "Pedir extensão" (ou "EXT-… em andamento") em materiais do projeto,
+    itens de requisição, catálogo e no assistente. No "Registrar PO do SAP" itens sem extensão vêm desmarcados com aviso.
+- **Nova requisição pela tela de Compras** (`RequisitionWizardDrawer`): projeto → materiais "A comprar" (ou adicionar novos,
+  com descrição sugerida pelo catálogo) → necessário até/observações → enviar.
+- **Drawer/Modal isolam eventos** (`submit`, `click`, `pointerdown`) do portal: no React, eventos de portais sobem pela árvore
+  de componentes — sem isso, enviar um formulário aberto a partir de outro formulário enviava os dois.
+- **i18n — plural**: textos `"singular || plural"` escolhidos pela variável `count` (ou `days`/`qty`/`late`). Não use "(s)".
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -217,6 +234,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
       checklist de prontidão dos projetos): cabeçalho, line items dinâmicos, totais automáticos, linhas atrasadas em vermelho,
       anexos (PDF da PO / invoice / outros), mini-dashboard (POs abertas, entregas em 7 dias, linhas atrasadas).
 - [x] **Fase 3.1** — Processo de compras (requisição → PO do SAP → GR), usuários com perfis Master/Logística/Office.
+- [x] **Fase 3.2** — Botão/assistente de nova requisição, extensões de material SAP (tela própria), revisão do inglês e plurais.
 - [ ] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.
 - [ ] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas

@@ -9,6 +9,8 @@ import type {
   AppDatabase,
   CatalogMaterial,
   Employee,
+  ExtensionEvent,
+  MaterialExtensionRequest,
   ForecastItem,
   POLineItem,
   Project,
@@ -360,23 +362,23 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   });
 
   const materials: CatalogMaterial[] = [
-    { id: 'cm_01', partNumber: 'SKF-7014CD/P4A', description: 'Rolamento de contato angular SKF 7014 CD/P4A (par)', unit: 'par', offers: [q('sup_rp', 5, 2950), q('sup_skf', 25, 2780)] },
-    { id: 'cm_02', partNumber: 'SKF-7012ACD/HCP4A', description: 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', unit: 'par', offers: [q('sup_rp', 7, 4380), q('sup_skf', 30, 4120)] },
-    { id: 'cm_03', partNumber: 'KLU-ISOFLEX-NBU15', description: 'Graxa Klüber Isoflex NBU 15 (50g)', unit: 'un', offers: [q('sup_rp', 3, 189), q('sup_klu', 10, undefined, 'requested')] },
-    { id: 'cm_04', partNumber: 'FIS-RET-2310', description: 'Retentor labirinto dianteiro Fischer MFW-2310', unit: 'un', offers: [q('sup_fis', 15, 2350), q('sup_cip', 10)] },
-    { id: 'cm_05', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', unit: 'kit', offers: [q('sup_cip', 7, 1450)] },
-    { id: 'cm_06', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', unit: 'un', offers: [q('sup_sen', 4), q('sup_cip', 6)] },
-    { id: 'cm_07', partNumber: 'HEID-ERN1387', description: 'Encoder Heidenhain ERN 1387 2048 ppr', unit: 'un', offers: [q('sup_cip', 10, 6890), q('sup_sen', 14, undefined, 'requested')] },
-    { id: 'cm_08', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', unit: 'par', offers: [q('sup_skf', 30, 3600), q('sup_rp', 8, undefined, 'requested')] },
-    { id: 'cm_09', partNumber: 'MAZ-REV-KIT', description: 'Kit revisão Mazak (rolamentos + vedações)', unit: 'kit', offers: [q('sup_rp', 12, undefined, 'requested')] },
-    { id: 'cm_10', partNumber: 'CU-ESM-1.2', description: 'Fio de cobre esmaltado 1,2 mm', unit: 'kg', offers: [q('sup_cip', 2, 98)] },
+    { id: 'cm_01', partNumber: 'SKF-7014CD/P4A', description: 'Rolamento de contato angular SKF 7014 CD/P4A (par)', unit: 'par', offers: [q('sup_rp', 5, 2950), q('sup_skf', 25, 2780)], plants: ['DE01', 'UK01'] },
+    { id: 'cm_02', partNumber: 'SKF-7012ACD/HCP4A', description: 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', unit: 'par', offers: [q('sup_rp', 7, 4380), q('sup_skf', 30, 4120)], plants: ['DE01', 'UK01'] },
+    { id: 'cm_03', partNumber: 'KLU-ISOFLEX-NBU15', description: 'Graxa Klüber Isoflex NBU 15 (50g)', unit: 'un', offers: [q('sup_rp', 3, 189), q('sup_klu', 10, undefined, 'requested')], plants: ['DE01', 'UK01'] },
+    { id: 'cm_04', partNumber: 'FIS-RET-2310', description: 'Retentor labirinto dianteiro Fischer MFW-2310', unit: 'un', offers: [q('sup_fis', 15, 2350), q('sup_cip', 10)], plants: ['DE01'] },
+    { id: 'cm_05', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', unit: 'kit', offers: [q('sup_cip', 7, 1450)], plants: ['DE01', 'UK01'] },
+    { id: 'cm_06', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', unit: 'un', offers: [q('sup_sen', 4), q('sup_cip', 6)], plants: ['UK01'] },
+    { id: 'cm_07', partNumber: 'HEID-ERN1387', description: 'Encoder Heidenhain ERN 1387 2048 ppr', unit: 'un', offers: [q('sup_cip', 10, 6890), q('sup_sen', 14, undefined, 'requested')], plants: ['DE01', 'UK01'] },
+    { id: 'cm_08', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', unit: 'par', offers: [q('sup_skf', 30, 3600), q('sup_rp', 8, undefined, 'requested')], plants: ['DE01'] },
+    { id: 'cm_09', partNumber: 'MAZ-REV-KIT', description: 'Kit revisão Mazak (rolamentos + vedações)', unit: 'kit', offers: [q('sup_rp', 12, undefined, 'requested')], plants: ['DE01'] },
+    { id: 'cm_10', partNumber: 'CU-ESM-1.2', description: 'Fio de cobre esmaltado 1,2 mm', unit: 'kg', offers: [q('sup_cip', 2, 98)], plants: ['UK01'] },
   ];
 
   // ───────────── Usuários (PINs de demonstração: master 1234 · logística 2222 · office 3333) ─────────────
   const users: User[] = [
     { id: 'u_master', name: 'Master', email: 'master@spindleops.com.br', role: 'master', active: true, pinHash: 'b774a85f8d387dc709a6e20d472cd068a5bbe6b5db30de078c2f1aafb6457f4b' },
-    { id: 'u_log', name: 'Logística', email: 'logistica@spindleops.com.br', role: 'logistics', active: true, pinHash: 'ef5d4d355443e093221677951b66fea54aecb94093554dc6bc17a4cc99b5a421' },
-    { id: 'u_office', name: 'Office / Orçamento', email: 'office@spindleops.com.br', role: 'office', active: true, pinHash: '3eb68b61daf4f7b7bf0e5e918c9acecca1ca4d8d98432ffd793989739046fa0e' },
+    { id: 'u_log', name: 'Rafael Souza', email: 'logistica@spindleops.com.br', role: 'logistics', active: true, pinHash: 'ef5d4d355443e093221677951b66fea54aecb94093554dc6bc17a4cc99b5a421' },
+    { id: 'u_office', name: 'Fernanda Alves', email: 'office@spindleops.com.br', role: 'office', active: true, pinHash: '3eb68b61daf4f7b7bf0e5e918c9acecca1ca4d8d98432ffd793989739046fa0e' },
   ];
 
   // ───────────── Requisições de compra ─────────────
@@ -425,9 +427,30 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
         },
   );
 
+  // ───────────── Extensões de material (SAP) ─────────────
+  const xev = (at: string, userId: string, action: ExtensionEvent['action'], note = ''): ExtensionEvent => ({ at: `${at}T09:30:00`, userId, action, note });
+  const extensions: MaterialExtensionRequest[] = [
+    {
+      id: 'ext_1', number: 'EXT-00001', partNumber: 'MAZ-REV-KIT', description: 'Kit revisão Mazak (rolamentos + vedações)', supplierId: 'sup_rp',
+      fromPlant: 'DE01', toPlant: 'UK01', projectId: 'prj_006', requestedBy: 'u_office', requestedAt: d(-2), neededBy: wd(5), status: 'in_progress', notes: 'Necessário para a RC-00004.',
+      history: [xev(d(-2), 'u_office', 'requested'), xev(d(-1), 'u_log', 'started', 'Solicitado ao time de dados mestres.')],
+    },
+    {
+      id: 'ext_2', number: 'EXT-00002', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', supplierId: 'sup_skf',
+      fromPlant: 'DE01', toPlant: 'UK01', projectId: 'prj_004', requestedBy: 'u_office', requestedAt: d(-1), neededBy: wd(8), status: 'requested', notes: '',
+      history: [xev(d(-1), 'u_office', 'requested')],
+    },
+    {
+      id: 'ext_3', number: 'EXT-00003', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', supplierId: 'sup_cip',
+      fromPlant: 'DE01', toPlant: 'UK01', projectId: 'prj_002', requestedBy: 'u_office', requestedAt: d(-12), status: 'extended', notes: '', sapReference: 'MDG-77120',
+      history: [xev(d(-12), 'u_office', 'requested'), xev(d(-11), 'u_log', 'started'), xev(d(-10), 'u_log', 'extended', 'MDG-77120')],
+    },
+  ];
+
   return {
     users,
     requisitions,
+    extensions,
     employees: employees.map((e) => ({ ...e })),
     projects,
     assignments,

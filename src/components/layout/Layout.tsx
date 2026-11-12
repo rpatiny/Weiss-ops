@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions } from './usePendingCounts';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
@@ -85,6 +85,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const { t } = useI18n();
   const user = useCurrentUser();
   const pending = usePendingCounts();
+  const pendingExt = usePendingExtensions();
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-5">
@@ -93,7 +94,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
         <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : undefined} />
+          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} />
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">

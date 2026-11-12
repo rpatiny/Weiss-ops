@@ -2,6 +2,7 @@ import type {
   AbsenceType,
   AttachmentType,
   EmployeeStatus,
+  ExtensionStatus,
   POLineStatus,
   MaterialStatus,
   POKind,
@@ -28,6 +29,7 @@ export interface EnumValues {
   materialStatus: MaterialStatus;
   requisitionStatus: RequisitionStatus;
   userRole: UserRole;
+  extensionStatus: ExtensionStatus;
   absenceType: AbsenceType;
   poStatus: POStatus;
   poLineStatus: POLineStatus;
@@ -47,6 +49,7 @@ export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
   projectStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
   materialStatus: { to_buy: 'red', requested: 'violet', ordered: 'amber', received: 'green' },
   requisitionStatus: { submitted: 'blue', quoting: 'amber', partially_ordered: 'orange', ordered: 'cyan', partially_received: 'violet', received: 'green', rejected: 'red', canceled: 'slate' },
+  extensionStatus: { requested: 'blue', in_progress: 'violet', extended: 'green', rejected: 'red' },
   userRole: { master: 'violet', logistics: 'cyan', office: 'amber' },
   absenceType: { vacation: 'cyan', leave: 'slate', training: 'violet' },
   poStatus: { open: 'blue', partial: 'amber', delivered: 'green', invoiced: 'violet', canceled: 'red' },
