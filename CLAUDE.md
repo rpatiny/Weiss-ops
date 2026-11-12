@@ -12,6 +12,7 @@ ordens de compra (POs) e hub financeiro (spindles, cotações, forecast). Dados 
 | `npm run typecheck` | `tsc --noEmit` (TypeScript estrito)               |
 | `npm run build`     | Typecheck + build de produção em `dist/`          |
 | `npm run preview`   | Serve o build de produção                         |
+| `npm run build:artifact` | Build + versão de arquivo único em `dist-artifact/spindleops.html` (para publicar como página hospedada) |
 
 **Regra:** ao final de cada fase/alteração relevante, `npm run build` deve passar sem erros.
 
