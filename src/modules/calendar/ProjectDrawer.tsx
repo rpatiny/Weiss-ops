@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AlertTriangle, Check, ExternalLink, Lock, MapPin, Plus, Save, Trash2, UserPlus } from 'lucide-react';
 import { navigate } from '@/app/router';
+import { useCan } from '@/app/session';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
@@ -51,6 +52,7 @@ const emptyDraft = (): ProjectDraft => ({
 export function ProjectDrawer({ open, projectId: initialId, initialTab = 'details', defaults, onClose }: Props) {
   const { t } = useI18n();
   const toast = useToast();
+  const readOnly = !useCan()('schedule.edit');
   const projects = useCollection('projects');
   const assignments = useCollection('assignments');
   const employees = useCollection('employees');
@@ -187,7 +189,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
         }
         subtitle={project ? project.customer : undefined}
         footer={
-          tab === 'details' ? (
+          tab === 'details' && !readOnly ? (
             <>
               {project && (
                 <Button variant="ghost" icon={Trash2} className="mr-auto text-red-600" onClick={() => setConfirmDelete(true)}>
@@ -227,6 +229,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
 
         {tab === 'details' && (
           <form id="project-form" onSubmit={submit} className="space-y-5" noValidate>
+            <fieldset disabled={readOnly} className="contents">
             <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
               <Field label={t('calendar.project.number')} required error={errors.projectNumber && t(errors.projectNumber)}>
                 {(id) => <Input id={id} name="projectNumber" value={draft.projectNumber} onChange={(e) => set('projectNumber', e.target.value)} className="font-mono" invalid={!!errors.projectNumber} />}
@@ -316,11 +319,14 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
                 )}
               </fieldset>
             )}
+            </fieldset>
           </form>
         )}
 
         {tab === 'team' && project && (
-          <TeamTab projectId={project.id} items={projAssignments} conflicts={conflicts} placementMsg={placementMsg} />
+          <fieldset disabled={readOnly}>
+            <TeamTab projectId={project.id} items={projAssignments} conflicts={conflicts} placementMsg={placementMsg} />
+          </fieldset>
         )}
 
         {tab === 'materials' && project && <MaterialsTab project={project} projectStart={projectStart} />}

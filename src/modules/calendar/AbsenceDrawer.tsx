@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { AlertTriangle, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
+import { useCan } from '@/app/session';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select } from '@/components/ui/Field';
@@ -26,6 +27,7 @@ const empty = (): AbsenceDraft => ({ employeeId: '', type: 'vacation', startDate
 export function AbsenceDrawer({ open, editing, onClose }: Props) {
   const { t } = useI18n();
   const toast = useToast();
+  const canEdit = useCan()('schedule.edit');
   const employees = useCollection('employees');
   const absences = useCollection('absences');
   const assignments = useCollection('assignments');
@@ -67,7 +69,7 @@ export function AbsenceDrawer({ open, editing, onClose }: Props) {
   return (
     <Drawer open={open} onClose={onClose} width="lg" title={t('calendar.absence.title')} footer={<Button onClick={onClose}>{t('common.close')}</Button>}>
       <div className="space-y-5">
-        {form ? (
+        {form && canEdit ? (
           <form onSubmit={save} className="animate-pop-in space-y-4 rounded-lg border border-cyan-500/40 bg-cyan-50/40 p-4 dark:bg-cyan-500/5" noValidate>
             <p className="font-semibold">{form.id ? t('calendar.absence.edit') : t('calendar.absence.new')}</p>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -123,7 +125,7 @@ export function AbsenceDrawer({ open, editing, onClose }: Props) {
               </Button>
             </div>
           </form>
-        ) : (
+        ) : !canEdit ? null : (
           <Button variant="primary" icon={Plus} onClick={() => setForm({ draft: empty() })}>
             {t('calendar.absence.new')}
           </Button>
@@ -148,7 +150,7 @@ export function AbsenceDrawer({ open, editing, onClose }: Props) {
                       </p>
                     </div>
                     <StatusBadge kind="absenceType" value={a.type} />
-                    <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { const { id, ...draft } = a; setForm({ id, draft }); }} aria-label={t('common.edit')} />
+                    {canEdit && <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { const { id, ...draft } = a; setForm({ id, draft }); }} aria-label={t('common.edit')} />}
                   </li>
                 );
               })}

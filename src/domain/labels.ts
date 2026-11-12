@@ -8,9 +8,11 @@ import type {
   POStatus,
   ProjectStatus,
   QuoteStatus,
+  RequisitionStatus,
   ServiceType,
   SpindleStatus,
   SupplierQuoteStatus,
+  UserRole,
 } from '@/types/models';
 import type { QuoteState, Readiness } from './purchasing';
 import type { TFunction, TranslationKey } from '@/i18n/types';
@@ -24,6 +26,8 @@ export interface EnumValues {
   serviceType: ServiceType;
   projectStatus: ProjectStatus;
   materialStatus: MaterialStatus;
+  requisitionStatus: RequisitionStatus;
+  userRole: UserRole;
   absenceType: AbsenceType;
   poStatus: POStatus;
   poLineStatus: POLineStatus;
@@ -41,7 +45,9 @@ export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
   employeeStatus: { active: 'green', inactive: 'slate' },
   serviceType: { site_visit: 'blue', pickup: 'amber', delivery: 'green', bench_repair: 'violet', installation: 'cyan' },
   projectStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
-  materialStatus: { to_buy: 'red', ordered: 'amber', received: 'green' },
+  materialStatus: { to_buy: 'red', requested: 'violet', ordered: 'amber', received: 'green' },
+  requisitionStatus: { submitted: 'blue', quoting: 'amber', partially_ordered: 'orange', ordered: 'cyan', partially_received: 'violet', received: 'green', rejected: 'red', canceled: 'slate' },
+  userRole: { master: 'violet', logistics: 'cyan', office: 'amber' },
   absenceType: { vacation: 'cyan', leave: 'slate', training: 'violet' },
   poStatus: { open: 'blue', partial: 'amber', delivered: 'green', invoiced: 'violet', canceled: 'red' },
   poLineStatus: { open: 'blue', partial: 'amber', delivered: 'green', canceled: 'red' },

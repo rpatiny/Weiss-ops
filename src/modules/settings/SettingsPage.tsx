@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Boxes, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, LineChart, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { Boxes, FileInput, UserCog, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, LineChart, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/misc';
@@ -7,10 +7,14 @@ import { useToast } from '@/components/ui/Toast';
 import { db } from '@/data/db';
 import { useCollection } from '@/data/hooks';
 import { useI18n } from '@/i18n';
+import { useCan } from '@/app/session';
+import { UsersSection } from './UsersSection';
 import { getFormatLocale } from '@/lib/format';
 import type { CollectionName } from '@/types/models';
 
 const COLLECTION_ICONS: Record<CollectionName, LucideIcon> = {
+  users: UserCog,
+  requisitions: FileInput,
   employees: Users,
   projects: FolderKanban,
   assignments: CalendarRange,
@@ -39,6 +43,7 @@ export function SettingsPage() {
   const toast = useToast();
   const { t } = useI18n();
   const [confirm, setConfirm] = useState<'reset' | 'clear' | null>(null);
+  const allowed = useCan();
   // Re-renderiza após reset/limpeza (meta muda junto com as coleções).
   useCollection('employees');
   const meta = db.getMeta();
@@ -72,6 +77,7 @@ export function SettingsPage() {
           </div>
         </section>
 
+        {allowed('data.manage') && (
         <section className="card p-5">
           <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('settings.maintenanceTitle')}</h2>
           <p className="mb-4 text-sm text-slate-500">{t('settings.maintenanceHint')}</p>
@@ -99,6 +105,8 @@ export function SettingsPage() {
             </div>
           </div>
         </section>
+        )}
+        {allowed('users.manage') && <UsersSection />}
       </div>
 
       <ConfirmDialog

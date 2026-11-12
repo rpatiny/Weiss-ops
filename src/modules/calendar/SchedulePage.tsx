@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, FolderKanban, Package, Palmtree, Plus, Users, X } from 'lucide-react';
 import { clearParams, useRoute } from '@/app/router';
+import { useCan } from '@/app/session';
 import { Button } from '@/components/ui/Button';
 import { Avatar, PageHeader, StatCard } from '@/components/ui/misc';
 import { Popover } from '@/components/ui/Popover';
@@ -36,6 +37,7 @@ const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every
 export function SchedulePage() {
   const { t } = useI18n();
   const toast = useToast();
+  const canEdit = useCan()('schedule.edit');
   const { params, path: routePath } = useRoute();
   const employees = useCollection('employees');
   const projects = useCollection('projects');
@@ -169,9 +171,11 @@ export function SchedulePage() {
             <Button icon={Palmtree} onClick={() => setAbsenceDrawer({})}>
               {t('calendar.absences')}
             </Button>
-            <Button variant="primary" icon={Plus} onClick={() => setProjectDrawer({ defaults: { date: anchor >= start && anchor <= end ? anchor : start } })}>
-              {t('calendar.newProject')}
-            </Button>
+            {canEdit && (
+              <Button variant="primary" icon={Plus} onClick={() => setProjectDrawer({ defaults: { date: anchor >= start && anchor <= end ? anchor : start } })}>
+                {t('calendar.newProject')}
+              </Button>
+            )}
           </>
         }
       />
@@ -292,7 +296,7 @@ export function SchedulePage() {
         </div>
       </div>
 
-      <p className="mb-2 text-xs text-slate-500">{t('calendar.dragHint')}</p>
+      <p className="mb-2 text-xs text-slate-500">{canEdit ? t('calendar.dragHint') : t('auth.readOnly')}</p>
 
       {rows.length === 0 ? (
         <div className="card p-10 text-center text-sm text-slate-500">{t('calendar.emptyRows')}</div>
@@ -312,6 +316,7 @@ export function SchedulePage() {
           onCreate={(employeeId, date) => setProjectDrawer({ defaults: { employeeId, date } })}
           onOpenAbsence={(a) => setAbsenceDrawer({ editing: a })}
           onCommit={commit}
+          readOnly={!canEdit}
         />
       )}
 

@@ -20,6 +20,7 @@ import {
 import { EMPLOYEE_COLORS, enumLabel } from '@/domain/labels';
 import { businessDaysBetween } from '@/lib/dates';
 import { useI18n } from '@/i18n';
+import { useCan } from '@/app/session';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
 import type { Employee } from '@/types/models';
@@ -38,6 +39,7 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
   const absences = useCollection('absences');
   const toast = useToast();
   const { t, locale } = useI18n();
+  const readOnly = !useCan()('employees.edit');
   const isEdit = Boolean(employee);
 
   const nextFreeColor = useMemo(() => {
@@ -109,13 +111,14 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
       footer={
         <>
           <Button onClick={onClose}>{t('common.cancel')}</Button>
-          <Button variant="primary" icon={Save} type="submit" form="employee-form">
+          <Button variant="primary" icon={Save} type="submit" form="employee-form" className={readOnly ? 'hidden' : undefined}>
             {isEdit ? t('employees.form.submitSave') : t('employees.form.submitCreate')}
           </Button>
         </>
       }
     >
       <form id="employee-form" onSubmit={submit} className="space-y-5" noValidate>
+        <fieldset disabled={readOnly} className="space-y-5">
         <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 dark:border-slate-700">
           <Avatar name={draft.name || '?'} color={draft.color} size="lg" muted={draft.status === 'inactive'} />
           <div className="min-w-0">
@@ -217,6 +220,7 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
           )}
         </Field>
 
+        </fieldset>
         {isEdit && (
           <section className="rounded-lg border border-slate-200 dark:border-slate-800">
             <h3 className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">

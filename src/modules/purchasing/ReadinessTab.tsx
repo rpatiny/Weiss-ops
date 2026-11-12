@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn';
 import { diffDays } from '@/lib/dates';
 import { formatDate } from '@/lib/format';
 import { usePurchasingData } from './usePurchasingData';
+import { useCollection } from '@/data/hooks';
 
 /** "Checklist para começar": prontidão de materiais de cada projeto ativo. */
 export function ReadinessTab() {
@@ -95,6 +96,8 @@ export function ReadinessTab() {
 
 function ChecklistRow({ item }: { item: ReadinessItem }) {
   const { t } = useI18n();
+  const requisitions = useCollection('requisitions');
+  const rcNumber = requisitions.find((r) => r.id === item.view.material.requisitionId)?.number ?? '';
   const m = item.view.material;
   const [Icon, color] =
     item.state === 'ok'
@@ -118,7 +121,9 @@ function ChecklistRow({ item }: { item: ReadinessItem }) {
             : item.view.late
               ? t('purchasing.readiness.riskLate', { date: formatDate(item.eta ?? '') })
               : t('purchasing.readiness.risk', { date: formatDate(item.eta ?? '') })
-          : t('purchasing.readiness.toBuy');
+          : item.view.status === 'requested'
+            ? t('purchasing.readiness.requested', { number: rcNumber })
+            : t('purchasing.readiness.toBuy');
 
   return (
     <li className="flex items-start gap-3 px-4 py-2.5 text-sm">
@@ -135,7 +140,7 @@ function ChecklistRow({ item }: { item: ReadinessItem }) {
           </p>
         )}
       </div>
-      {item.view.status === 'to_buy' && <StatusBadge kind="quoteState" value={item.quote} />}
+      {(item.view.status === 'to_buy' || item.view.status === 'requested') && <StatusBadge kind="quoteState" value={item.quote} />}
     </li>
   );
 }

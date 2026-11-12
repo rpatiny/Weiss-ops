@@ -14,6 +14,7 @@ import { addDays } from '@/lib/dates';
 import { formatCurrency, formatDate } from '@/lib/format';
 import type { SupplierOffer } from '@/types/models';
 import { usePurchasingData } from './usePurchasingData';
+import { useCan } from '@/app/session';
 
 interface Props {
   open: boolean;
@@ -27,6 +28,7 @@ export function CatalogDrawer({ open, materialId, prefill, onClose }: Props) {
   const { t } = useI18n();
   const toast = useToast();
   const pd = usePurchasingData();
+  const readOnly = !useCan()('catalog.edit');
   const existing = pd.catalog.find((m) => m.id === materialId);
   const [draft, setDraft] = useState<CatalogDraft>({ partNumber: '', description: '', unit: 'un', offers: [] });
   const [errors, setErrors] = useState<Errors<CatalogDraft>>({});
@@ -67,19 +69,20 @@ export function CatalogDrawer({ open, materialId, prefill, onClose }: Props) {
         subtitle={existing?.description}
         footer={
           <>
-            {existing && (
+            {existing && !readOnly && (
               <Button variant="ghost" icon={Trash2} className="mr-auto text-red-600" onClick={() => setConfirmDelete(true)}>
                 {t('common.delete')}
               </Button>
             )}
             <Button onClick={onClose}>{t('common.cancel')}</Button>
-            <Button variant="primary" icon={Save} type="submit" form="catalog-form">
+            <Button variant="primary" icon={Save} type="submit" form="catalog-form" className={readOnly ? 'hidden' : undefined}>
               {t('common.save')}
             </Button>
           </>
         }
       >
         <form id="catalog-form" onSubmit={submit} className="space-y-6" noValidate>
+          <fieldset disabled={readOnly} className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-[220px_1fr_120px]">
             <Field label={t('purchasing.po.partNumber')} required error={errors.partNumber && t(errors.partNumber)}>
               {(id) => <Input id={id} name="partNumber" value={draft.partNumber} onChange={(e) => setDraft({ ...draft, partNumber: e.target.value })} className="font-mono" invalid={!!errors.partNumber} />}
@@ -175,6 +178,7 @@ export function CatalogDrawer({ open, materialId, prefill, onClose }: Props) {
             )}
           </section>
 
+          </fieldset>
           <div className="grid gap-6 lg:grid-cols-2">
             <section>
               <h3 className="mb-2 font-semibold">{t('purchasing.materials.demandTitle')}</h3>

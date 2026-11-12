@@ -2,6 +2,7 @@
  * Domínio de Compras: Ordens de Compra (cliente/fornecedor), fornecedores,
  * catálogo de materiais com cotações, demanda entre projetos e prontidão para iniciar.
  */
+import { assertCan } from '@/app/session';
 import { repos } from '@/data/db';
 import type { TranslationKey } from '@/i18n/types';
 import { addDays, todayISO } from '@/lib/dates';
@@ -206,6 +207,7 @@ export function projectReadiness(
       const risk = view.late || (!!eta && !!need && eta > need);
       return { view, state: risk ? 'risk' : 'awaiting', quote, eta, shared };
     }
+    // a comprar ou requisitado (ainda sem PO)
     const fastest = cat ? fastestOffer(offerViews(cat, suppliersById, pos, today)) : undefined;
     const eta = fastest?.possibleDate;
     const risk = !!need && (eta ? eta > need : need <= addDays(today, 7));
@@ -259,6 +261,7 @@ export const emptyLine = (lineNumber: number, expected = addDays(todayISO(), 7))
 
 export const poService = {
   save(draft: PODraft, id?: string): PurchaseOrder {
+    assertCan('po.edit');
     const lines = draft.lines.map((l, i) => ({
       ...l,
       lineNumber: l.lineNumber || i + 1,
@@ -282,6 +285,7 @@ export const poService = {
 
   /** Exclui a PO e desfaz vínculos (projetos, materiais e spindles voltam a "sem PO"). */
   remove(id: string): void {
+    assertCan('po.edit');
     repos.projects.replaceAll(
       repos.projects.getAll().map((p) => ({
         ...p,
@@ -298,6 +302,7 @@ export type SupplierDraft = Omit<Supplier, 'id'>;
 
 export const supplierService = {
   save(d: SupplierDraft, id?: string): Supplier {
+    assertCan('suppliers.edit');
     const clean = { ...d, name: d.name.trim(), contactName: d.contactName.trim(), email: d.email.trim(), phone: d.phone.trim(), notes: d.notes.trim() };
     if (id) {
       const updated = repos.suppliers.update(id, clean);
@@ -309,6 +314,7 @@ export const supplierService = {
   },
   /** Remove o fornecedor e suas ofertas no catálogo; POs antigas mantêm o nome (histórico). */
   remove(id: string): void {
+    assertCan('suppliers.edit');
     repos.materials.replaceAll(repos.materials.getAll().map((m) => ({ ...m, offers: m.offers.filter((o) => o.supplierId !== id) })));
     repos.purchaseOrders.replaceAll(repos.purchaseOrders.getAll().map((p) => (p.supplierId === id ? { ...p, supplierId: undefined } : p)));
     repos.suppliers.remove(id);
@@ -319,6 +325,7 @@ export type CatalogDraft = Omit<CatalogMaterial, 'id'>;
 
 export const catalogService = {
   save(d: CatalogDraft, id?: string): CatalogMaterial {
+    assertCan('catalog.edit');
     const clean: CatalogDraft = {
       ...d,
       partNumber: d.partNumber.trim(),
@@ -329,6 +336,7 @@ export const catalogService = {
     return id ? repos.materials.update(id, clean) : repos.materials.create({ id: newId('cm'), ...clean });
   },
   remove(id: string): void {
+    assertCan('catalog.edit');
     repos.materials.remove(id);
   },
 };

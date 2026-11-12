@@ -1,3 +1,4 @@
+import { assertCan } from '@/app/session';
 import { repos } from '@/data/db';
 import { todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
@@ -75,12 +76,15 @@ export function upcomingAbsences(employeeId: string, absences: readonly Absence[
 
 export const employeeService = {
   create(draft: EmployeeDraft): Employee {
+    assertCan('employees.edit');
     return repos.employees.create({ id: newId('emp'), ...normalize(draft) });
   },
   update(id: string, draft: EmployeeDraft): Employee {
+    assertCan('employees.edit');
     return repos.employees.update(id, normalize(draft));
   },
   setStatus(id: string, status: Employee['status']): Employee {
+    assertCan('employees.edit');
     return repos.employees.update(id, { status });
   },
   /**
@@ -92,6 +96,7 @@ export const employeeService = {
     return { ok: activityCount === 0, activityCount };
   },
   remove(id: string): void {
+    assertCan('employees.edit');
     if (!employeeService.canDelete(id).ok) throw new Error('employees.validation.hasHistory');
     repos.absences.replaceAll(repos.absences.getAll().filter((a) => a.employeeId !== id));
     repos.employees.remove(id);

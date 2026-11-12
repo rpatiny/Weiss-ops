@@ -9,13 +9,16 @@ import { useToast } from '@/components/ui/Toast';
 import { isPOActive, supplierService, type SupplierDraft } from '@/domain/purchasing';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/cn';
 import { usePurchasingData } from './usePurchasingData';
+import { useCan } from '@/app/session';
 
 const empty = (): SupplierDraft => ({ name: '', contactName: '', email: '', phone: '', notes: '' });
 
 export function SuppliersTab() {
   const { t } = useI18n();
   const pd = usePurchasingData();
+  const canEdit = useCan()('suppliers.edit');
   const [editing, setEditing] = useState<{ id?: string } | null>(null);
 
   const stats = (id: string) => {
@@ -29,7 +32,7 @@ export function SuppliersTab() {
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex justify-end border-b border-slate-200 p-4 dark:border-slate-800">
+      <div className={cn('flex justify-end border-b border-slate-200 p-4 dark:border-slate-800', !canEdit && 'hidden')}>
         <Button variant="primary" icon={Plus} onClick={() => setEditing({})}>
           {t('purchasing.suppliers.new')}
         </Button>
@@ -54,7 +57,7 @@ export function SuppliersTab() {
                 .map((s) => {
                   const st = stats(s.id);
                   return (
-                    <tr key={s.id} onClick={() => setEditing({ id: s.id })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <tr key={s.id} onClick={() => canEdit && setEditing({ id: s.id })} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="td">
                         <p className="font-medium text-slate-900 dark:text-white">{s.name}</p>
                         {s.notes && <p className="text-xs text-slate-500">{s.notes}</p>}

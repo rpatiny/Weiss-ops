@@ -2,6 +2,8 @@ import { LineChart } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { ComingSoon } from '@/components/layout/ComingSoon';
 import { useRoute, type RoutePath } from '@/app/router';
+import { useCurrentUser } from '@/app/session';
+import { LoginScreen } from '@/modules/auth/LoginScreen';
 import { useI18n } from '@/i18n';
 import { SchedulePage } from '@/modules/calendar/SchedulePage';
 import { EmployeesPage } from '@/modules/employees/EmployeesPage';
@@ -26,6 +28,8 @@ function Page({ path }: { path: RoutePath }) {
 
 export default function App() {
   const { path } = useRoute();
+  const user = useCurrentUser();
+  if (!user) return <LoginScreen />;
   return (
     <Layout>
       <Page key={path} path={path} />

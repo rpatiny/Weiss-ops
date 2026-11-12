@@ -21,7 +21,7 @@ import {
   todayISO,
 } from '@/lib/dates';
 import { newId } from '@/lib/id';
-import { derivePOStatus, nextPurchaseNumber } from './purchasing';
+import { assertCan } from '@/app/session';
 import type {
   Absence,
   Employee,
@@ -166,7 +166,7 @@ export function materialStatus(m: ProjectMaterial, poById: ReadonlyMap<string, P
   const po = m.poId ? poById.get(m.poId) : undefined;
   const line = po?.lines.find((l) => l.id === m.poLineId);
   if (!po || !line) return { status: m.status };
-  if (line.status === 'canceled' || po.status === 'canceled') return { status: 'to_buy', po, line };
+  if (line.status === 'canceled' || po.status === 'canceled') return { status: m.requisitionId ? 'requested' : 'to_buy', po, line };
   if (line.status === 'delivered') return { status: 'received', po, line };
   return { status: 'ordered', po, line };
 }
@@ -193,7 +193,7 @@ export interface MaterialSummary {
 export function summarizeMaterials(views: readonly MaterialView[]): MaterialSummary {
   return {
     total: views.length,
-    toBuy: views.filter((v) => v.status === 'to_buy').length,
+    toBuy: views.filter((v) => v.status === 'to_buy' || v.status === 'requested').length,
     ordered: views.filter((v) => v.status === 'ordered').length,
     late: views.filter((v) => v.late).length,
     received: views.filter((v) => v.status === 'received').length,
@@ -234,30 +234,37 @@ export function nextProjectColor(all: readonly Project[]): string {
 
 export const scheduleService = {
   createProject(draft: ProjectDraft, firstAssignment?: AssignmentDraft): Project {
+    assertCan('schedule.edit');
     const project = repos.projects.create({ id: newId('prj'), ...draft, projectNumber: draft.projectNumber.trim(), customer: draft.customer.trim(), materials: [] });
     if (firstAssignment) scheduleService.addAssignment(project.id, firstAssignment);
     return project;
   },
   updateProject(id: string, draft: ProjectDraft): Project {
+    assertCan('schedule.edit');
     return repos.projects.update(id, { ...draft, projectNumber: draft.projectNumber.trim(), customer: draft.customer.trim() });
   },
   removeProject(id: string): void {
+    assertCan('schedule.edit');
     repos.assignments.replaceAll(repos.assignments.getAll().filter((a) => a.projectId !== id));
     repos.projects.remove(id);
   },
 
   addAssignment(projectId: string, d: AssignmentDraft): ProjectAssignment {
+    assertCan('schedule.edit');
     return repos.assignments.create({ id: newId('asg'), projectId, employeeId: d.employeeId, startDate: snapForward(d.startDate), endDate: snapBackward(d.endDate) });
   },
   updateAssignment(id: string, patch: Partial<AssignmentDraft>): ProjectAssignment {
+    assertCan('schedule.edit');
     return repos.assignments.update(id, patch);
   },
   removeAssignment(id: string): void {
+    assertCan('schedule.edit');
     repos.assignments.remove(id);
   },
 
   // Materiais
   upsertMaterial(projectId: string, material: Omit<ProjectMaterial, 'id'> & { id?: string }): void {
+    assertCan('materials.edit');
     const p = repos.projects.getById(projectId);
     if (!p) return;
     const m: ProjectMaterial = { ...material, id: material.id ?? newId('mat') };
@@ -265,55 +272,9 @@ export const scheduleService = {
     repos.projects.update(projectId, { materials: exists ? p.materials.map((x) => (x.id === m.id ? m : x)) : [...p.materials, m] });
   },
   removeMaterial(projectId: string, materialId: string): void {
+    assertCan('materials.edit');
     const p = repos.projects.getById(projectId);
     if (p) repos.projects.update(projectId, { materials: p.materials.filter((m) => m.id !== materialId) });
-  },
-
-  /**
-   * Gera uma PO de COMPRA (fornecedor) com os materiais selecionados e vincula cada
-   * material à sua linha — o status passa automaticamente para "comprado/aguardando".
-   */
-  createPurchaseOrder(
-    projectId: string,
-    materialIds: string[],
-    opts: { supplierId: string; requester: string; expectedDate: string; paymentTerms: string; prices: Record<string, number> },
-  ): PurchaseOrder | undefined {
-    const p = repos.projects.getById(projectId);
-    if (!p) return undefined;
-    const selected = p.materials.filter((m) => materialIds.includes(m.id));
-    if (!selected.length) return undefined;
-    const lines: POLineItem[] = selected.map((m, i) => ({
-      id: newId('pol'),
-      lineNumber: i + 1,
-      partNumber: m.partNumber,
-      description: m.description,
-      quantity: m.quantity,
-      unitPrice: opts.prices[m.id] ?? 0,
-      expectedDeliveryDate: opts.expectedDate,
-      status: 'open',
-    }));
-    const supplier = repos.suppliers.getById(opts.supplierId);
-    if (!supplier) return undefined;
-    const po: PurchaseOrder = {
-      id: newId('po'),
-      poNumber: nextPurchaseNumber(repos.purchaseOrders.getAll()),
-      kind: 'purchase',
-      supplierId: supplier.id,
-      customerOrVendor: supplier.name,
-      orderDate: todayISO(),
-      requester: opts.requester.trim(),
-      paymentTerms: opts.paymentTerms.trim(),
-      status: 'open',
-      notes: `${p.projectNumber} — ${p.customer}`,
-      attachments: [],
-      lines,
-    };
-    repos.purchaseOrders.create(po);
-    const lineByMat = new Map(selected.map((m, i) => [m.id, lines[i]!.id]));
-    repos.projects.update(projectId, {
-      materials: p.materials.map((m) => (lineByMat.has(m.id) ? { ...m, status: 'ordered', poId: po.id, poLineId: lineByMat.get(m.id) } : m)),
-    });
-    return po;
   },
 
   /**
@@ -321,17 +282,12 @@ export const scheduleService = {
    * como entregue (data real = hoje) e recalcula o status da PO; senão, marca o material.
    */
   receiveMaterial(projectId: string, materialId: string): void {
+    // Materiais com PO são recebidos pelo GR (domain/requisitions.ts); aqui só itens sem PO (ex.: estoque).
+    assertCan('gr.register');
     const p = repos.projects.getById(projectId);
     const m = p?.materials.find((x) => x.id === materialId);
-    if (!p || !m) return;
-    const po = m.poId ? repos.purchaseOrders.getById(m.poId) : undefined;
-    if (po && m.poLineId) {
-      const lines = po.lines.map((l) => (l.id === m.poLineId ? { ...l, status: 'delivered' as const, actualDeliveryDate: todayISO() } : l));
-      const status = derivePOStatus(po.status, lines);
-      repos.purchaseOrders.update(po.id, { lines, status });
-    } else {
-      scheduleService.upsertMaterial(projectId, { ...m, status: 'received' });
-    }
+    if (!p || !m || m.poId) return;
+    repos.projects.update(projectId, { materials: p.materials.map((x) => (x.id === materialId ? { ...x, status: 'received' as const } : x)) });
   },
 };
 
@@ -350,9 +306,11 @@ export function validateAbsence(d: AbsenceDraft): Errors<AbsenceDraft> {
 
 export const absenceService = {
   save(d: AbsenceDraft, id?: string): Absence {
+    assertCan('schedule.edit');
     return id ? repos.absences.update(id, d) : repos.absences.create({ id: newId('abs'), ...d });
   },
   remove(id: string): void {
+    assertCan('schedule.edit');
     repos.absences.remove(id);
   },
 };

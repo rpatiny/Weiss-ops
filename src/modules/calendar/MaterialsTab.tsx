@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Check, ClipboardCheck, ExternalLink, Link2, PackageCheck, Pencil, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, ClipboardCheck, ExternalLink, FileInput, Link2, PackageCheck, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
+import { useCan } from '@/app/session';
 import { navigate } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +16,7 @@ import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
 import type { MaterialStatus, Project, ProjectMaterial } from '@/types/models';
-import { PurchaseDrawer } from './PurchaseDrawer';
+import { NewRequisitionDrawer } from '@/modules/purchasing/process/NewRequisitionDrawer';
 
 type MaterialForm = Omit<ProjectMaterial, 'id'> & { id?: string };
 const emptyForm = (neededBy?: string): MaterialForm => ({ partNumber: '', description: '', quantity: 1, status: 'to_buy', neededBy });
@@ -28,6 +29,8 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
   const views = materialViews(project, poById, projectStart);
   const summary = summarizeMaterials(views);
   const pd = usePurchasingData();
+  const allowed = useCan();
+  const requisitions = useCollection('requisitions');
   const readiness = pd.readinessOf(project);
   const itemById = new Map(readiness.items.map((i) => [i.view.material.id, i]));
 
@@ -97,7 +100,7 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
         <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
           {views.map((v) => {
             const m = v.material;
-            const canSelect = v.status === 'to_buy';
+            const canSelect = v.status === 'to_buy' && allowed('requisition.create');
             return (
               <li key={m.id} className={cn('flex items-start gap-3 p-3', v.late && 'bg-red-50/60 dark:bg-red-950/20')}>
                 <input
@@ -128,6 +131,11 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
                       </>
                     )}
                   </p>
+                  {m.requisitionId && !m.poId && (
+                    <button type="button" onClick={() => navigate('/purchase-orders', { req: m.requisitionId })} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-violet-700 hover:underline dark:text-violet-300">
+                      <FileInput className="size-3.5" /> {t('process.req.inRequisition', { number: requisitions.find((r) => r.id === m.requisitionId)?.number ?? '' })}
+                    </button>
+                  )}
                   <MaterialExtra item={itemById.get(m.id)} partNumber={m.partNumber} pd={pd} status={v.status} />
                   {v.po && (
                     <button
@@ -147,14 +155,21 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
                   )}
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  {v.status !== 'received' && v.status !== 'to_buy' && (
-                    <Button size="sm" icon={PackageCheck} onClick={() => { scheduleService.receiveMaterial(project.id, m.id); toast.success(t('calendar.toast.materialReceived')); }} title={t('calendar.materials.receive')} aria-label={t('calendar.materials.receive')} />
+                  {v.status === 'ordered' && v.po && allowed('gr.register') && (
+                    <Button size="sm" icon={PackageCheck} onClick={() => navigate('/purchase-orders', { gr: v.po!.id })} title={t('process.materials.goToGR')} aria-label={t('process.materials.goToGR')} />
                   )}
-                  {v.status === 'to_buy' && (
-                    <Button size="sm" icon={ShoppingCart} onClick={() => { setSelected([m.id]); setBuying(true); }} title={t('calendar.materials.buySelected', { count: 1 })} aria-label={t('calendar.materials.buySelected', { count: 1 })} className="text-red-600" />
+                  {!m.poId && v.status !== 'received' && allowed('gr.register') && (
+                    <Button size="sm" variant="ghost" icon={PackageCheck} onClick={() => { scheduleService.receiveMaterial(project.id, m.id); toast.success(t('calendar.toast.materialReceived')); }} title={t('process.materials.manualReceive')} aria-label={t('process.materials.manualReceive')} />
                   )}
-                  <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { setForm({ ...m }); setFormError(false); }} aria-label={t('common.edit')} title={t('common.edit')} />
-                  <Button size="sm" variant="ghost" icon={Trash2} className="text-red-600" onClick={() => { scheduleService.removeMaterial(project.id, m.id); toast.success(t('calendar.toast.materialDeleted')); }} aria-label={t('common.delete')} title={t('common.delete')} />
+                  {v.status === 'to_buy' && allowed('requisition.create') && (
+                    <Button size="sm" icon={Send} onClick={() => { setSelected([m.id]); setBuying(true); }} title={t('process.req.createSelected', { count: 1 })} aria-label={t('process.req.createSelected', { count: 1 })} className="text-red-600" />
+                  )}
+                  {allowed('materials.edit') && (
+                    <>
+                      <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { setForm({ ...m }); setFormError(false); }} aria-label={t('common.edit')} title={t('common.edit')} />
+                      <Button size="sm" variant="ghost" icon={Trash2} className="text-red-600" disabled={!!m.poId || !!m.requisitionId} onClick={() => { scheduleService.removeMaterial(project.id, m.id); toast.success(t('calendar.toast.materialDeleted')); }} aria-label={t('common.delete')} title={t('common.delete')} />
+                    </>
+                  )}
                 </div>
               </li>
             );
@@ -163,13 +178,19 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button icon={Plus} onClick={() => { setForm(emptyForm(projectStart)); setFormError(false); }}>
-          {t('calendar.materials.add')}
-        </Button>
-        <Button variant="primary" icon={ShoppingCart} disabled={!selectedToBuy.length} onClick={() => setBuying(true)}>
-          {t('calendar.materials.buySelected', { count: selectedToBuy.length })}
-        </Button>
-        {toBuyIds.length > 0 && !selectedToBuy.length && <span className="text-xs text-slate-500">{t('calendar.materials.selectToBuy')}</span>}
+        {allowed('materials.edit') && (
+          <Button icon={Plus} onClick={() => { setForm(emptyForm(projectStart)); setFormError(false); }}>
+            {t('calendar.materials.add')}
+          </Button>
+        )}
+        {allowed('requisition.create') && (
+          <>
+            <Button variant="primary" icon={Send} disabled={!selectedToBuy.length} onClick={() => setBuying(true)}>
+              {t('process.req.createSelected', { count: selectedToBuy.length })}
+            </Button>
+            {toBuyIds.length > 0 && !selectedToBuy.length && <span className="text-xs text-slate-500">{t('process.req.selectToRequest')}</span>}
+          </>
+        )}
       </div>
 
       {form && (
@@ -231,7 +252,7 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
         </form>
       )}
 
-      <PurchaseDrawer open={buying} project={project} materialIds={selectedToBuy} onClose={() => setBuying(false)} onCreated={() => setSelected([])} />
+      <NewRequisitionDrawer open={buying} project={project} materialIds={selectedToBuy} projectStart={projectStart} onClose={() => setBuying(false)} onCreated={() => setSelected([])} />
     </div>
   );
 }
@@ -260,7 +281,7 @@ function MaterialExtra({ item, partNumber, pd, status }: { item?: ReturnType<Ret
   const fastest = fastestOffer(offers);
   return (
     <div className="mt-1 space-y-1 text-xs">
-      {status === 'to_buy' && (
+      {(status === 'to_buy' || status === 'requested') && (
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600 dark:text-slate-400">
           {item && <StatusBadge kind="quoteState" value={item.quote} />}
           {best?.supplier && (

@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { Cog, Languages, Menu, Moon, Sun, X } from 'lucide-react';
+import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { logout, useCurrentUser } from '@/app/session';
+import { enumLabel } from '@/domain/labels';
+import { usePendingCounts } from './usePendingCounts';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
@@ -22,7 +25,7 @@ function Brand() {
   );
 }
 
-function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
+function NavLink({ item, active, onNavigate, badge }: { item: NavItem; active: boolean; onNavigate: () => void; badge?: number }) {
   const { t } = useI18n();
   const Icon = item.icon;
   return (
@@ -41,7 +44,8 @@ function NavLink({ item, active, onNavigate }: { item: NavItem; active: boolean;
     >
       <Icon className={cn('size-[18px] shrink-0', active ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300')} />
       <span className="truncate">{t(item.labelKey)}</span>
-      {active && <span className="ml-auto h-5 w-1 rounded-full bg-brand-500" />}
+      {badge ? <span className="ml-auto rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums">{badge}</span> : null}
+      {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && 'ml-auto')} />}
     </a>
   );
 }
@@ -79,6 +83,8 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const { path } = useRoute();
   const { theme, toggle } = useTheme();
   const { t } = useI18n();
+  const user = useCurrentUser();
+  const pending = usePendingCounts();
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-5">
@@ -87,7 +93,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
         <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} />
+          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : undefined} />
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">
@@ -102,6 +108,18 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           {theme === 'dark' ? t('app.themeLight') : t('app.themeDark')}
         </button>
         <LanguageSwitcher />
+        {user && (
+          <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] tracking-wider text-slate-500 uppercase">{t('auth.loggedAs')}</p>
+              <p className="truncate text-sm font-medium text-white">{user.name}</p>
+              <p className="text-[11px] text-brand-400">{enumLabel(t, 'userRole', user.role)}</p>
+            </div>
+            <button onClick={logout} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-700 hover:text-white" title={t('auth.logout')} aria-label={t('auth.logout')}>
+              <LogOut className="size-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -47,6 +47,8 @@ interface Props {
   onCreate: (employeeId: string, date: string) => void;
   onOpenAbsence: (absence: Absence) => void;
   onCommit: (assignmentId: string, next: DragResult) => void;
+  /** Perfil sem permissão de edição: sem arrastar e sem criar. */
+  readOnly?: boolean;
 }
 
 interface DragState {
@@ -112,6 +114,7 @@ export function GanttChart(props: Props) {
   // ───── Arraste (pointer events) ─────
   const startDrag = (e: ReactPointerEvent, a: ProjectAssignment, mode: DragMode) => {
     if (e.button !== 0) return;
+    if (props.readOnly) return;
     e.preventDefault();
     e.stopPropagation();
     const orig = { startDate: a.startDate, endDate: a.endDate, employeeId: a.employeeId };
@@ -246,7 +249,7 @@ export function GanttChart(props: Props) {
                   return (
                     <div
                       key={d}
-                      onClick={() => !we && !inactive && !drag && props.onCreate(emp.id, d)}
+                      onClick={() => !we && !inactive && !drag && !props.readOnly && props.onCreate(emp.id, d)}
                       className={cn(
                         'absolute top-0 h-full border-r border-slate-100 dark:border-slate-800/80',
                         we ? 'bg-slate-100 dark:bg-slate-800/50' : !inactive && 'cursor-cell hover:bg-slate-50 dark:hover:bg-slate-800/30',
@@ -296,17 +299,17 @@ export function GanttChart(props: Props) {
                   return (
                     <div
                       key={a.id}
-                      onPointerDown={(e) => !locked && startDrag(e, a, 'move')}
+                      onPointerDown={(e) => !locked && !props.readOnly && startDrag(e, a, 'move')}
                       onClick={(e) => {
                         // Projetos travados não iniciam arraste: o clique abre direto.
-                        if (locked) {
+                        if (locked || props.readOnly) {
                           e.stopPropagation();
                           props.onOpenProject(p.id);
                         }
                       }}
                       className={cn(
                         'group absolute z-[2] flex items-center overflow-hidden rounded-md text-white shadow-sm transition-[box-shadow] select-none',
-                        locked ? 'cursor-pointer opacity-70 saturate-50' : 'cursor-grab active:cursor-grabbing',
+                        locked ? 'cursor-pointer opacity-70 saturate-50' : props.readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         isDragging && 'pointer-events-none z-30 shadow-2xl ring-2 ring-offset-1 dark:ring-offset-slate-900',
                         isDragging && (previewInvalid ? 'opacity-60 ring-red-500 ring-dashed' : 'ring-brand-400'),
                         hasConflict && 'ring-2 ring-red-500 ring-offset-1 dark:ring-offset-slate-900',
@@ -331,7 +334,7 @@ export function GanttChart(props: Props) {
                         <span key={d} className="pointer-events-none absolute top-0 h-full bg-white/35 dark:bg-slate-950/40" style={{ left: offsets[i]! - r.left - 1, width: widths[i] }} />
                       ))}
 
-                      {!locked && !r.clipStart && (
+                      {!locked && !props.readOnly && !r.clipStart && (
                         <span onPointerDown={(e) => startDrag(e, a, 'resize-start')} className="absolute top-0 left-0 z-10 h-full w-2 cursor-ew-resize bg-black/0 hover:bg-black/25" />
                       )}
 
@@ -350,7 +353,7 @@ export function GanttChart(props: Props) {
                         )}
                       </div>
 
-                      {!locked && !r.clipEnd && (
+                      {!locked && !props.readOnly && !r.clipEnd && (
                         <span onPointerDown={(e) => startDrag(e, a, 'resize-end')} className="absolute top-0 right-0 z-10 h-full w-2 cursor-ew-resize bg-black/0 hover:bg-black/25" />
                       )}
                     </div>

@@ -10,6 +10,7 @@ import { useCollection } from '@/data/hooks';
 import { employeeService, upcomingAssignments } from '@/domain/employees';
 import { rangesOverlap } from '@/lib/dates';
 import { useI18n } from '@/i18n';
+import { useCan } from '@/app/session';
 import { addDays, todayISO } from '@/lib/dates';
 import { cn } from '@/lib/cn';
 import type { Employee } from '@/types/models';
@@ -22,6 +23,7 @@ export function EmployeesPage() {
   const assignments = useCollection('assignments');
   const toast = useToast();
   const { t } = useI18n();
+  const canEdit = useCan()('employees.edit');
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -96,9 +98,11 @@ export function EmployeesPage() {
         title={t('employees.title')}
         description={t('employees.description')}
         actions={
-          <Button variant="primary" icon={Plus} onClick={openCreate}>
-            {t('employees.new')}
-          </Button>
+          canEdit && (
+            <Button variant="primary" icon={Plus} onClick={openCreate}>
+              {t('employees.new')}
+            </Button>
+          )
         }
       />
 
@@ -200,7 +204,7 @@ export function EmployeesPage() {
                         </span>
                       </td>
                       <td className="td">
-                        <div className="flex justify-end gap-1">
+                        <div className={cn('flex justify-end gap-1', !canEdit && 'hidden')}>
                           <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(e)} title={t('common.edit')} aria-label={`${t('common.edit')} ${e.name}`} />
                           <Button
                             size="sm"

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Cog, ExternalLink, FolderKanban, Link as LinkIcon, Plus, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Cog, ExternalLink, FileInput, FolderKanban, Link as LinkIcon, PackageCheck, Plus, Save, Trash2 } from 'lucide-react';
+import { useCan } from '@/app/session';
+import { openQty } from '@/domain/requisitions';
 import { navigate } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -33,6 +35,7 @@ interface Props {
   open: boolean;
   poId?: string;
   onClose: () => void;
+  onRegisterGR?: (poId: string) => void;
 }
 
 const emptyPO = (number: string): PODraft => ({
@@ -49,7 +52,11 @@ const emptyPO = (number: string): PODraft => ({
   lines: [emptyLine(1)],
 });
 
-export function PODrawer({ open, poId, onClose }: Props) {
+export function PODrawer({ open, poId, onClose, onRegisterGR }: Props) {
+  const allowed = useCan();
+  const readOnly = !allowed('po.edit');
+  const users = useCollection('users');
+  const requisitions = useCollection('requisitions');
   const { t } = useI18n();
   const toast = useToast();
   const purchaseOrders = useCollection('purchaseOrders');
@@ -152,19 +159,33 @@ export function PODrawer({ open, poId, onClose }: Props) {
         subtitle={existing ? existing.customerOrVendor : undefined}
         footer={
           <>
-            {existing && (
+            {existing && !readOnly && (
               <Button variant="ghost" icon={Trash2} className="mr-auto text-red-600" onClick={() => setConfirmDelete(true)}>
                 {t('common.delete')}
               </Button>
             )}
-            <Button onClick={onClose}>{t('common.cancel')}</Button>
-            <Button variant="primary" icon={Save} type="submit" form="po-form">
-              {existing ? t('purchasing.po.submitSave') : t('purchasing.po.submitCreate')}
-            </Button>
+            {readOnly && <span className="mr-auto text-xs text-slate-500">{t('auth.readOnly')}</span>}
+            {existing?.kind === 'purchase' && onRegisterGR && allowed('gr.register') && existing.lines.some((l) => l.status !== 'canceled' && openQty(l) > 0) && (
+              <Button icon={PackageCheck} onClick={() => onRegisterGR(existing.id)}>
+                {t('process.gr.button')}
+              </Button>
+            )}
+            <Button onClick={onClose}>{readOnly ? t('common.close') : t('common.cancel')}</Button>
+            {!readOnly && (
+              <Button variant="primary" icon={Save} type="submit" form="po-form">
+                {existing ? t('purchasing.po.submitSave') : t('purchasing.po.submitCreate')}
+              </Button>
+            )}
           </>
         }
       >
         <form id="po-form" onSubmit={submit} className="space-y-6" noValidate>
+          {existing?.requisitionId && (
+            <button type="button" onClick={() => { onClose(); navigate('/purchase-orders', { req: existing.requisitionId }); }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm hover:border-brand-500 dark:border-slate-700">
+              <FileInput className="size-4 text-slate-500" /> {requisitions.find((r) => r.id === existing.requisitionId)?.number}
+            </button>
+          )}
+          <fieldset disabled={readOnly} className="space-y-6">
           {/* Cabeçalho */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t('purchasing.po.number')} required error={errors.poNumber && t(errors.poNumber)}>
@@ -256,6 +277,11 @@ export function PODrawer({ open, poId, onClose }: Props) {
                               <AlertTriangle className="size-3" /> {t('purchasing.po.late')}
                             </Badge>
                           )}
+                          {(l.receipts ?? []).map((r) => (
+                            <p key={r.id} className="mt-1 text-[10px] text-green-700 dark:text-green-400">
+                              GR {r.grNumber} · {formatDate(r.date)} · ×{r.quantity} · {users.find((u) => u.id === r.receivedBy)?.name ?? ''}
+                            </p>
+                          ))}
                         </td>
                         <td className="td">
                           <Input type="number" min={0} step="any" value={l.quantity} onChange={(e) => setLine(l.id, { quantity: Number(e.target.value) })} className="text-right" aria-label={t('purchasing.po.quantity')} />
@@ -334,6 +360,7 @@ export function PODrawer({ open, poId, onClose }: Props) {
             )}
           </section>
 
+          </fieldset>
           {/* Vínculos */}
           {existing && (
             <section className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">

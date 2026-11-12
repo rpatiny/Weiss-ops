@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import type { CatalogMaterial } from '@/types/models';
 import { CatalogDrawer } from './CatalogDrawer';
 import { usePurchasingData } from './usePurchasingData';
+import { useCan } from '@/app/session';
 
 type Filter = 'all' | 'not_quoted' | 'to_buy' | 'shared';
 
@@ -24,6 +25,7 @@ interface Row {
 export function CatalogTab() {
   const { t } = useI18n();
   const pd = usePurchasingData();
+  const canEdit = useCan()('catalog.edit');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [drawer, setDrawer] = useState<{ id?: string; prefill?: { partNumber: string; description: string } } | null>(null);
@@ -74,9 +76,11 @@ export function CatalogTab() {
             </button>
           ))}
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
-          {t('purchasing.materials.newMaterial')}
-        </Button>
+        {canEdit && (
+          <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
+            {t('purchasing.materials.newMaterial')}
+          </Button>
+        )}
       </div>
 
       {filtered.length === 0 ? (

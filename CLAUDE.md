@@ -36,7 +36,8 @@ src/
 ├─ index.css                # Tailwind, tokens (brand = amber), classes .card/.input/.th/.td
 ├─ app/
 │  ├─ router.ts             # useRoute(), navigate(path, params), clearParams()
-│  └─ theme.tsx             # ThemeProvider/useTheme (persistido em spindleops:theme)
+│  ├─ theme.tsx             # ThemeProvider/useTheme (persistido em spindleops:theme)
+│  └─ session.ts            # login por PIN, usuário atual, perfis e permissões (can / assertCan / useCan)
 ├─ i18n/                    # Internacionalização (pt-BR, en-US, de-DE)
 │  ├─ pt.ts                 # dicionário BASE — fonte da verdade das chaves
 │  ├─ en.ts / de.ts         # tipados como `Dictionary` (chave faltando = erro de TS)
@@ -53,7 +54,8 @@ src/
 │  ├─ labels.ts             # tons de badge por enum + enumLabel/enumOptions (rótulos vêm do i18n)
 │  ├─ employees.ts          # validação, selectors e employeeService
 │  ├─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
-│  └─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
+│  ├─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
+│  └─ requisitions.ts       # requisição → PO do SAP → GR (processo de compras)
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
@@ -61,6 +63,9 @@ src/
 └─ modules/                 # Uma pasta por módulo/página
    ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
    │                        # MaterialsTab, PurchaseDrawer (gera PO), AbsenceDrawer
+   ├─ auth/                 # LoginScreen
+   ├─ purchasing/process/   # RequisitionsTab, RequisitionDrawer, NewRequisitionDrawer, RegisterPODrawer,
+   │                        # ReceivingTab, GRDrawer
    ├─ purchasing/           # PurchaseOrdersPage (abas), PODrawer, CatalogTab/CatalogDrawer, ReadinessTab,
    │                        # SuppliersTab, usePurchasingData (lookups compartilhados com o cronograma)
    ├─ employees/            # EmployeesPage, EmployeeFormDrawer
@@ -86,6 +91,8 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 
 | Entidade            | Campos-chave                                                                                   | Relações                                   |
 | ------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `User`              | name, email, role `master\|logistics\|office`, pinHash, active                                   | autor de requisições, eventos e GRs        |
+| `PurchaseRequisition` | number (RC-xxxxx), projectId, requestedBy, neededBy, status, items[] (materialId, PN, qtd), history[] | 1 Projeto; N POs via materiais       |
 | `Employee`          | name, role, phone, email, color (hex), status `active\|inactive`                                | 1—N Assignment, 1—N Absence                |
 | `Project`           | projectNumber, customer, address, serviceType, description, status, color, materials[]         | opc. PO do cliente e Spindle; 1—N Assignment |
 | `ProjectMaterial`   | partNumber, description, quantity, status `to_buy\|ordered\|received`, neededBy                 | opc. `poId` + `poLineId` (PO de compra)    |
@@ -94,11 +101,11 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 | `Supplier`          | name, contactName, email, phone, notes                                                          | 1—N Offer, 1—N PO de compra                |
 | `CatalogMaterial`   | partNumber (chave), description, unit, offers[] (`SupplierOffer`: supplierId, quoteStatus, quotedPrice, validUntil, leadTimeDays) | liga-se a materiais de projeto e linhas de PO **pelo part number** |
 | `PurchaseOrder`     | poNumber, **kind `sales\|purchase`**, supplierId?, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Project (cliente), 1—N Material (compra) |
-| `POLineItem`        | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status   | embutido na PO                             |
+| `POLineItem`        | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status, receipts[] (GR: grNumber SAP, data, qtd, usuário) | embutido na PO |
 | `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue         | opc. N—1 PO; 1—N Project                   |
 | `ForecastItem`      | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                       | —                                          |
 
-> `APP_CONFIG.schemaVersion = 3` (v3 adicionou fornecedores, catálogo e `PurchaseOrder.kind`).
+> `APP_CONFIG.schemaVersion = 4` (v3: fornecedores, catálogo, `PurchaseOrder.kind`; v4: usuários, requisições, GR, material `requested`).
 > O modelo original `CalendarActivity` (atividades diárias com horário/rota) foi substituído na v2 pelo
 > cronograma de projetos multi-dia. `APP_CONFIG.schemaVersion = 2`: bases v1 são recriadas com a demo.
 
@@ -178,6 +185,25 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Deep-links**: cada página só consome `?open=` quando `useRoute().path` é a dela (evita uma página desmontando
   "roubar" o parâmetro destinado a outra durante a navegação).
 
+- **Usuários e perfis** (`app/session.ts`): login com PIN (SHA-256 com sal por usuário; fallback em JS puro sem `crypto.subtle`).
+  - `master`: tudo + usuários + manutenção de dados.
+  - `office` (orçamento): cronograma/projetos, colaboradores, materiais dos projetos, criar/cancelar requisições.
+  - `logistics`: processar requisições (cotação, registrar PO do SAP, rejeitar), POs, GR, catálogo/cotações, fornecedores.
+  - A UI esconde/desabilita (fieldset `disabled`) e os **serviços de domínio chamam `assertCan`** — a regra vale mesmo se a UI falhar.
+  - ⚠️ Com localStorage, o PIN só separa perfis no mesmo navegador; uso multiusuário real exige backend compartilhado
+    (implementar um `StorageDriver`/repositório remoto e mover a autenticação para ele).
+- **Processo de compras** (`domain/requisitions.ts`):
+  1. Office seleciona materiais "A comprar" → **requisição** RC-xxxxx (materiais ficam `requested`).
+  2. Logística: "Iniciar cotação" → registra cotações no catálogo → cria a PO no SAP → **"Registrar PO do SAP"**
+     (nº SAP, fornecedor, preços, previsão; itens podem ir para POs/fornecedores diferentes; nº existente do mesmo
+     fornecedor acrescenta linhas). Materiais → `ordered`.
+  3. GR no SAP → **"Registrar GR"** aqui (nº do documento SAP, data, quantidades; parcial permitido). Linha fica
+     `partial`/`delivered` pela soma dos GRs; materiais e prontidão dos projetos atualizam na hora.
+  - Status da requisição: `rejected`/`canceled` manuais; demais derivados dos materiais (enviada → em cotação →
+    parcialmente pedida → pedida → parcialmente recebida → recebida). Rejeitar/cancelar devolve materiais sem PO para "A comprar".
+  - Cada passo grava `history` (quem, quando, o quê); comentários livres de office e logística.
+  - Badge no menu "Ordens de Compra" = requisições pendentes + linhas de compra vencidas sem GR (perfis master/logística).
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -190,6 +216,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - [x] **Fase 3** — Ordens de Compra (+ fornecedores, catálogo com cotações e último valor, demanda compartilhada,
       checklist de prontidão dos projetos): cabeçalho, line items dinâmicos, totais automáticos, linhas atrasadas em vermelho,
       anexos (PDF da PO / invoice / outros), mini-dashboard (POs abertas, entregas em 7 dias, linhas atrasadas).
+- [x] **Fase 3.1** — Processo de compras (requisição → PO do SAP → GR), usuários com perfis Master/Logística/Office.
 - [ ] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.
 - [ ] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas

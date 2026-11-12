@@ -16,6 +16,21 @@ export type ISODate = string;
 /** Hora no formato `HH:mm`. */
 export type TimeHHmm = string;
 
+// ───────────────────────── Usuários & perfis ─────────────────────────
+
+/** master = acesso total; logistics = compras/GR; office = orçamento, projetos e requisições. */
+export type UserRole = 'master' | 'logistics' | 'office';
+
+export interface User {
+  id: ID;
+  name: string;
+  email: string;
+  role: UserRole;
+  /** SHA-256 de `spindleops:<id>:<pin>` (proteção de uso local — não substitui autenticação de servidor). */
+  pinHash: string;
+  active: boolean;
+}
+
 // ───────────────────────── Employees ─────────────────────────
 
 export type EmployeeStatus = 'active' | 'inactive';
@@ -39,13 +54,14 @@ export type ProjectStatus = 'planned' | 'in_progress' | 'completed' | 'canceled'
 
 /**
  * Status de um material do projeto:
- * - `to_buy`   → precisa ser comprado (sem PO)
+ * - `to_buy`   → precisa ser comprado (sem requisição nem PO)
+ * - `requested`→ requisição de compra enviada à logística (sem PO ainda)
  * - `ordered`  → comprado, aguardando chegada
  * - `received` → material disponível
  * Quando vinculado a uma linha de PO (`poId` + `poLineId`) o status é DERIVADO da linha
  * (`domain/schedule.ts → materialStatus`); o campo `status` vale apenas para itens sem PO.
  */
-export type MaterialStatus = 'to_buy' | 'ordered' | 'received';
+export type MaterialStatus = 'to_buy' | 'requested' | 'ordered' | 'received';
 
 export interface ProjectMaterial {
   id: ID;
@@ -55,6 +71,8 @@ export interface ProjectMaterial {
   status: MaterialStatus;
   /** Data em que o material é necessário (padrão: início do projeto). */
   neededBy?: ISODate;
+  /** Requisição de compra que pediu este material. */
+  requisitionId?: ID;
   poId?: ID;
   poLineId?: ID;
 }
@@ -113,6 +131,17 @@ export interface Attachment {
   type: AttachmentType;
 }
 
+/** Recebimento (GR) registrado após o goods receipt no SAP. Permite recebimentos parciais. */
+export interface GoodsReceipt {
+  id: ID;
+  /** Nº do documento de material do GR no SAP. */
+  grNumber: string;
+  date: ISODate;
+  quantity: number;
+  receivedBy: ID;
+  notes: string;
+}
+
 export interface POLineItem {
   id: ID;
   lineNumber: number;
@@ -123,6 +152,8 @@ export interface POLineItem {
   expectedDeliveryDate: ISODate;
   actualDeliveryDate?: ISODate;
   status: POLineStatus;
+  /** GRs desta linha (POs de compra). Quando há GRs, o status da linha é derivado das quantidades. */
+  receipts?: GoodsReceipt[];
 }
 
 /** `sales` = PO recebida de um CLIENTE; `purchase` = PO de COMPRA emitida para um fornecedor. */
@@ -135,6 +166,8 @@ export interface PurchaseOrder {
   customerOrVendor: string;
   /** Fornecedor cadastrado (POs de compra). `customerOrVendor` guarda o nome exibido. */
   supplierId?: ID;
+  /** Requisição de compra de origem (POs de compra). */
+  requisitionId?: ID;
   orderDate: ISODate;
   requester: string;
   paymentTerms: string;
@@ -183,6 +216,52 @@ export interface CatalogMaterial {
   offers: SupplierOffer[];
 }
 
+// ───────────────────────── Requisição de compra ─────────────────────────
+
+/**
+ * submitted → quoting → (partially_)ordered → (partially_)received.
+ * Os estados de pedido/recebimento são DERIVADOS dos materiais; rejected/canceled são manuais.
+ */
+export type RequisitionStatus =
+  | 'submitted'
+  | 'quoting'
+  | 'partially_ordered'
+  | 'ordered'
+  | 'partially_received'
+  | 'received'
+  | 'rejected'
+  | 'canceled';
+
+export interface RequisitionItem {
+  id: ID;
+  /** Material do projeto (ProjectMaterial.id). */
+  materialId: ID;
+  partNumber: string;
+  description: string;
+  quantity: number;
+}
+
+export interface RequisitionEvent {
+  at: string;
+  userId: ID;
+  action: 'submitted' | 'quoting' | 'po_registered' | 'gr_registered' | 'rejected' | 'canceled' | 'comment';
+  note: string;
+}
+
+export interface PurchaseRequisition {
+  id: ID;
+  number: string;
+  projectId: ID;
+  requestedBy: ID;
+  requestedAt: ISODate;
+  neededBy?: ISODate;
+  /** Estado manual (submitted/quoting/rejected/canceled); o efetivo é derivado em `domain/requisitions.ts`. */
+  status: RequisitionStatus;
+  notes: string;
+  items: RequisitionItem[];
+  history: RequisitionEvent[];
+}
+
 // ───────────────────────── Financial ─────────────────────────
 
 export type QuoteStatus = 'pending' | 'sent' | 'approved' | 'declined';
@@ -228,6 +307,8 @@ export interface ForecastItem {
 
 /** Estado completo persistido da aplicação (também é o formato do backup JSON). */
 export interface AppDatabase {
+  users: User[];
+  requisitions: PurchaseRequisition[];
   employees: Employee[];
   projects: Project[];
   assignments: ProjectAssignment[];

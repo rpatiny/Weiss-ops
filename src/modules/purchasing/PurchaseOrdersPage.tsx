@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarClock, ClipboardCheck, ClipboardList, Plus, Search, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, ClipboardList, FileInput, PackageCheck, Plus, Search, ShoppingCart } from 'lucide-react';
+import { useCan, useCurrentUser } from '@/app/session';
+import { useCollection } from '@/data/hooks';
+import { effectiveStatus, needsLogistics, openQty, requisitionItemViews } from '@/domain/requisitions';
+import { GRDrawer } from './process/GRDrawer';
+import { ReceivingTab, RequisitionsTab } from './process/ProcessTabs';
 import { clearParams, useRoute } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -20,16 +25,35 @@ import { ReadinessTab } from './ReadinessTab';
 import { SuppliersTab } from './SuppliersTab';
 import { usePurchasingData } from './usePurchasingData';
 
-type Tab = 'orders' | 'materials' | 'readiness' | 'suppliers';
-const TABS: Tab[] = ['orders', 'materials', 'readiness', 'suppliers'];
+type Tab = 'requisitions' | 'orders' | 'receiving' | 'materials' | 'readiness' | 'suppliers';
+const TABS: Tab[] = ['requisitions', 'orders', 'receiving', 'materials', 'readiness', 'suppliers'];
 const isTab = (v: unknown): v is Tab => typeof v === 'string' && (TABS as string[]).includes(v);
 
 export function PurchaseOrdersPage() {
   const { t } = useI18n();
   const { params, path: routePath } = useRoute();
   const pd = usePurchasingData();
-  const [tab, setTab] = usePersistentState<Tab>('purchasing.tab', 'orders', isTab);
+  const user = useCurrentUser();
+  const allowed = useCan();
+  const requisitions = useCollection('requisitions');
+  const [tab, setTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, user?.role === 'master' ? 'orders' : 'requisitions', isTab);
   const [drawer, setDrawer] = useState<{ id?: string } | null>(null);
+  const [reqOpen, setReqOpen] = useState<string>();
+  const [grPo, setGrPo] = useState<string>();
+  const reqParam = routePath === '/purchase-orders' ? params.get('req') : null;
+  const grParam = routePath === '/purchase-orders' ? params.get('gr') : null;
+  useEffect(() => {
+    if (!reqParam && !grParam) return;
+    if (reqParam && repos.requisitions.getById(reqParam)) {
+      setTab('requisitions');
+      setReqOpen(reqParam);
+    }
+    if (grParam && repos.purchaseOrders.getById(grParam)) {
+      setTab('receiving');
+      setGrPo(grParam);
+    }
+    clearParams('req', 'gr');
+  }, [reqParam, grParam]);
 
   // Deep-link: #/purchase-orders?open=<poId>
   // Só trata o parâmetro quando a rota atual é desta página (evita "roubar" o deep-link de outra tela).
@@ -64,8 +88,10 @@ export function PurchaseOrdersPage() {
       toBuy: toBuyItems.length,
       notQuoted,
       notReady,
+      pendingReq: requisitions.filter((r) => needsLogistics(effectiveStatus(r, requisitionItemViews(r, pd.projects.find((p) => p.id === r.projectId), pd.poById)))).length,
+      pendingGR: pd.purchaseOrders.filter((p) => p.kind === 'purchase' && p.status !== 'canceled').flatMap((p) => p.lines).filter((l) => l.status !== 'canceled' && openQty(l) > 0),
     };
-  }, [pd, in7]);
+  }, [pd, in7, requisitions]);
 
   return (
     <>
@@ -74,15 +100,18 @@ export function PurchaseOrdersPage() {
         title={t('purchasing.title')}
         description={t('purchasing.description')}
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
-            {t('purchasing.newPO')}
-          </Button>
+          allowed('po.edit') && (
+            <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
+              {t('purchasing.newPO')}
+            </Button>
+          )
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+        <StatCard label={t('process.kpi.pendingRequisitions')} value={kpi.pendingReq} icon={FileInput} tone={kpi.pendingReq ? 'info' : 'default'} hint={t('process.kpi.pendingRequisitionsHint')} onClick={() => setTab('requisitions')} />
+        <StatCard label={t('process.kpi.pendingGR')} value={kpi.pendingGR.length} icon={PackageCheck} tone={kpi.pendingGR.some((l) => l.expectedDeliveryDate < pd.today) ? 'danger' : 'default'} hint={t('process.kpi.pendingGRHint', { late: kpi.pendingGR.filter((l) => l.expectedDeliveryDate < pd.today).length })} onClick={() => setTab('receiving')} />
         <StatCard label={t('purchasing.kpi.open')} value={kpi.open} icon={ClipboardList} tone="info" hint={t('purchasing.kpi.openHint', { value: formatCurrencyCompact(kpi.openValue) })} onClick={() => setTab('orders')} />
-        <StatCard label={t('purchasing.kpi.due7')} value={kpi.due7} icon={CalendarClock} tone="warning" hint={t('purchasing.kpi.due7Hint', { date: formatDate(in7) })} onClick={() => setTab('orders')} />
         <StatCard label={t('purchasing.kpi.late')} value={kpi.late} icon={AlertTriangle} tone={kpi.late ? 'danger' : 'default'} hint={t('purchasing.kpi.lateHint')} onClick={() => setTab('orders')} />
         <StatCard label={t('purchasing.kpi.toBuy')} value={kpi.toBuy} icon={ShoppingCart} tone={kpi.toBuy ? 'warning' : 'default'} hint={t('purchasing.kpi.notQuoted', { count: kpi.notQuoted })} onClick={() => setTab('materials')} />
         <StatCard label={t('purchasing.kpi.notReady')} value={kpi.notReady} icon={ClipboardCheck} tone={kpi.notReady ? 'danger' : 'success'} hint={t('purchasing.kpi.notReadyHint')} onClick={() => setTab('readiness')} />
@@ -100,17 +129,20 @@ export function PurchaseOrdersPage() {
               tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
             )}
           >
-            {t(`purchasing.tabs.${x}`)}
+            {x === 'requisitions' || x === 'receiving' ? t(`process.tabs.${x}`) : t(`purchasing.tabs.${x}`)}
           </button>
         ))}
       </div>
 
+      {tab === 'requisitions' && <RequisitionsTab openId={reqOpen} onOpenChange={setReqOpen} />}
       {tab === 'orders' && <OrdersTab onOpen={(id) => setDrawer({ id })} />}
+      {tab === 'receiving' && <ReceivingTab />}
       {tab === 'materials' && <CatalogTab />}
       {tab === 'readiness' && <ReadinessTab />}
       {tab === 'suppliers' && <SuppliersTab />}
 
-      <PODrawer open={!!drawer} poId={drawer?.id} onClose={() => setDrawer(null)} />
+      <PODrawer open={!!drawer} poId={drawer?.id} onClose={() => setDrawer(null)} onRegisterGR={(id) => { setDrawer(null); setGrPo(id); }} />
+      <GRDrawer open={!!grPo} poId={grPo} onClose={() => setGrPo(undefined)} />
     </>
   );
 }
