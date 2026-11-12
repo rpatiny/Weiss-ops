@@ -2,9 +2,11 @@ import { repos } from '@/data/db';
 import { todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
 import type { CalendarActivity, Employee } from '@/types/models';
+import type { TranslationKey } from '@/i18n/types';
 
 export type EmployeeDraft = Omit<Employee, 'id'>;
-export type ValidationErrors<T> = Partial<Record<keyof T, string>>;
+/** Erros de validação como CHAVES de tradução (a UI traduz). */
+export type ValidationErrors<T> = Partial<Record<keyof T, TranslationKey>>;
 
 export const emptyEmployee = (color = '#2563eb'): EmployeeDraft => ({
   name: '',
@@ -20,16 +22,16 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 export function validateEmployee(d: EmployeeDraft, others: readonly Employee[], selfId?: string): ValidationErrors<EmployeeDraft> {
   const e: ValidationErrors<EmployeeDraft> = {};
-  if (d.name.trim().length < 2) e.name = 'Informe o nome completo.';
-  if (!d.role.trim()) e.role = 'Informe o cargo/função.';
-  if (d.email.trim() && !EMAIL_RE.test(d.email.trim())) e.email = 'E-mail inválido.';
+  if (d.name.trim().length < 2) e.name = 'employees.validation.nameRequired';
+  if (!d.role.trim()) e.role = 'employees.validation.roleRequired';
+  if (d.email.trim() && !EMAIL_RE.test(d.email.trim())) e.email = 'employees.validation.emailInvalid';
   else if (
     d.email.trim() &&
     others.some((o) => o.id !== selfId && o.email.toLowerCase() === d.email.trim().toLowerCase())
   )
-    e.email = 'Já existe um colaborador com este e-mail.';
-  if (d.phone.trim() && d.phone.replace(/\D/g, '').length < 10) e.phone = 'Telefone deve ter DDD + número.';
-  if (!HEX_RE.test(d.color)) e.color = 'Cor deve estar no formato #RRGGBB.';
+    e.email = 'employees.validation.emailDuplicate';
+  if (d.phone.trim() && d.phone.replace(/\D/g, '').length < 8) e.phone = 'employees.validation.phoneInvalid';
+  if (!HEX_RE.test(d.color)) e.color = 'employees.validation.colorInvalid';
   return e;
 }
 
@@ -89,7 +91,7 @@ export const employeeService = {
     return { ok: activityCount === 0, activityCount };
   },
   remove(id: string): void {
-    if (!employeeService.canDelete(id).ok) throw new Error('Colaborador possui histórico de atividades. Inative-o em vez de excluir.');
+    if (!employeeService.canDelete(id).ok) throw new Error('employees.validation.hasHistory');
     repos.employees.remove(id);
   },
 };

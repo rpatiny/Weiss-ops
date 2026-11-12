@@ -1,20 +1,18 @@
 import { CalendarRange, ClipboardList, Database, LineChart, Users, type LucideIcon } from 'lucide-react';
 import type { RoutePath } from '@/app/router';
+import type { TranslationKey } from '@/i18n/types';
 
 export interface NavItem {
   path: RoutePath;
-  label: string;
-  description: string;
+  labelKey: TranslationKey;
   icon: LucideIcon;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { path: '/calendar', label: 'Agenda & Rotas', description: 'Calendário de trabalho e roteirização', icon: CalendarRange },
-  { path: '/purchase-orders', label: 'Ordens de Compra', description: 'POs, itens e entregas', icon: ClipboardList },
-  { path: '/financial', label: 'Hub Financeiro', description: 'Spindles, cotações e forecast', icon: LineChart },
-  { path: '/employees', label: 'Colaboradores', description: 'Equipe técnica e logística', icon: Users },
+  { path: '/calendar', labelKey: 'app.nav.calendar', icon: CalendarRange },
+  { path: '/purchase-orders', labelKey: 'app.nav.purchaseOrders', icon: ClipboardList },
+  { path: '/financial', labelKey: 'app.nav.financial', icon: LineChart },
+  { path: '/employees', labelKey: 'app.nav.employees', icon: Users },
 ];
 
-export const NAV_FOOTER: NavItem[] = [
-  { path: '/settings', label: 'Dados & Backup', description: 'Exportação, backup e reset', icon: Database },
-];
+export const NAV_FOOTER: NavItem[] = [{ path: '/settings', labelKey: 'app.nav.settings', icon: Database }];

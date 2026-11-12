@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useI18n } from '@/i18n';
 import { Button } from './Button';
 
 interface DrawerProps {
@@ -18,6 +19,7 @@ const widths = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' };
 
 /** Painel lateral para criação/edição/detalhes. Fecha com ESC ou clique no overlay. */
 export function Drawer({ open, onClose, title, subtitle, footer, children, width = 'md' }: DrawerProps) {
+  const { t } = useI18n();
   useEscape(open, onClose);
   if (!open) return null;
   return createPortal(
@@ -29,7 +31,7 @@ export function Drawer({ open, onClose, title, subtitle, footer, children, width
             <h2 className="truncate text-lg font-semibold text-slate-900 dark:text-white">{title}</h2>
             {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
           </div>
-          <Button variant="ghost" icon={X} onClick={onClose} aria-label="Fechar" />
+          <Button variant="ghost" icon={X} onClick={onClose} aria-label={t('common.close')} />
         </header>
         <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
         {footer && (

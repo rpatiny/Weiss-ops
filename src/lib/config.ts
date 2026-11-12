@@ -7,3 +7,6 @@ export const APP_CONFIG = {
   storagePrefix: 'spindleops',
   schemaVersion: 1,
 } as const;
+
+/** Endereço da base/oficina (ponto de partida opcional das rotas). */
+export const BASE_ADDRESS = 'Rua Hermínio Rodrigues, 200 - Distrito Industrial, Valinhos - SP';

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './app/theme';
+import { I18nProvider } from './i18n';
 import { ToastProvider } from './components/ui/Toast';
 import { db } from './data/db';
 import './index.css';
@@ -11,10 +12,12 @@ db.ensureInitialized();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </ThemeProvider>
+    <I18nProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </ThemeProvider>
+    </I18nProvider>
   </StrictMode>,
 );

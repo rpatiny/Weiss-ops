@@ -1,17 +1,5 @@
 import { useMemo, useState } from 'react';
-import {
-  CalendarCheck2,
-  Mail,
-  Pencil,
-  Phone,
-  Plus,
-  Power,
-  Search,
-  Trash2,
-  UserCheck,
-  UserX,
-  Users,
-} from 'lucide-react';
+import { CalendarCheck2, Mail, Pencil, Phone, Plus, Power, Search, Trash2, UserCheck, UserX, Users } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Field';
@@ -20,7 +8,7 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { employeeService, upcomingOpenActivities } from '@/domain/employees';
-import { EMPLOYEE_STATUS } from '@/domain/labels';
+import { useI18n } from '@/i18n';
 import { addDays, todayISO } from '@/lib/dates';
 import { cn } from '@/lib/cn';
 import type { Employee } from '@/types/models';
@@ -32,6 +20,7 @@ export function EmployeesPage() {
   const employees = useCollection('employees');
   const activities = useCollection('activities');
   const toast = useToast();
+  const { t } = useI18n();
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -80,9 +69,9 @@ export function EmployeesPage() {
   const toggleStatus = (e: Employee) => {
     const next = e.status === 'active' ? 'inactive' : 'active';
     employeeService.setStatus(e.id, next);
-    toast.success(`${e.name} ${next === 'active' ? 'reativado(a)' : 'inativado(a)'}.`);
+    toast.success(t(next === 'active' ? 'employees.toast.reactivated' : 'employees.toast.deactivated', { name: e.name }));
     const upcoming = counts.get(e.id)?.upcoming ?? 0;
-    if (next === 'inactive' && upcoming) toast.info(`${upcoming} atividade(s) futura(s) continuam atribuídas — reatribua na Agenda.`);
+    if (next === 'inactive' && upcoming) toast.info(t('employees.toast.upcomingWarning', { count: upcoming }));
   };
 
   const deleteInfo = deleting ? employeeService.canDelete(deleting.id) : undefined;
@@ -91,10 +80,10 @@ export function EmployeesPage() {
     if (!deleting || !deleteInfo) return;
     if (deleteInfo.ok) {
       employeeService.remove(deleting.id);
-      toast.success(`${deleting.name} excluído(a).`);
+      toast.success(t('employees.toast.deleted', { name: deleting.name }));
     } else {
       employeeService.setStatus(deleting.id, 'inactive');
-      toast.success(`${deleting.name} inativado(a) — histórico preservado.`);
+      toast.success(t('employees.toast.deactivatedKeepHistory', { name: deleting.name }));
     }
     setDeleting(undefined);
   };
@@ -103,43 +92,37 @@ export function EmployeesPage() {
     <>
       <PageHeader
         icon={Users}
-        title="Colaboradores"
-        description="Equipe técnica, de bancada e logística disponível para a agenda de serviços."
+        title={t('employees.title')}
+        description={t('employees.description')}
         actions={
           <Button variant="primary" icon={Plus} onClick={openCreate}>
-            Novo colaborador
+            {t('employees.new')}
           </Button>
         }
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total" value={stats.total} icon={Users} onClick={() => setStatusFilter('all')} />
-        <StatCard label="Ativos" value={stats.active} icon={UserCheck} tone="success" onClick={() => setStatusFilter('active')} />
-        <StatCard label="Inativos" value={stats.inactive} icon={UserX} onClick={() => setStatusFilter('inactive')} />
-        <StatCard label="Atividades (7 dias)" value={stats.week} icon={CalendarCheck2} tone="info" hint="Agendadas para a próxima semana" />
+        <StatCard label={t('employees.stats.total')} value={stats.total} icon={Users} onClick={() => setStatusFilter('all')} />
+        <StatCard label={t('employees.stats.active')} value={stats.active} icon={UserCheck} tone="success" onClick={() => setStatusFilter('active')} />
+        <StatCard label={t('employees.stats.inactive')} value={stats.inactive} icon={UserX} onClick={() => setStatusFilter('inactive')} />
+        <StatCard label={t('employees.stats.next7')} value={stats.week} icon={CalendarCheck2} tone="info" hint={t('employees.stats.next7Hint')} />
       </div>
 
       <div className="card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center dark:border-slate-800">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder="Buscar por nome, cargo, e-mail ou telefone…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Buscar colaboradores"
-            />
+            <input className="input pl-9" placeholder={t('employees.searchPlaceholder')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('common.search')} />
           </div>
           <Select<StatusFilter>
             className="sm:w-44"
             value={statusFilter}
             onChange={setStatusFilter}
-            aria-label="Filtrar por status"
+            aria-label={t('common.status')}
             options={[
-              { value: 'all', label: 'Todos os status' },
-              { value: 'active', label: 'Somente ativos' },
-              { value: 'inactive', label: 'Somente inativos' },
+              { value: 'all', label: t('employees.filterAll') },
+              { value: 'active', label: t('employees.filterActive') },
+              { value: 'inactive', label: t('employees.filterInactive') },
             ]}
           />
         </div>
@@ -147,20 +130,28 @@ export function EmployeesPage() {
         {filtered.length === 0 ? (
           <EmptyState
             icon={Users}
-            title={employees.length ? 'Nenhum colaborador encontrado' : 'Nenhum colaborador cadastrado'}
-            description={employees.length ? 'Ajuste a busca ou o filtro de status.' : 'Cadastre a equipe para começar a montar a agenda de rotas.'}
-            action={!employees.length && <Button variant="primary" icon={Plus} onClick={openCreate}>Cadastrar colaborador</Button>}
+            title={employees.length ? t('employees.empty.noneFound') : t('employees.empty.noneRegistered')}
+            description={employees.length ? t('employees.empty.noneFoundHint') : t('employees.empty.noneRegisteredHint')}
+            action={
+              !employees.length && (
+                <Button variant="primary" icon={Plus} onClick={openCreate}>
+                  {t('employees.empty.cta')}
+                </Button>
+              )
+            }
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
-                  <th className="th">Colaborador</th>
-                  <th className="th hidden md:table-cell">Contato</th>
-                  <th className="th hidden sm:table-cell">Status</th>
-                  <th className="th hidden text-center sm:table-cell">Atividades</th>
-                  <th className="th text-right"><span className="sr-only sm:not-sr-only">Ações</span></th>
+                  <th className="th">{t('employees.columns.employee')}</th>
+                  <th className="th hidden md:table-cell">{t('employees.columns.contact')}</th>
+                  <th className="th hidden sm:table-cell">{t('common.status')}</th>
+                  <th className="th hidden text-center sm:table-cell">{t('employees.columns.activities')}</th>
+                  <th className="th text-right">
+                    <span className="sr-only sm:not-sr-only">{t('common.actions')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -178,7 +169,7 @@ export function EmployeesPage() {
                             </p>
                             <p className="text-xs text-slate-500">{e.role}</p>
                             <span className="mt-1 inline-block sm:hidden">
-                              <StatusBadge map={EMPLOYEE_STATUS} value={e.status} />
+                              <StatusBadge kind="employeeStatus" value={e.status} />
                             </span>
                           </div>
                         </button>
@@ -186,7 +177,7 @@ export function EmployeesPage() {
                       <td className="td hidden md:table-cell">
                         <div className="space-y-0.5 text-xs">
                           {e.phone && (
-                            <a href={`tel:${e.phone.replace(/\D/g, '')}`} className="flex items-center gap-1.5 text-slate-600 hover:text-brand-700 dark:text-slate-400">
+                            <a href={`tel:${e.phone.replace(/[^\d+]/g, '')}`} className="flex items-center gap-1.5 text-slate-600 hover:text-brand-700 dark:text-slate-400">
                               <Phone className="size-3.5" /> {e.phone}
                             </a>
                           )}
@@ -198,25 +189,28 @@ export function EmployeesPage() {
                         </div>
                       </td>
                       <td className="td hidden sm:table-cell">
-                        <StatusBadge map={EMPLOYEE_STATUS} value={e.status} />
+                        <StatusBadge kind="employeeStatus" value={e.status} />
                       </td>
                       <td className="td hidden text-center sm:table-cell">
                         <span className="font-semibold tabular-nums">{c.upcoming}</span>
-                        <span className="text-xs text-slate-500"> futuras · {c.total} no histórico</span>
+                        <span className="text-xs text-slate-500">
+                          {' '}
+                          {t('employees.upcomingShort')} · {t('employees.historyShort', { total: c.total })}
+                        </span>
                       </td>
                       <td className="td">
                         <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(e)} title="Editar" aria-label={`Editar ${e.name}`} />
+                          <Button size="sm" variant="ghost" icon={Pencil} onClick={() => openEdit(e)} title={t('common.edit')} aria-label={`${t('common.edit')} ${e.name}`} />
                           <Button
                             size="sm"
                             variant="ghost"
                             icon={Power}
                             onClick={() => toggleStatus(e)}
-                            title={inactive ? 'Reativar' : 'Inativar'}
-                            aria-label={`${inactive ? 'Reativar' : 'Inativar'} ${e.name}`}
+                            title={inactive ? t('employees.actions.reactivate') : t('employees.actions.deactivate')}
+                            aria-label={`${inactive ? t('employees.actions.reactivate') : t('employees.actions.deactivate')} ${e.name}`}
                             className={inactive ? 'text-green-600' : 'text-amber-600'}
                           />
-                          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setDeleting(e)} title="Excluir" aria-label={`Excluir ${e.name}`} className="text-red-600" />
+                          <Button size="sm" variant="ghost" icon={Trash2} onClick={() => setDeleting(e)} title={t('common.delete')} aria-label={`${t('common.delete')} ${e.name}`} className="text-red-600" />
                         </div>
                       </td>
                     </tr>
@@ -232,19 +226,13 @@ export function EmployeesPage() {
 
       <ConfirmDialog
         open={!!deleting}
-        title={deleteInfo?.ok ? 'Excluir colaborador?' : 'Colaborador possui histórico'}
-        confirmLabel={deleteInfo?.ok ? 'Excluir' : 'Inativar colaborador'}
+        title={deleteInfo?.ok ? t('employees.deleteDialog.deleteTitle') : t('employees.deleteDialog.historyTitle')}
+        confirmLabel={deleteInfo?.ok ? t('employees.deleteDialog.deleteConfirm') : t('employees.deleteDialog.deactivateConfirm')}
         danger={!!deleteInfo?.ok}
         message={
-          deleteInfo?.ok ? (
-            <>
-              <strong>{deleting?.name}</strong> será removido(a) permanentemente. Esta ação não pode ser desfeita.
-            </>
-          ) : (
-            <>
-              <strong>{deleting?.name}</strong> possui <strong>{deleteInfo?.activityCount}</strong> atividade(s) na agenda. Para preservar o histórico, o colaborador não pode ser excluído — ele será <strong>inativado</strong> e deixará de aparecer em novos agendamentos.
-            </>
-          )
+          deleteInfo?.ok
+            ? t('employees.deleteDialog.deleteMessage', { name: deleting?.name ?? '' })
+            : t('employees.deleteDialog.historyMessage', { name: deleting?.name ?? '', count: deleteInfo?.activityCount ?? 0 })
         }
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(undefined)}

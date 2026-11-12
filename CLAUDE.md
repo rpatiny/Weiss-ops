@@ -35,6 +35,11 @@ src/
 ├─ app/
 │  ├─ router.ts             # useRoute(), navigate(path, params), clearParams()
 │  └─ theme.tsx             # ThemeProvider/useTheme (persistido em spindleops:theme)
+├─ i18n/                    # Internacionalização (pt-BR, en-US, de-DE)
+│  ├─ pt.ts                 # dicionário BASE — fonte da verdade das chaves
+│  ├─ en.ts / de.ts         # tipados como `Dictionary` (chave faltando = erro de TS)
+│  ├─ types.ts              # Dictionary, TranslationKey (união de chaves pontuadas), Locale
+│  └─ index.tsx             # I18nProvider, useI18n() → { t, locale, setLocale }, LOCALES
 ├─ types/models.ts          # TODOS os modelos de domínio + AppDatabase
 ├─ data/                    # Camada de persistência (nenhum componente importa localStorage)
 │  ├─ storage.ts            # StorageDriver (localStorage c/ fallback em memória)
@@ -43,13 +48,16 @@ src/
 │  ├─ hooks.ts              # useCollection(name) via useSyncExternalStore
 │  └─ seed.ts               # buildSeed(today): dados demo com datas RELATIVAS a hoje
 ├─ domain/                  # Regras de negócio puras + serviços (comandos)
-│  ├─ labels.ts             # rótulos pt-BR + tons de badge p/ todos os enums
-│  └─ employees.ts          # validação, selectors e employeeService
+│  ├─ labels.ts             # tons de badge por enum + enumLabel/enumOptions (rótulos vêm do i18n)
+│  ├─ employees.ts          # validação, selectors e employeeService
+│  └─ calendar.ts           # períodos, conflitos, rotas/Google Maps, activityService (move/reorder)
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
-│  └─ ui/                   # Button, Badge/StatusBadge, Field/Input/Select, Drawer, Modal/ConfirmDialog, Toast, misc
+│  └─ ui/                   # Button, Badge/StatusBadge, Field/Input/Select, Drawer, Modal/ConfirmDialog, Toast, Popover, misc
 └─ modules/                 # Uma pasta por módulo/página
+   ├─ calendar/             # CalendarPage (DndContext), CalendarGridView, ScheduleView, ActivityCard,
+   │                        # ActivityDrawer, RouteDrawer, CalendarContext
    ├─ employees/            # EmployeesPage, EmployeeFormDrawer
    └─ settings/             # SettingsPage (reset/limpar; backup na Fase 5)
 ```
@@ -92,12 +100,23 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Horas** `HH:mm`; comparar via `timeToMinutes`.
 - **IDs**: `newId('emp' | 'act' | 'po' | 'pol' | 'att' | 'sp' | 'fc')`.
 - **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `pt-BR` / `BRL`); formate com `src/lib/format.ts`.
-- **UI em pt-BR**; enums permanecem em inglês no código e são traduzidos por `domain/labels.ts`.
-- **Status visuais**: sempre `<StatusBadge map={X_STATUS} value={...} />`.
+- **Nenhum texto de UI hard-coded**: use `const { t } = useI18n()` e `t('modulo.chave', { var })`.
+  Ao criar uma chave, adicione-a em `pt.ts` e o TypeScript exigirá a tradução em `en.ts` e `de.ts`.
+- **Erros de validação** no domínio retornam `TranslationKey` (não strings), e a UI traduz.
+- **Enums** permanecem em inglês no código; rótulo via `enumLabel(t, 'serviceType', v)` / `enumOptions(t, kind)`.
+- **Status visuais**: sempre `<StatusBadge kind="activityStatus" value={...} />`.
+- **Datas/números** usam o idioma ativo (`setFormatLocale` é chamado pelo I18nProvider); a moeda é fixa (`APP_CONFIG.currency`).
+- **Preferências de UI** (visão do calendário, filtros) via `usePersistentState` (`spindleops:ui:*`).
 - **Criação/edição**: `Drawer` lateral; **confirmações destrutivas**: `ConfirmDialog`; **feedback**: `useToast()`.
 - **Deep-link** para registros: `navigate('/purchase-orders', { open: poId })`; a página lê `params.get('open')`.
 - Componentes de página ficam em `modules/<módulo>/`; regras em `domain/<módulo>.ts`.
 - Tailwind: tokens `brand-*` (amber) para destaque; sempre prever variantes `dark:`.
+
+## Internacionalização
+
+- Idiomas: 🇧🇷 `pt-BR` (padrão), 🇺🇸 `en-US`, 🇩🇪 `de-DE`. Seletor no rodapé da sidebar; persistido em `spindleops:locale`
+  (sem preferência salva, detecta `navigator.language`).
+- Dados digitados pelo usuário (clientes, descrições, cargos) **não** são traduzidos.
 
 ## Regras de negócio implementadas
 
@@ -105,11 +124,25 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   cor `#RRGGBB`. Inativos não aparecem para novos agendamentos (`selectActiveEmployees`), mas mantêm histórico.
   Exclusão só é permitida sem atividades vinculadas — caso contrário o sistema oferece **inativar**.
   Ao inativar alguém com atividades futuras, um aviso pede reatribuição na Agenda.
+- **Agenda & Rotas** (`domain/calendar.ts`):
+  - Visões: `week` (7 dias), `biweekly` (14), `month` (grade de semanas completas), `schedule` (colaborador × dias, 7 ou 14).
+  - **Conflito** = mesmo colaborador, mesmo dia, intervalos `[início, fim)` sobrepostos; canceladas são ignoradas.
+    Recalculado a cada mudança (cartão com borda vermelha, banner, KPI clicável que filtra só conflitos,
+    alerta ao vivo no formulário e toast após drag-and-drop).
+  - **Drag-and-drop** (`@dnd-kit/core`, colisão por ponteiro): ids de droppable `day|YYYY-MM-DD` e
+    `cell|employeeId|YYYY-MM-DD`. Atividades `completed`/`canceled` são travadas. Não é possível soltar em colaborador inativo.
+    A atividade movida vai para o fim da rota de destino e as rotas de origem/destino são renumeradas (1..n).
+  - **Rota do dia**: paradas ordenadas por `routeOrder` (↑/↓ ou "ordenar por horário"); URL
+    `https://www.google.com/maps/dir/End1/End2/...` (canceladas e sem endereço são excluídas; opção de partir/voltar à base `BASE_ADDRESS`).
+  - Inativos não aparecem para novos agendamentos, mas uma atividade antiga de um inativo continua editável.
+  - Deep-link: `#/calendar?open=<activityId>` abre a atividade. Chips de PO/Spindle navegam para
+    `#/purchase-orders?open=<poId>` / `#/financial?open=<spindleId>` (telas de destino nas Fases 3/4).
 
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
-- [ ] **Fase 2** — Agenda & Rotas: visões Semanal / Quinzenal / Mensal / Grade Colaborador×Dias; filtros (colaboradores, status);
+- [x] **Fase 1.5** — Internacionalização pt-BR / en-US / de-DE.
+- [x] **Fase 2** — Agenda & Rotas: visões Semanal / Quinzenal / Mensal / Grade Colaborador×Dias; filtros (colaboradores, status);
       drag-and-drop (entre dias e entre colaboradores na grade); ordem de paradas; link Google Maps multi-paradas;
       detecção/destaque de conflitos de horário em tempo real.
 - [ ] **Fase 3** — Ordens de Compra: cabeçalho, line items dinâmicos, totais automáticos, linhas atrasadas em vermelho,

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from './Button';
 import { useEscape } from './Drawer';
+import { useI18n } from '@/i18n';
 
 interface ModalProps {
   open: boolean;
@@ -38,7 +39,8 @@ interface ConfirmProps {
   onCancel: () => void;
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmar', danger = true, onConfirm, onCancel }: ConfirmProps) {
+export function ConfirmDialog({ open, title, message, confirmLabel, danger = true, onConfirm, onCancel }: ConfirmProps) {
+  const { t } = useI18n();
   return (
     <Modal
       open={open}
@@ -51,9 +53,9 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmar'
       }
       footer={
         <>
-          <Button onClick={onCancel}>Cancelar</Button>
+          <Button onClick={onCancel}>{t('common.cancel')}</Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </Button>
         </>
       }

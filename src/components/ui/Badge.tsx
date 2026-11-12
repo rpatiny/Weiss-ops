@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import type { Meta, Tone } from '@/domain/labels';
+import { ENUM_TONES, enumLabel, type EnumKind, type EnumValues, type Tone } from '@/domain/labels';
+import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 
 const tones: Record<Tone, string> = {
@@ -35,12 +36,13 @@ export function Badge({ tone = 'slate', children, className, dot }: BadgeProps) 
   );
 }
 
-/** Badge a partir de um mapa de metadados de status. */
-export function StatusBadge<K extends string>({ map, value }: { map: Record<K, Meta>; value: K }) {
-  const meta = map[value];
+/** Badge traduzido para um valor de enum do domínio. */
+export function StatusBadge<K extends EnumKind>({ kind, value }: { kind: K; value: EnumValues[K] }) {
+  const { t } = useI18n();
+  const tone = (ENUM_TONES[kind] as Record<string, Tone>)[value] ?? 'slate';
   return (
-    <Badge tone={meta?.tone ?? 'slate'} dot>
-      {meta?.label ?? value}
+    <Badge tone={tone} dot>
+      {enumLabel(t, kind, value)}
     </Badge>
   );
 }

@@ -8,77 +8,55 @@ import type {
   ServiceType,
   SpindleStatus,
 } from '@/types/models';
+import type { TFunction, TranslationKey } from '@/i18n/types';
 
 /** Tons visuais usados pelo componente <Badge>. */
 export type Tone = 'slate' | 'blue' | 'amber' | 'green' | 'red' | 'violet' | 'cyan' | 'orange';
 
-export interface Meta {
-  label: string;
-  tone: Tone;
+/** Mapeia cada enum do domínio para seus valores (os rótulos ficam em `i18n/*.ts` → `enums.<kind>.<value>`). */
+export interface EnumValues {
+  employeeStatus: EmployeeStatus;
+  serviceType: ServiceType;
+  activityStatus: ActivityStatus;
+  poStatus: POStatus;
+  poLineStatus: POLineStatus;
+  attachmentType: AttachmentType;
+  quoteStatus: QuoteStatus;
+  spindleStatus: SpindleStatus;
+}
+export type EnumKind = keyof EnumValues;
+
+export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
+  employeeStatus: { active: 'green', inactive: 'slate' },
+  serviceType: { site_visit: 'blue', pickup: 'amber', delivery: 'green', bench_repair: 'violet', installation: 'cyan' },
+  activityStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
+  poStatus: { open: 'blue', partial: 'amber', delivered: 'green', invoiced: 'violet', canceled: 'red' },
+  poLineStatus: { open: 'blue', partial: 'amber', delivered: 'green', canceled: 'red' },
+  attachmentType: { po_pdf: 'blue', invoice: 'green', other: 'slate' },
+  quoteStatus: { pending: 'slate', sent: 'blue', approved: 'green', declined: 'red' },
+  spindleStatus: {
+    received: 'slate',
+    under_evaluation: 'cyan',
+    quoted: 'blue',
+    approved: 'violet',
+    in_repair: 'amber',
+    testing: 'orange',
+    delivered: 'green',
+    declined: 'red',
+  },
+};
+
+export function enumLabel<K extends EnumKind>(t: TFunction, kind: K, value: EnumValues[K]): string {
+  return t(`enums.${kind}.${value}` as TranslationKey);
 }
 
-export const EMPLOYEE_STATUS: Record<EmployeeStatus, Meta> = {
-  active: { label: 'Ativo', tone: 'green' },
-  inactive: { label: 'Inativo', tone: 'slate' },
-};
+export function enumValues<K extends EnumKind>(kind: K): EnumValues[K][] {
+  return Object.keys(ENUM_TONES[kind]) as EnumValues[K][];
+}
 
-export const SERVICE_TYPE: Record<ServiceType, Meta> = {
-  site_visit: { label: 'Visita técnica', tone: 'blue' },
-  pickup: { label: 'Coleta', tone: 'amber' },
-  delivery: { label: 'Entrega', tone: 'green' },
-  bench_repair: { label: 'Reparo em bancada', tone: 'violet' },
-  installation: { label: 'Instalação', tone: 'cyan' },
-};
-
-export const ACTIVITY_STATUS: Record<ActivityStatus, Meta> = {
-  planned: { label: 'Planejada', tone: 'slate' },
-  in_progress: { label: 'Em andamento', tone: 'blue' },
-  completed: { label: 'Concluída', tone: 'green' },
-  canceled: { label: 'Cancelada', tone: 'red' },
-};
-
-export const PO_STATUS: Record<POStatus, Meta> = {
-  open: { label: 'Aberta', tone: 'blue' },
-  partial: { label: 'Parcial', tone: 'amber' },
-  delivered: { label: 'Entregue', tone: 'green' },
-  invoiced: { label: 'Faturada', tone: 'violet' },
-  canceled: { label: 'Cancelada', tone: 'red' },
-};
-
-export const PO_LINE_STATUS: Record<POLineStatus, Meta> = {
-  open: { label: 'Aberta', tone: 'blue' },
-  partial: { label: 'Parcial', tone: 'amber' },
-  delivered: { label: 'Entregue', tone: 'green' },
-  canceled: { label: 'Cancelada', tone: 'red' },
-};
-
-export const ATTACHMENT_TYPE: Record<AttachmentType, Meta> = {
-  po_pdf: { label: 'PDF da PO', tone: 'blue' },
-  invoice: { label: 'Invoice / Fatura', tone: 'green' },
-  other: { label: 'Outro', tone: 'slate' },
-};
-
-export const QUOTE_STATUS: Record<QuoteStatus, Meta> = {
-  pending: { label: 'Pendente', tone: 'slate' },
-  sent: { label: 'Enviada', tone: 'blue' },
-  approved: { label: 'Aprovada', tone: 'green' },
-  declined: { label: 'Recusada', tone: 'red' },
-};
-
-export const SPINDLE_STATUS: Record<SpindleStatus, Meta> = {
-  received: { label: 'Recebido', tone: 'slate' },
-  under_evaluation: { label: 'Em avaliação', tone: 'cyan' },
-  quoted: { label: 'Cotado', tone: 'blue' },
-  approved: { label: 'Aprovado', tone: 'violet' },
-  in_repair: { label: 'Em reparo', tone: 'amber' },
-  testing: { label: 'Em teste', tone: 'orange' },
-  delivered: { label: 'Entregue', tone: 'green' },
-  declined: { label: 'Recusado', tone: 'red' },
-};
-
-/** Utilitário para montar <option>s a partir de um mapa de metadados. */
-export function optionsOf<K extends string>(map: Record<K, Meta>): { value: K; label: string }[] {
-  return (Object.keys(map) as K[]).map((value) => ({ value, label: map[value].label }));
+/** Opções de <Select> traduzidas para um enum. */
+export function enumOptions<K extends EnumKind>(t: TFunction, kind: K): { value: EnumValues[K]; label: string }[] {
+  return enumValues(kind).map((value) => ({ value, label: enumLabel(t, kind, value) }));
 }
 
 /** Paleta sugerida para colaboradores (seletor de cor). */

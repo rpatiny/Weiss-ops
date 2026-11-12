@@ -55,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div key={t.id} className="animate-pop-in card pointer-events-auto flex items-start gap-3 p-3 shadow-lg">
                 <Icon className={cn('mt-0.5 size-5 shrink-0', colors[t.kind])} />
                 <p className="flex-1 text-sm">{t.message}</p>
-                <button onClick={() => dismiss(t.id)} className="text-slate-400 hover:text-slate-600" aria-label="Fechar">
+                <button onClick={() => dismiss(t.id)} className="text-slate-400 hover:text-slate-600" aria-label="×">
                   <X className="size-4" />
                 </button>
               </div>

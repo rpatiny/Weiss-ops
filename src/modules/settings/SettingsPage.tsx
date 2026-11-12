@@ -6,23 +6,26 @@ import { PageHeader } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { db } from '@/data/db';
 import { useCollection } from '@/data/hooks';
+import { useI18n } from '@/i18n';
+import { getFormatLocale } from '@/lib/format';
 import type { CollectionName } from '@/types/models';
 
-const COLLECTION_INFO: Record<CollectionName, { label: string; icon: LucideIcon }> = {
-  employees: { label: 'Colaboradores', icon: Users },
-  activities: { label: 'Atividades da agenda', icon: CalendarRange },
-  purchaseOrders: { label: 'Ordens de compra', icon: ClipboardList },
-  spindles: { label: 'Spindles / Motores', icon: Cog },
-  forecast: { label: 'Itens de forecast', icon: TrendingUp },
+const COLLECTION_ICONS: Record<CollectionName, LucideIcon> = {
+  employees: Users,
+  activities: CalendarRange,
+  purchaseOrders: ClipboardList,
+  spindles: Cog,
+  forecast: TrendingUp,
 };
 
 function CollectionCount({ name }: { name: CollectionName }) {
   const items = useCollection(name);
-  const { label, icon: Icon } = COLLECTION_INFO[name];
+  const { t } = useI18n();
+  const Icon = COLLECTION_ICONS[name];
   return (
     <div className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
       <Icon className="size-5 text-slate-400" />
-      <span className="flex-1 text-sm">{label}</span>
+      <span className="flex-1 text-sm">{t(`settings.collections.${name}`)}</span>
       <span className="font-semibold tabular-nums">{items.length}</span>
     </div>
   );
@@ -30,58 +33,65 @@ function CollectionCount({ name }: { name: CollectionName }) {
 
 export function SettingsPage() {
   const toast = useToast();
+  const { t } = useI18n();
   const [confirm, setConfirm] = useState<'reset' | 'clear' | null>(null);
+  // Re-renderiza após reset/limpeza (meta muda junto com as coleções).
+  useCollection('employees');
   const meta = db.getMeta();
 
   const run = () => {
     if (confirm === 'reset') {
       db.resetToDemo();
-      toast.success('Dados de demonstração restaurados.');
+      toast.success(t('settings.toastReset'));
     } else if (confirm === 'clear') {
       db.clearAll();
-      toast.success('Todos os dados foram removidos.');
+      toast.success(t('settings.toastCleared'));
     }
     setConfirm(null);
   };
 
   return (
     <>
-      <PageHeader icon={Database} title="Dados & Backup" description="Persistência local (localStorage) deste navegador." />
+      <PageHeader icon={Database} title={t('settings.title')} description={t('settings.description')} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5">
-          <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">Registros armazenados</h2>
+          <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('settings.storedTitle')}</h2>
           <p className="mb-4 text-sm text-slate-500">
-            Origem: <strong>{meta?.source === 'demo' ? 'dados de demonstração' : meta?.source === 'import' ? 'backup importado' : 'base vazia'}</strong>
-            {meta && <> · inicializado em {new Date(meta.initializedAt).toLocaleString('pt-BR')}</>}
+            {t('settings.source')}: <strong>{t(`settings.sources.${meta?.source ?? 'empty'}`)}</strong>
+            {meta && <> · {t('settings.initializedAt', { date: new Date(meta.initializedAt).toLocaleString(getFormatLocale()) })}</>}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {(Object.keys(COLLECTION_INFO) as CollectionName[]).map((n) => (
+            {(Object.keys(COLLECTION_ICONS) as CollectionName[]).map((n) => (
               <CollectionCount key={n} name={n} />
             ))}
           </div>
         </section>
 
         <section className="card p-5">
-          <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">Manutenção da base</h2>
-          <p className="mb-4 text-sm text-slate-500">Útil para demonstrações e testes. As ações afetam apenas este navegador.</p>
+          <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('settings.maintenanceTitle')}</h2>
+          <p className="mb-4 text-sm text-slate-500">{t('settings.maintenanceHint')}</p>
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
               <div>
-                <p className="text-sm font-medium">Restaurar dados de demonstração</p>
-                <p className="text-xs text-slate-500">Substitui tudo por dados realistas com datas relativas a hoje.</p>
+                <p className="text-sm font-medium">{t('settings.resetTitle')}</p>
+                <p className="text-xs text-slate-500">{t('settings.resetHint')}</p>
               </div>
-              <Button icon={RotateCcw} onClick={() => setConfirm('reset')}>Resetar</Button>
+              <Button icon={RotateCcw} onClick={() => setConfirm('reset')}>
+                {t('settings.resetButton')}
+              </Button>
             </div>
             <div className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50/50 p-3 dark:border-red-900/50 dark:bg-red-950/20">
               <div>
-                <p className="text-sm font-medium text-red-700 dark:text-red-400">Limpar todos os dados</p>
-                <p className="text-xs text-slate-500">Começa com uma base vazia para uso real.</p>
+                <p className="text-sm font-medium text-red-700 dark:text-red-400">{t('settings.clearTitle')}</p>
+                <p className="text-xs text-slate-500">{t('settings.clearHint')}</p>
               </div>
-              <Button variant="danger" icon={Trash2} onClick={() => setConfirm('clear')}>Limpar</Button>
+              <Button variant="danger" icon={Trash2} onClick={() => setConfirm('clear')}>
+                {t('settings.clearButton')}
+              </Button>
             </div>
             <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700">
-              <LineChart className="size-4" /> Exportação Excel e Backup/Restore JSON chegam na Fase 5.
+              <LineChart className="size-4" /> {t('settings.phase5Note')}
             </div>
           </div>
         </section>
@@ -89,9 +99,9 @@ export function SettingsPage() {
 
       <ConfirmDialog
         open={confirm !== null}
-        title={confirm === 'reset' ? 'Restaurar dados de demonstração?' : 'Limpar todos os dados?'}
-        message="Todos os registros atuais serão substituídos. Esta ação não pode ser desfeita (faça um backup antes, se necessário)."
-        confirmLabel={confirm === 'reset' ? 'Restaurar demo' : 'Limpar tudo'}
+        title={confirm === 'reset' ? t('settings.confirmResetTitle') : t('settings.confirmClearTitle')}
+        message={t('settings.confirmMessage')}
+        confirmLabel={confirm === 'reset' ? t('settings.confirmReset') : t('settings.confirmClear')}
         onConfirm={run}
         onCancel={() => setConfirm(null)}
       />
