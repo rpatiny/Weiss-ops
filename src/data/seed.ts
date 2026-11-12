@@ -7,6 +7,7 @@ import { addBusinessDays, addDays, addMonths, startOfWeek, todayISO } from '@/li
 import type {
   Absence,
   AppDatabase,
+  CatalogMaterial,
   Employee,
   ForecastItem,
   POLineItem,
@@ -14,6 +15,8 @@ import type {
   ProjectAssignment,
   PurchaseOrder,
   SpindleUnit,
+  Supplier,
+  SupplierOffer,
 } from '@/types/models';
 
 const CUSTOMERS = {
@@ -60,7 +63,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   // ───────────── Purchase Orders ─────────────
   const purchaseOrders: PurchaseOrder[] = [
     {
-      id: 'po_4500918', poNumber: '4500918', customerOrVendor: CUSTOMERS.usinagem.name, orderDate: d(-24),
+      id: 'po_4500918', poNumber: '4500918', kind: 'sales', customerOrVendor: CUSTOMERS.usinagem.name, orderDate: d(-24),
       requester: 'Eng. Fábio Ramos', paymentTerms: '28 DDL', status: 'partial',
       notes: 'Reparo de 2 spindles da linha de centros de usinagem 5 eixos. Prioridade alta.',
       attachments: [{ id: 'att_1', name: 'PO 4500918.pdf', url: 'https://example.com/po/4500918.pdf', type: 'po_pdf' }],
@@ -71,7 +74,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_mf2291', poNumber: 'MF-2291', customerOrVendor: CUSTOMERS.metalforte.name, orderDate: d(-12),
+      id: 'po_mf2291', poNumber: 'MF-2291', kind: 'sales', customerOrVendor: CUSTOMERS.metalforte.name, orderDate: d(-12),
       requester: 'Sandra Pires (Compras)', paymentTerms: '30/60 DDL', status: 'open',
       notes: 'Motor WEG W22 queimado — rebobinamento + troca de rolamentos.',
       attachments: [{ id: 'att_2', name: 'Pedido MF-2291.pdf', url: 'https://example.com/po/MF-2291.pdf', type: 'po_pdf' }],
@@ -81,7 +84,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_aer7731', poNumber: 'AER-7731', customerOrVendor: CUSTOMERS.aeromec.name, orderDate: d(-40),
+      id: 'po_aer7731', poNumber: 'AER-7731', kind: 'sales', customerOrVendor: CUSTOMERS.aeromec.name, orderDate: d(-40),
       requester: 'Eng. Ricardo Alves', paymentTerms: '45 DDL', status: 'invoiced',
       notes: 'Spindle Step-Tec HVC 140 — certificado de teste anexado à NF.',
       attachments: [
@@ -91,7 +94,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       lines: [line('pol_6', 1, 'SRV-STT-HVC140', 'Reparo spindle Step-Tec HVC 140 (S/N ST-51022)', 1, 62300, d(-15), 'delivered', d(-14))],
     },
     {
-      id: 'po_mmj0457', poNumber: 'MMJ-0457', customerOrVendor: CUSTOMERS.moldes.name, orderDate: d(-18),
+      id: 'po_mmj0457', poNumber: 'MMJ-0457', kind: 'sales', customerOrVendor: CUSTOMERS.moldes.name, orderDate: d(-18),
       requester: 'Luiz Fernando', paymentTerms: '28 DDL', status: 'open',
       notes: 'Spindle de alta rotação para fresamento de moldes. Cliente solicitou teste de vibração.',
       attachments: [],
@@ -101,7 +104,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_skf33012', poNumber: 'SKF-33012', customerOrVendor: 'Rolamentos Paulista Distribuidora (Fornecedor)', orderDate: d(-9),
+      id: 'po_skf33012', poNumber: 'SKF-33012', kind: 'purchase', supplierId: 'sup_rp', customerOrVendor: 'Rolamentos Paulista Distribuidora', orderDate: d(-9),
       requester: 'Juliana Prado', paymentTerms: '30 DDL', status: 'partial',
       notes: 'Compra de rolamentos de precisão para estoque de bancada.',
       attachments: [{ id: 'att_5', name: 'Cotação RP-1188.pdf', url: 'https://example.com/forn/RP-1188.pdf', type: 'other' }],
@@ -112,7 +115,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_cmp4471', poNumber: 'CIP-4471', customerOrVendor: 'Componentes Industriais Paulista (Fornecedor)', orderDate: d(-7),
+      id: 'po_cmp4471', poNumber: 'CIP-4471', kind: 'purchase', supplierId: 'sup_cip', customerOrVendor: 'Componentes Industriais Paulista', orderDate: d(-7),
       requester: 'Juliana Prado', paymentTerms: '28 DDL', status: 'partial',
       notes: 'Materiais para projetos IBAG HF 120 e Kessler DMS 120.',
       attachments: [],
@@ -122,7 +125,27 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_alf1120', poNumber: 'ALF-1120', customerOrVendor: CUSTOMERS.alfa.name, orderDate: d(-6),
+      id: 'po_rp0981', poNumber: 'RP-0981', kind: 'purchase', supplierId: 'sup_rp', customerOrVendor: 'Rolamentos Paulista Distribuidora', orderDate: m(-2, -10),
+      requester: 'Juliana Prado', paymentTerms: '28 DDL', status: 'invoiced',
+      notes: 'Reposição de estoque de bancada.',
+      attachments: [{ id: 'att_8', name: 'NF 55120.pdf', url: 'https://example.com/forn/nf55120.pdf', type: 'invoice' }],
+      lines: [
+        line('rp_1', 1, 'SKF-7014CD/P4A', 'Rolamento de contato angular SKF 7014 CD/P4A (par)', 2, 2890, m(-2, -5), 'delivered', m(-2, -6)),
+        line('rp_2', 2, 'KLU-ISOFLEX-NBU15', 'Graxa Klüber Isoflex NBU 15 (50g)', 6, 175, m(-2, -5), 'delivered', m(-2, -5)),
+      ],
+    },
+    {
+      id: 'po_skf2210', poNumber: 'SKF-2210', kind: 'purchase', supplierId: 'sup_skf', customerOrVendor: 'SKF do Brasil', orderDate: m(-4, -3),
+      requester: 'Juliana Prado', paymentTerms: '45 DDL', status: 'invoiced',
+      notes: 'Compra direta — prazo longo.',
+      attachments: [],
+      lines: [
+        line('skf_1', 1, 'SKF-7014CD/P4A', 'Rolamento de contato angular SKF 7014 CD/P4A (par)', 4, 2780, m(-4, 18), 'delivered', m(-4, 20)),
+        line('skf_2', 2, 'SKF-7012ACD/HCP4A', 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', 2, 4120, m(-4, 18), 'delivered', m(-4, 20)),
+      ],
+    },
+    {
+      id: 'po_alf1120', poNumber: 'ALF-1120', kind: 'sales', customerOrVendor: CUSTOMERS.alfa.name, orderDate: d(-6),
       requester: 'Marta Gonçalves', paymentTerms: 'À vista', status: 'open',
       notes: 'Retrofit de eletrospindle Kessler + instalação em campo.',
       attachments: [{ id: 'att_6', name: 'PO ALF-1120.pdf', url: 'https://example.com/po/ALF-1120.pdf', type: 'po_pdf' }],
@@ -132,14 +155,14 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_hid5502', poNumber: 'HID-5502', customerOrVendor: CUSTOMERS.hidrotec.name, orderDate: d(-55),
+      id: 'po_hid5502', poNumber: 'HID-5502', kind: 'sales', customerOrVendor: CUSTOMERS.hidrotec.name, orderDate: d(-55),
       requester: 'Paulo Cesar', paymentTerms: '28 DDL', status: 'delivered',
       notes: 'Servomotor Siemens 1FT7 — troca de encoder e rolamentos.',
       attachments: [{ id: 'att_7', name: 'PO HID-5502.pdf', url: 'https://example.com/po/HID-5502.pdf', type: 'po_pdf' }],
       lines: [line('pol_14', 1, 'SRV-SIE-1FT7', 'Reparo servomotor Siemens 1FT7086 + encoder', 1, 14600, d(-30), 'delivered', d(-28))],
     },
     {
-      id: 'po_avp8810', poNumber: 'AVP-8810', customerOrVendor: CUSTOMERS.autopecas.name, orderDate: d(-3),
+      id: 'po_avp8810', poNumber: 'AVP-8810', kind: 'sales', customerOrVendor: CUSTOMERS.autopecas.name, orderDate: d(-3),
       requester: 'Eng. Camila Duarte', paymentTerms: '60 DDL', status: 'open',
       notes: '3 spindles de torno Mazak para revisão preventiva.',
       attachments: [],
@@ -149,7 +172,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       ],
     },
     {
-      id: 'po_tex0091', poNumber: 'TEX-0091', customerOrVendor: CUSTOMERS.textil.name, orderDate: d(-70),
+      id: 'po_tex0091', poNumber: 'TEX-0091', kind: 'sales', customerOrVendor: CUSTOMERS.textil.name, orderDate: d(-70),
       requester: 'Roberto Nunes', paymentTerms: '28 DDL', status: 'canceled',
       notes: 'Cancelada pelo cliente — equipamento substituído.',
       attachments: [],
@@ -240,6 +263,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       materials: [
         { id: 'mat_05', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', quantity: 1, status: 'ordered', poId: 'po_cmp4471', poLineId: 'cmp_1', neededBy: wd(5) },
         { id: 'mat_06', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', quantity: 2, status: 'to_buy', neededBy: wd(7) },
+        { id: 'mat_12', partNumber: 'KLU-ISOFLEX-NBU15', description: 'Graxa Klüber Isoflex NBU 15 (50g)', quantity: 2, status: 'to_buy', neededBy: wd(6) },
       ],
     }),
     prj(3, CUSTOMERS.metalforte, 'site_visit', 'Inspeção de alinhamento — linha de prensas + coleta motor WEG', '#d97706', [wd(-6), wd(2)], {
@@ -254,6 +278,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
         { id: 'mat_08', partNumber: 'HEID-ERN1387', description: 'Encoder Heidenhain ERN 1387 2048 ppr', quantity: 1, status: 'ordered', poId: 'po_cmp4471', poLineId: 'cmp_2', neededBy: wd(10) },
         { id: 'mat_09', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', quantity: 1, status: 'to_buy', neededBy: wd(10) },
         { id: 'mat_10', partNumber: 'HSK-A63-CAL', description: 'Barra de calibração HSK-A63', quantity: 1, status: 'received' },
+        { id: 'mat_13', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', quantity: 1, status: 'to_buy', neededBy: wd(10) },
       ],
     }),
     prj(5, CUSTOMERS.aeromec, 'site_visit', 'Levantamento técnico e pré-instalação spindle GMN HCS 170', '#db2777', [wd(-1), wd(5)], { spindleId: 'sp_gmn' }),
@@ -311,12 +336,46 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     { id: 'abs_3', employeeId: 'emp_juliana', type: 'vacation', startDate: wd(25), endDate: wd(34), note: 'Férias' },
   ];
 
+  // ───────────── Fornecedores & catálogo de materiais ─────────────
+  const suppliers: Supplier[] = [
+    { id: 'sup_rp', name: 'Rolamentos Paulista Distribuidora', contactName: 'Marcelo Antunes', email: 'vendas@rolamentospaulista.com.br', phone: '(19) 3251-4400', notes: 'Pronta entrega de rolamentos de precisão.' },
+    { id: 'sup_skf', name: 'SKF do Brasil', contactName: 'Renata Kobayashi', email: 'renata.k@skf-exemplo.com', phone: '(11) 4448-8000', notes: 'Compra direta; melhor preço, prazo longo.' },
+    { id: 'sup_cip', name: 'Componentes Industriais Paulista', contactName: 'Diego Ferraz', email: 'diego@cip-exemplo.com.br', phone: '(11) 2091-3300', notes: '' },
+    { id: 'sup_fis', name: 'Fischer Spindle Group', contactName: 'Thomas Weber', email: 'service@fischer-exemplo.ch', phone: '+41 32 000 0000', notes: 'Peças originais Fischer (importação).' },
+    { id: 'sup_klu', name: 'Klüber Lubrication', contactName: 'Paula Rios', email: 'paula.rios@kluber-exemplo.com', phone: '(11) 4166-2200', notes: '' },
+    { id: 'sup_sen', name: 'Sensortec Automação', contactName: 'Bruno Lima', email: 'comercial@sensortec-exemplo.com.br', phone: '(19) 3881-1200', notes: 'Sensores e encoders.' },
+  ];
+
+  const q = (supplierId: string, leadTimeDays: number, quotedPrice?: number, quoteStatus: SupplierOffer['quoteStatus'] = quotedPrice ? 'received' : 'not_requested'): SupplierOffer => ({
+    supplierId,
+    leadTimeDays,
+    quoteStatus,
+    quotedPrice,
+    quoteDate: quotedPrice ? d(-6) : undefined,
+    validUntil: quotedPrice ? d(24) : undefined,
+  });
+
+  const materials: CatalogMaterial[] = [
+    { id: 'cm_01', partNumber: 'SKF-7014CD/P4A', description: 'Rolamento de contato angular SKF 7014 CD/P4A (par)', unit: 'par', offers: [q('sup_rp', 5, 2950), q('sup_skf', 25, 2780)] },
+    { id: 'cm_02', partNumber: 'SKF-7012ACD/HCP4A', description: 'Rolamento híbrido SKF 7012 ACD/HCP4A (par)', unit: 'par', offers: [q('sup_rp', 7, 4380), q('sup_skf', 30, 4120)] },
+    { id: 'cm_03', partNumber: 'KLU-ISOFLEX-NBU15', description: 'Graxa Klüber Isoflex NBU 15 (50g)', unit: 'un', offers: [q('sup_rp', 3, 189), q('sup_klu', 10, undefined, 'requested')] },
+    { id: 'cm_04', partNumber: 'FIS-RET-2310', description: 'Retentor labirinto dianteiro Fischer MFW-2310', unit: 'un', offers: [q('sup_fis', 15, 2350), q('sup_cip', 10)] },
+    { id: 'cm_05', partNumber: 'IBG-SEAL-KIT-HF120', description: 'Kit de vedação IBAG HF 120', unit: 'kit', offers: [q('sup_cip', 7, 1450)] },
+    { id: 'cm_06', partNumber: 'PT100-M8', description: 'Sensor de temperatura PT100 rosca M8', unit: 'un', offers: [q('sup_sen', 4), q('sup_cip', 6)] },
+    { id: 'cm_07', partNumber: 'HEID-ERN1387', description: 'Encoder Heidenhain ERN 1387 2048 ppr', unit: 'un', offers: [q('sup_cip', 10, 6890), q('sup_sen', 14, undefined, 'requested')] },
+    { id: 'cm_08', partNumber: 'CER-7010-P4', description: 'Rolamento cerâmico 7010 P4 (par)', unit: 'par', offers: [q('sup_skf', 30, 3600), q('sup_rp', 8, undefined, 'requested')] },
+    { id: 'cm_09', partNumber: 'MAZ-REV-KIT', description: 'Kit revisão Mazak (rolamentos + vedações)', unit: 'kit', offers: [q('sup_rp', 12, undefined, 'requested')] },
+    { id: 'cm_10', partNumber: 'CU-ESM-1.2', description: 'Fio de cobre esmaltado 1,2 mm', unit: 'kg', offers: [q('sup_cip', 2, 98)] },
+  ];
+
   return {
     employees: employees.map((e) => ({ ...e })),
     projects,
     assignments,
     absences,
     purchaseOrders,
+    suppliers,
+    materials,
     spindles,
     forecast,
   };

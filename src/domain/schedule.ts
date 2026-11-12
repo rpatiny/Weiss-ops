@@ -21,6 +21,7 @@ import {
   todayISO,
 } from '@/lib/dates';
 import { newId } from '@/lib/id';
+import { derivePOStatus, nextPurchaseNumber } from './purchasing';
 import type {
   Absence,
   Employee,
@@ -275,7 +276,7 @@ export const scheduleService = {
   createPurchaseOrder(
     projectId: string,
     materialIds: string[],
-    opts: { vendor: string; requester: string; expectedDate: string; paymentTerms: string; prices: Record<string, number> },
+    opts: { supplierId: string; requester: string; expectedDate: string; paymentTerms: string; prices: Record<string, number> },
   ): PurchaseOrder | undefined {
     const p = repos.projects.getById(projectId);
     if (!p) return undefined;
@@ -291,14 +292,14 @@ export const scheduleService = {
       expectedDeliveryDate: opts.expectedDate,
       status: 'open',
     }));
-    const existingNumbers = new Set(repos.purchaseOrders.getAll().map((x) => x.poNumber));
-    let seq = repos.purchaseOrders.getAll().length + 1;
-    let poNumber = `PC-${String(seq).padStart(5, '0')}`;
-    while (existingNumbers.has(poNumber)) poNumber = `PC-${String(++seq).padStart(5, '0')}`;
+    const supplier = repos.suppliers.getById(opts.supplierId);
+    if (!supplier) return undefined;
     const po: PurchaseOrder = {
       id: newId('po'),
-      poNumber,
-      customerOrVendor: opts.vendor.trim(),
+      poNumber: nextPurchaseNumber(repos.purchaseOrders.getAll()),
+      kind: 'purchase',
+      supplierId: supplier.id,
+      customerOrVendor: supplier.name,
       orderDate: todayISO(),
       requester: opts.requester.trim(),
       paymentTerms: opts.paymentTerms.trim(),
@@ -326,15 +327,7 @@ export const scheduleService = {
     const po = m.poId ? repos.purchaseOrders.getById(m.poId) : undefined;
     if (po && m.poLineId) {
       const lines = po.lines.map((l) => (l.id === m.poLineId ? { ...l, status: 'delivered' as const, actualDeliveryDate: todayISO() } : l));
-      const open = lines.filter((l) => l.status !== 'canceled');
-      const status: PurchaseOrder['status'] =
-        po.status === 'invoiced' || po.status === 'canceled'
-          ? po.status
-          : open.every((l) => l.status === 'delivered')
-            ? 'delivered'
-            : open.some((l) => l.status === 'delivered' || l.status === 'partial')
-              ? 'partial'
-              : 'open';
+      const status = derivePOStatus(po.status, lines);
       repos.purchaseOrders.update(po.id, { lines, status });
     } else {
       scheduleService.upsertMaterial(projectId, { ...m, status: 'received' });

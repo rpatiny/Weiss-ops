@@ -52,7 +52,8 @@ src/
 ├─ domain/                  # Regras de negócio puras + serviços (comandos)
 │  ├─ labels.ts             # tons de badge por enum + enumLabel/enumOptions (rótulos vêm do i18n)
 │  ├─ employees.ts          # validação, selectors e employeeService
-│  └─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
+│  ├─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
+│  └─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
@@ -60,6 +61,8 @@ src/
 └─ modules/                 # Uma pasta por módulo/página
    ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
    │                        # MaterialsTab, PurchaseDrawer (gera PO), AbsenceDrawer
+   ├─ purchasing/           # PurchaseOrdersPage (abas), PODrawer, CatalogTab/CatalogDrawer, ReadinessTab,
+   │                        # SuppliersTab, usePurchasingData (lookups compartilhados com o cronograma)
    ├─ employees/            # EmployeesPage, EmployeeFormDrawer
    └─ settings/             # SettingsPage (reset/limpar; backup na Fase 5)
 ```
@@ -88,11 +91,14 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 | `ProjectMaterial`   | partNumber, description, quantity, status `to_buy\|ordered\|received`, neededBy                 | opc. `poId` + `poLineId` (PO de compra)    |
 | `ProjectAssignment` | projectId, employeeId, startDate, endDate (sempre dias úteis) — a "barra" do cronograma          | N—1 Project, N—1 Employee                  |
 | `Absence`           | employeeId, type `vacation\|leave\|training`, startDate, endDate, note — bloqueia a linha       | N—1 Employee                               |
-| `PurchaseOrder`     | poNumber, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Project (cliente), 1—N Material (compra) |
+| `Supplier`          | name, contactName, email, phone, notes                                                          | 1—N Offer, 1—N PO de compra                |
+| `CatalogMaterial`   | partNumber (chave), description, unit, offers[] (`SupplierOffer`: supplierId, quoteStatus, quotedPrice, validUntil, leadTimeDays) | liga-se a materiais de projeto e linhas de PO **pelo part number** |
+| `PurchaseOrder`     | poNumber, **kind `sales\|purchase`**, supplierId?, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Project (cliente), 1—N Material (compra) |
 | `POLineItem`        | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status   | embutido na PO                             |
 | `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue         | opc. N—1 PO; 1—N Project                   |
 | `ForecastItem`      | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                       | —                                          |
 
+> `APP_CONFIG.schemaVersion = 3` (v3 adicionou fornecedores, catálogo e `PurchaseOrder.kind`).
 > O modelo original `CalendarActivity` (atividades diárias com horário/rota) foi substituído na v2 pelo
 > cronograma de projetos multi-dia. `APP_CONFIG.schemaVersion = 2`: bases v1 são recriadas com a demo.
 
@@ -154,6 +160,24 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Deep-link: `#/calendar?open=<projectId>`. Links para `#/purchase-orders?open=<poId>` e `#/financial?open=<spindleId>`
     (telas de destino nas Fases 3/4). Google Maps: link de busca pelo endereço do projeto.
 
+- **Ordens de Compra & Compras** (`domain/purchasing.ts`):
+  - POs de **cliente** (`sales`) e de **compra** (`purchase`, com fornecedor cadastrado). Total da linha e da PO calculados;
+    linha atrasada = previsão < hoje e não entregue/cancelada (vermelho). Ao salvar, o status é derivado das linhas
+    (`derivePOStatus`), exceto `invoiced`/`canceled`, que são decisões manuais. Excluir uma PO desfaz vínculos.
+  - **Último valor pago** = linha mais recente de PO de compra (não cancelada) com o mesmo part number — por fornecedor
+    ou geral (`purchaseHistory`/`lastPurchase`). Nunca é armazenado.
+  - **Cotação**: cada material do catálogo tem várias ofertas de fornecedores (status não solicitada/solicitada/recebida,
+    preço, validade, prazo). Situação do material: `quoted` (alguma cotação válida) > `requested` > `not_quoted`.
+    Preço de referência = cotação válida, senão último pago àquele fornecedor; "melhor" = menor preço, desempate por prazo.
+    **Data possível de entrega** = hoje + prazo do fornecedor mais rápido.
+  - **Material compartilhado**: mesmo part number em 2+ projetos ativos → aviso "Também em PRJ-…" (projeto, checklist, catálogo).
+  - **Prontidão ("checklist para iniciar")** por projeto ativo, comparada ao início no cronograma (ou `neededBy`):
+    recebido = ok; comprado com previsão ≤ necessidade = aguardando; atrasado ou chega depois = risco;
+    a comprar cujo prazo mais rápido não atende = risco; senão a comprar. Projeto: `at_risk` > `to_buy` > `awaiting` > `ready`.
+  - Gerar PO pelo projeto usa fornecedor cadastrado (sugere os do catálogo), preço de referência e prazo.
+- **Deep-links**: cada página só consome `?open=` quando `useRoute().path` é a dela (evita uma página desmontando
+  "roubar" o parâmetro destinado a outra durante a navegação).
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -163,7 +187,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - [x] **Fase 2** — Agenda & Rotas: visões Semanal / Quinzenal / Mensal / Grade Colaborador×Dias; filtros (colaboradores, status);
       drag-and-drop (entre dias e entre colaboradores na grade); ordem de paradas; link Google Maps multi-paradas;
       detecção/destaque de conflitos de horário em tempo real.
-- [ ] **Fase 3** — Ordens de Compra: cabeçalho, line items dinâmicos, totais automáticos, linhas atrasadas em vermelho,
+- [x] **Fase 3** — Ordens de Compra (+ fornecedores, catálogo com cotações e último valor, demanda compartilhada,
+      checklist de prontidão dos projetos): cabeçalho, line items dinâmicos, totais automáticos, linhas atrasadas em vermelho,
       anexos (PDF da PO / invoice / outros), mini-dashboard (POs abertas, entregas em 7 dias, linhas atrasadas).
 - [ ] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.

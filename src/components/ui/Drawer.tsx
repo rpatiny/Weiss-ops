@@ -12,10 +12,10 @@ interface DrawerProps {
   subtitle?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
-  width?: 'md' | 'lg' | 'xl';
+  width?: 'md' | 'lg' | 'xl' | '2xl';
 }
 
-const widths = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+const widths = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl', '2xl': 'max-w-6xl' };
 
 /** Painel lateral para criação/edição/detalhes. Fecha com ESC ou clique no overlay. */
 export function Drawer({ open, onClose, title, subtitle, footer, children, width = 'md' }: DrawerProps) {

@@ -4,12 +4,15 @@ import type {
   EmployeeStatus,
   POLineStatus,
   MaterialStatus,
+  POKind,
   POStatus,
   ProjectStatus,
   QuoteStatus,
   ServiceType,
   SpindleStatus,
+  SupplierQuoteStatus,
 } from '@/types/models';
+import type { QuoteState, Readiness } from './purchasing';
 import type { TFunction, TranslationKey } from '@/i18n/types';
 
 /** Tons visuais usados pelo componente <Badge>. */
@@ -26,6 +29,10 @@ export interface EnumValues {
   poLineStatus: POLineStatus;
   attachmentType: AttachmentType;
   quoteStatus: QuoteStatus;
+  poKind: POKind;
+  supplierQuoteStatus: SupplierQuoteStatus;
+  quoteState: QuoteState;
+  readiness: Readiness;
   spindleStatus: SpindleStatus;
 }
 export type EnumKind = keyof EnumValues;
@@ -40,6 +47,10 @@ export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
   poLineStatus: { open: 'blue', partial: 'amber', delivered: 'green', canceled: 'red' },
   attachmentType: { po_pdf: 'blue', invoice: 'green', other: 'slate' },
   quoteStatus: { pending: 'slate', sent: 'blue', approved: 'green', declined: 'red' },
+  poKind: { sales: 'violet', purchase: 'cyan' },
+  supplierQuoteStatus: { not_requested: 'slate', requested: 'amber', received: 'green' },
+  quoteState: { quoted: 'green', requested: 'amber', not_quoted: 'red' },
+  readiness: { ready: 'green', awaiting: 'blue', to_buy: 'amber', at_risk: 'red' },
   spindleStatus: {
     received: 'slate',
     under_evaluation: 'cyan',

@@ -5,7 +5,7 @@ export const APP_CONFIG = {
   locale: 'pt-BR',
   currency: 'BRL',
   storagePrefix: 'spindleops',
-  schemaVersion: 2,
+  schemaVersion: 3,
 } as const;
 
 /** Endereço da base/oficina (ponto de partida opcional das rotas). */

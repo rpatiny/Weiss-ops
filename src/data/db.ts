@@ -15,6 +15,8 @@ export const repos: Repos = {
   assignments: new StoredRepository(driver, 'assignments'),
   absences: new StoredRepository(driver, 'absences'),
   purchaseOrders: new StoredRepository(driver, 'purchaseOrders'),
+  suppliers: new StoredRepository(driver, 'suppliers'),
+  materials: new StoredRepository(driver, 'materials'),
   spindles: new StoredRepository(driver, 'spindles'),
   forecast: new StoredRepository(driver, 'forecast'),
 };
@@ -50,6 +52,8 @@ export const db = {
       assignments: [...repos.assignments.getAll()],
       absences: [...repos.absences.getAll()],
       purchaseOrders: [...repos.purchaseOrders.getAll()],
+      suppliers: [...repos.suppliers.getAll()],
+      materials: [...repos.materials.getAll()],
       spindles: [...repos.spindles.getAll()],
       forecast: [...repos.forecast.getAll()],
     };
@@ -62,6 +66,8 @@ export const db = {
     repos.assignments.replaceAll(data.assignments);
     repos.absences.replaceAll(data.absences);
     repos.purchaseOrders.replaceAll(data.purchaseOrders);
+    repos.suppliers.replaceAll(data.suppliers);
+    repos.materials.replaceAll(data.materials);
     repos.spindles.replaceAll(data.spindles);
     repos.forecast.replaceAll(data.forecast);
     driver.write<Meta>(META_KEY, {
@@ -76,7 +82,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], spindles: [], forecast: [] }, 'empty');
+    db.load({ employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {

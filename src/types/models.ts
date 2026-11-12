@@ -125,10 +125,16 @@ export interface POLineItem {
   status: POLineStatus;
 }
 
+/** `sales` = PO recebida de um CLIENTE; `purchase` = PO de COMPRA emitida para um fornecedor. */
+export type POKind = 'sales' | 'purchase';
+
 export interface PurchaseOrder {
   id: ID;
   poNumber: string;
+  kind: POKind;
   customerOrVendor: string;
+  /** Fornecedor cadastrado (POs de compra). `customerOrVendor` guarda o nome exibido. */
+  supplierId?: ID;
   orderDate: ISODate;
   requester: string;
   paymentTerms: string;
@@ -136,6 +142,45 @@ export interface PurchaseOrder {
   notes: string;
   attachments: Attachment[];
   lines: POLineItem[];
+}
+
+// ───────────────────────── Compras: fornecedores & catálogo ─────────────────────────
+
+export interface Supplier {
+  id: ID;
+  name: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  notes: string;
+}
+
+/** Situação da cotação de um material com um fornecedor. */
+export type SupplierQuoteStatus = 'not_requested' | 'requested' | 'received';
+
+/** Oferta de um fornecedor para um material do catálogo (um material pode ter vários). */
+export interface SupplierOffer {
+  supplierId: ID;
+  quoteStatus: SupplierQuoteStatus;
+  quotedPrice?: number;
+  quoteDate?: ISODate;
+  validUntil?: ISODate;
+  /** Prazo de entrega em dias corridos após o pedido. */
+  leadTimeDays: number;
+  supplierPartNumber?: string;
+}
+
+/**
+ * Material do catálogo. A chave de ligação com os materiais dos projetos e
+ * com as linhas de PO é o `partNumber` (comparado sem diferenciar maiúsculas/espaços).
+ * O "último valor pago" NÃO é guardado: é derivado do histórico de POs de compra.
+ */
+export interface CatalogMaterial {
+  id: ID;
+  partNumber: string;
+  description: string;
+  unit: string;
+  offers: SupplierOffer[];
 }
 
 // ───────────────────────── Financial ─────────────────────────
@@ -188,6 +233,8 @@ export interface AppDatabase {
   assignments: ProjectAssignment[];
   absences: Absence[];
   purchaseOrders: PurchaseOrder[];
+  suppliers: Supplier[];
+  materials: CatalogMaterial[];
   spindles: SpindleUnit[];
   forecast: ForecastItem[];
 }

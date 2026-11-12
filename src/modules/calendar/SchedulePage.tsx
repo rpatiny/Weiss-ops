@@ -36,7 +36,7 @@ const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every
 export function SchedulePage() {
   const { t } = useI18n();
   const toast = useToast();
-  const { params } = useRoute();
+  const { params, path: routePath } = useRoute();
   const employees = useCollection('employees');
   const projects = useCollection('projects');
   const assignments = useCollection('assignments');
@@ -55,7 +55,8 @@ export function SchedulePage() {
   const [absenceDrawer, setAbsenceDrawer] = useState<{ editing?: Absence } | null>(null);
 
   // Deep-link: #/calendar?open=<projectId>
-  const openParam = params.get('open');
+  // Só trata o parâmetro quando a rota atual é desta página (evita "roubar" o deep-link de outra tela).
+  const openParam = routePath === '/calendar' ? params.get('open') : null;
   useEffect(() => {
     if (!openParam) return;
     if (repos.projects.getById(openParam)) {

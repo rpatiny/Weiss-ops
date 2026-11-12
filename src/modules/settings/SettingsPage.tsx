@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarRange, ClipboardList, Cog, Database, FolderKanban, LineChart, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { Boxes, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, LineChart, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/misc';
@@ -16,6 +16,8 @@ const COLLECTION_ICONS: Record<CollectionName, LucideIcon> = {
   assignments: CalendarRange,
   absences: Palmtree,
   purchaseOrders: ClipboardList,
+  suppliers: Truck,
+  materials: Boxes,
   spindles: Cog,
   forecast: TrendingUp,
 };

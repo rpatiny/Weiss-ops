@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Check, ExternalLink, PackageCheck, Pencil, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, ClipboardCheck, ExternalLink, Link2, PackageCheck, Pencil, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
 import { navigate } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,6 +8,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { enumOptions } from '@/domain/labels';
 import { materialViews, scheduleService, summarizeMaterials } from '@/domain/schedule';
+import { bestOffer, fastestOffer, normPN, offerViews } from '@/domain/purchasing';
+import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
+import { formatCurrency } from '@/lib/format';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
@@ -24,6 +27,9 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
   const poById = useMemo(() => new Map(purchaseOrders.map((p) => [p.id, p])), [purchaseOrders]);
   const views = materialViews(project, poById, projectStart);
   const summary = summarizeMaterials(views);
+  const pd = usePurchasingData();
+  const readiness = pd.readinessOf(project);
+  const itemById = new Map(readiness.items.map((i) => [i.view.material.id, i]));
 
   const [selected, setSelected] = useState<string[]>([]);
   const [form, setForm] = useState<MaterialForm | null>(null);
@@ -60,6 +66,24 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
 
   return (
     <div className="space-y-4">
+      {/* Checklist para iniciar */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+        <ClipboardCheck className="size-5 text-slate-400" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{t('purchasing.readiness.checklist')}</p>
+          <p className="text-xs text-slate-500">
+            {readiness.total ? t('purchasing.readiness.progress', { ready: readiness.ready, total: readiness.total }) : t('purchasing.readiness.noMaterials')}
+            {readiness.start && ` · ${t('purchasing.readiness.startsOn', { date: formatDate(readiness.start) })}`}
+          </p>
+          {readiness.total > 0 && (
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+              <div className="h-full rounded-full bg-green-500" style={{ width: `${(readiness.ready / readiness.total) * 100}%` }} />
+            </div>
+          )}
+        </div>
+        <StatusBadge kind="readiness" value={readiness.status} />
+      </div>
+
       {/* Resumo */}
       <div className="grid grid-cols-3 gap-2">
         <SummaryChip tone="red" label={t('calendar.materials.summary.toBuy')} value={summary.toBuy} />
@@ -93,7 +117,7 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
                         <AlertTriangle className="size-3" /> {t('calendar.materials.late')}
                       </Badge>
                     )}
-                    {!v.late && v.atRisk && <Badge tone="orange">{t('calendar.materials.atRisk')}</Badge>}
+                    {!v.late && itemById.get(m.id)?.state === 'risk' && <Badge tone="orange">{t('calendar.materials.atRisk')}</Badge>}
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500">
                     <span className="font-mono">{m.partNumber || '—'}</span> · {t('calendar.materials.quantity')} {m.quantity}
@@ -104,6 +128,7 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
                       </>
                     )}
                   </p>
+                  <MaterialExtra item={itemById.get(m.id)} partNumber={m.partNumber} pd={pd} status={v.status} />
                   {v.po && (
                     <button
                       type="button"
@@ -222,6 +247,38 @@ function SummaryChip({ tone, label, value, extra }: { tone: 'red' | 'amber' | 'g
       <p className="text-2xl font-bold tabular-nums">{value}</p>
       <p className="text-xs font-medium">{label}</p>
       {extra && <p className="text-[11px] font-semibold text-red-600">{extra}</p>}
+    </div>
+  );
+}
+
+/** Fornecedores/cotação (quando a comprar) e aviso de material compartilhado com outros projetos. */
+function MaterialExtra({ item, partNumber, pd, status }: { item?: ReturnType<ReturnType<typeof usePurchasingData>['readinessOf']>['items'][number]; partNumber: string; pd: ReturnType<typeof usePurchasingData>; status: MaterialStatus }) {
+  const { t } = useI18n();
+  const cat = pd.catalogByPN.get(normPN(partNumber));
+  const offers = cat ? offerViews(cat, pd.suppliersById, pd.purchaseOrders, pd.today) : [];
+  const best = bestOffer(offers);
+  const fastest = fastestOffer(offers);
+  return (
+    <div className="mt-1 space-y-1 text-xs">
+      {status === 'to_buy' && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600 dark:text-slate-400">
+          {item && <StatusBadge kind="quoteState" value={item.quote} />}
+          {best?.supplier && (
+            <span>
+              {t('purchasing.materials.best')}: <strong>{best.supplier.name}</strong>
+              {best.refPrice !== undefined && ` · ${formatCurrency(best.refPrice)}`}
+            </span>
+          )}
+          {fastest && <span>· {t('purchasing.materials.buyToday', { date: formatDate(fastest.possibleDate) })}</span>}
+          {!cat && <span className="text-slate-400">{t('purchasing.materials.notInCatalog')}</span>}
+        </p>
+      )}
+      {item && item.shared.length > 0 && (
+        <p className="flex items-center gap-1 font-medium text-violet-700 dark:text-violet-300">
+          <Link2 className="size-3.5" />
+          {t('purchasing.readiness.sharedWith', { list: item.shared.map((d) => `${d.project.projectNumber} (${d.material.quantity})`).join(', ') })}
+        </p>
+      )}
     </div>
   );
 }
