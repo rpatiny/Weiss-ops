@@ -56,7 +56,8 @@ src/
 │  ├─ schedule.ts           # cronograma: período, raias, conflitos, férias, arraste, materiais ↔ POs
 │  ├─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
 │  ├─ requisitions.ts       # requisição → PO do SAP → GR (processo de compras)
-│  └─ extensions.ts         # pedidos de extensão de material no SAP (planta origem → HOME_PLANT)
+│  ├─ extensions.ts         # pedidos de extensão de material no SAP (planta origem → HOME_PLANT)
+│  └─ financial.ts          # KPIs do mês, carteira, taxa de aprovação, série Realizado×Forecast, ranking
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
@@ -65,6 +66,7 @@ src/
    ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
    │                        # MaterialsTab, PurchaseDrawer (gera PO), AbsenceDrawer
    ├─ auth/                 # LoginScreen
+   ├─ financial/            # FinancialPage (abas), ActualForecastChart (recharts), SpindleDrawer, ForecastDrawer
    ├─ extensions/           # ExtensionsPage (tela própria, visual índigo), ExtensionFormDrawer, PlantBadge
    ├─ purchasing/process/   # RequisitionsTab, RequisitionDrawer, NewRequisitionDrawer, RequisitionWizardDrawer, RegisterPODrawer,
    │                        # ReceivingTab, GRDrawer
@@ -221,6 +223,18 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   de componentes — sem isso, enviar um formulário aberto a partir de outro formulário enviava os dois.
 - **i18n — plural**: textos `"singular || plural"` escolhidos pela variável `count` (ou `days`/`qty`/`late`). Não use "(s)".
 
+- **Hub Financeiro** (`domain/financial.ts`, permissão `financial.edit` = Master e Office; Logística só lê):
+  - Valor faturado de uma unidade entregue = `invoicedValue`, senão `quotedValue` (avisado na aba Entregas).
+  - "Em aberto / pendente" = valor cotado de unidades aprovadas e ainda não entregues (approved/in_repair/testing);
+    o hint soma as cotações enviadas aguardando decisão.
+  - Taxa de aprovação = aprovadas ÷ (aprovadas + recusadas) — pendentes/enviadas não entram.
+  - Forecast ponderado = valor estimado × probabilidade; KPI soma itens com data prevista entre hoje e +3 meses.
+  - Gráfico: barras agrupadas por mês (−5 a +6), uma única escala (moeda). Realizado = faturado pelo mês de entrega;
+    forecast = ponderado pelo mês previsto. Cores `--series-actual`/`--series-forecast` (validadas p/ CVD e contraste
+    nos dois temas), legenda + tooltip + alternativa em tabela.
+  - Ranking: por faturado, desempate por nº de unidades; mostra carteira em aberto e forecast ponderado do cliente.
+  - Formulário: cotação aprovada sugere status "Aprovado"; recusada → "Recusado"; status "Entregue" preenche data e valor faturado.
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -235,7 +249,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
       anexos (PDF da PO / invoice / outros), mini-dashboard (POs abertas, entregas em 7 dias, linhas atrasadas).
 - [x] **Fase 3.1** — Processo de compras (requisição → PO do SAP → GR), usuários com perfis Master/Logística/Office.
 - [x] **Fase 3.2** — Botão/assistente de nova requisição, extensões de material SAP (tela própria), revisão do inglês e plurais.
-- [ ] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
+- [x] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.
 - [ ] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas
       (`Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`, `Itens_PO`, `Spindles`, `Forecast`), backup/restore JSON

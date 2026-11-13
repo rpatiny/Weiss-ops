@@ -12,6 +12,22 @@
   --color-brand-700: #b45309;
 }
 
+/* Cores de séries de gráfico (validadas: contraste ≥ 3:1 e separação CVD nos dois temas). */
+:root {
+  --series-actual: #2a78d6;
+  --series-forecast: #eb6834;
+  --chart-grid: #e2e8f0;
+  --chart-text: #64748b;
+  --chart-current: rgb(245 158 11 / 0.1);
+}
+.dark {
+  --series-actual: #3987e5;
+  --series-forecast: #d95926;
+  --chart-grid: #1e293b;
+  --chart-text: #94a3b8;
+  --chart-current: rgb(245 158 11 / 0.12);
+}
+
 @layer base {
   html {
     color-scheme: light;

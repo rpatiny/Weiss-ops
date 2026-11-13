@@ -20,6 +20,7 @@ export type Permission =
   | 'gr.register'
   | 'catalog.edit' // catálogo e cotações
   | 'suppliers.edit'
+  | 'financial.edit' // spindles, cotações, faturamento e forecast
   | 'extension.request' // pedir extensão de material no SAP
   | 'extension.process' // executar/concluir a extensão
   | 'data.manage' // reset/limpar/backup
@@ -28,9 +29,9 @@ export type Permission =
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   master: [
     'schedule.edit', 'employees.edit', 'materials.edit', 'requisition.create', 'requisition.process',
-    'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process', 'data.manage', 'users.manage',
+    'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process', 'financial.edit', 'data.manage', 'users.manage',
   ],
-  office: ['schedule.edit', 'employees.edit', 'materials.edit', 'requisition.create', 'extension.request'],
+  office: ['schedule.edit', 'employees.edit', 'materials.edit', 'requisition.create', 'extension.request', 'financial.edit'],
   logistics: ['requisition.process', 'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process'],
 };
 
