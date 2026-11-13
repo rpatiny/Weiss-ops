@@ -314,3 +314,12 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - [x] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas
       (`Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`, `Itens_PO`, `Spindles`, `Forecast`), backup/restore JSON
       com validação, revisão final de UX e build de produção.
+
+## Ideias para o futuro
+
+- **Servidor próprio (on-premise):** Supabase self-hosted (Docker) numa VM Linux da empresa (4 vCPU / 8 GB / 100 GB SSD),
+  HTTPS com certificado interno, porta 443 + WebSocket liberados, VPN para acesso externo, backup diário fora do servidor.
+  O app não muda: só `VITE_SUPABASE_URL` aponta para o endereço interno. Entregável sugerido: pacote `deploy/onprem/`
+  (compose com Supabase + app + HTTPS, script que gera segredos, script de backup, guia PT/EN para a TI).
+- **Offline-first (PWA):** app instalável, cópia local em IndexedDB, fila de alterações persistida no aparelho,
+  aviso de alterações pendentes e de conflitos.
