@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { AlertTriangle, Clock, Cog, KeyRound, Loader2, LogIn, LogOut, Mail, RefreshCw, UserPlus } from 'lucide-react';
 import { setCloudSignOut, setSessionUser } from '@/app/session';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +27,14 @@ type Phase =
 export function CloudGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
-  const fail = useCallback((e: unknown) => setPhase({ kind: 'error', message: e instanceof TimeoutError ? t('cloud.timeout', { s: e.seconds }) : (e as Error)?.message || String(e) }), [t]);
+  // `t` muda ao trocar de idioma: lido por ref para que `fail` (e a carga dos dados que depende dele) fique estável.
+  // Sem isso, trocar o idioma refazia a conexão inteira e recarregava a tela.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const fail = useCallback(
+    (e: unknown) => setPhase({ kind: 'error', message: e instanceof TimeoutError ? tRef.current('cloud.timeout', { s: e.seconds }) : (e as Error)?.message || String(e) }),
+    [],
+  );
 
   const enter = useCallback(async (session: AuthSession | null) => {
     if (!session) {
