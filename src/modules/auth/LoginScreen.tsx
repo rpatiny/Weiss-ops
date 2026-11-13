@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import { useCollection } from '@/data/hooks';
+import { CLOUD } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
@@ -110,7 +111,7 @@ export function LoginScreen() {
           <div className="flex gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-800/50">
             <Info className="mt-0.5 size-4 shrink-0" />
             <div className="space-y-1">
-              <p>{t('auth.localNote')}</p>
+              <p>{CLOUD ? t('auth.cloudNote') : t('auth.localNote')}</p>
               <p className="font-medium">{t('auth.demoPins')}</p>
             </div>
           </div>

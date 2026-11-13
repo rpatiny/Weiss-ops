@@ -6,7 +6,7 @@ import { buildSeed } from './seed';
 import { createLocalStorageDriver } from './storage';
 import { ProfilesRepository } from './cloud/profilesRepository';
 import { RemoteRepository } from './cloud/remoteRepository';
-import { CLOUD, cloudBackend, syncQueue } from './cloud/runtime';
+import { CLOUD, EMAIL_AUTH, cloudBackend, syncQueue } from './cloud/runtime';
 
 const driver = createLocalStorageDriver(APP_CONFIG.storagePrefix);
 
@@ -22,11 +22,11 @@ function makeRepo<T extends Entity>(name: string): Repository<T> {
   return CLOUD ? new RemoteRepository<T>(name, syncQueue) : new StoredRepository<T>(driver, name);
 }
 
-export const profilesRepo = CLOUD ? new ProfilesRepository(cloudBackend) : null;
+export const profilesRepo = EMAIL_AUTH ? new ProfilesRepository(cloudBackend) : null;
 
 /** Um repositório por coleção. Toda leitura/escrita da UI passa por aqui. */
 export const repos: Repos = {
-  users: profilesRepo ?? new StoredRepository(driver, 'users'),
+  users: profilesRepo ?? makeRepo('users'),
   requisitions: makeRepo('requisitions'),
   extensions: makeRepo('extensions'),
   employees: makeRepo('employees'),
@@ -41,7 +41,7 @@ export const repos: Repos = {
 } as Repos;
 
 export const COLLECTIONS = Object.keys(repos) as CollectionName[];
-export { CLOUD, DATA_COLLECTIONS };
+export { CLOUD, EMAIL_AUTH, DATA_COLLECTIONS };
 
 interface Meta {
   id: string;
@@ -107,7 +107,7 @@ export const db = {
 
   resetToDemo(currentUserId?: string): void {
     const seed = buildSeed();
-    if (CLOUD && currentUserId) {
+    if (EMAIL_AUTH && currentUserId) {
       // Na nuvem os usuários são as contas reais: autorias da demo passam para quem carregou.
       const demoUsers = new Set(seed.users.map((u) => u.id));
       const map = (id: string) => (demoUsers.has(id) ? currentUserId : id);
@@ -127,6 +127,11 @@ export const db = {
   },
 
   /** Base sem nenhum dado de negócio (usado para orientar o Master no primeiro acesso à nuvem). */
+  /** Nuvem com login por PIN: garante os usuários padrão (Master 1234 / Logística 2222 / Office 3333) na primeira vez. */
+  ensureUsers(): void {
+    if (repos.users.getAll().length === 0) repos.users.replaceAll(buildSeed().users);
+  },
+
   isEmpty(): boolean {
     return DATA_COLLECTIONS.every((c) => repos[c].getAll().length === 0);
   },

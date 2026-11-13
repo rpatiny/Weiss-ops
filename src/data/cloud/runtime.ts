@@ -39,6 +39,14 @@ export const CLOUD_URL = FAKE ?? URL_ ?? '';
 /** true quando o app está configurado para a nuvem. */
 export const CLOUD: boolean = !!((URL_ && KEY) || FAKE);
 
+/**
+ * Login na nuvem:
+ * - `pin` (padrão): usuários do app (Master/Logística/Office…) com PIN, sem e-mail. Os dados ficam no Supabase,
+ *   compartilhados, mas o acesso ao banco é pela chave pública — rode `supabase/team-pin-mode.sql`.
+ * - `email`: contas do Supabase Auth (e-mail/senha) + liberação pelo Master (`VITE_AUTH_MODE=email`).
+ */
+export const EMAIL_AUTH: boolean = CLOUD && clean(env.VITE_AUTH_MODE)?.toLowerCase() === 'email';
+
 let backend: CloudBackend | null = null;
 
 /** Permite injetar um backend (testes) antes de qualquer uso. */

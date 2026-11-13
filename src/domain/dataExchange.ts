@@ -3,7 +3,7 @@
  * Excel: abas e cabeçalhos em pt-BR (padrão da empresa); datas como datas do Excel; valores derivados incluídos.
  */
 import { getCurrentUser, logout } from '@/app/session';
-import { CLOUD, db } from '@/data/db';
+import { EMAIL_AUTH, db } from '@/data/db';
 import { translate } from '@/i18n';
 import type { TranslationKey } from '@/i18n/types';
 import { APP_CONFIG } from '@/lib/config';
@@ -305,7 +305,7 @@ export function checkBackup(text: string): BackupCheck {
     ref('projects', db_.projects, 'poId', 'purchaseOrders', true);
     ref('projects', db_.projects, 'spindleId', 'spindles', true);
     // Na nuvem os usuários são as contas do Supabase (não vêm do backup).
-    if (!CLOUD && !db_.users.some((u) => u.role === 'master' && u.active)) issues.push({ key: 'dataio.errors.noMaster' });
+    if (!EMAIL_AUTH && !db_.users.some((u) => u.role === 'master' && u.active)) issues.push({ key: 'dataio.errors.noMaster' });
   }
 
   const ok = issues.length === 0;
@@ -317,5 +317,5 @@ export function checkBackup(text: string): BackupCheck {
 export function restoreBackup(file: BackupFile): void {
   const me = getCurrentUser();
   db.load(file.data, 'import');
-  if (!CLOUD && me && !file.data.users.some((u) => u.id === me.id && u.active)) logout();
+  if (!EMAIL_AUTH && me && !file.data.users.some((u) => u.id === me.id && u.active)) logout();
 }

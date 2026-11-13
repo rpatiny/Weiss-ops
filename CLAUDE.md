@@ -259,6 +259,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 ## Modo nuvem (Supabase) — Fase 6
 
+- **Login na nuvem (`EMAIL_AUTH` em `cloud/runtime.ts`):** padrão = **PIN** (usuários na coleção `users` de `records`,
+  acesso ao banco pela chave anon — exige `supabase/team-pin-mode.sql`; `db.ensureUsers()` cria Master/Logística/Office
+  no 1º acesso). `VITE_AUTH_MODE=email` = Supabase Auth + `profiles` (descrito abaixo).
 - **Ativação:** `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ⇒ `CLOUD = true`. Sem elas, modo local (localStorage + PIN),
   usado também na página de demonstração.
 - **Esquema** (`supabase/schema.sql`): `profiles` (1 por conta do Auth; trigger cria; primeira conta = master, demais

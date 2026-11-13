@@ -488,6 +488,7 @@ export const en: Dictionary = {
     wrongPin: 'Incorrect PIN. Please try again.',
     logout: 'Sign out / switch user',
     loggedAs: 'Signed in as',
+    cloudNote: 'Data is stored in the cloud and shared with the whole team in real time.',
     localNote: 'Data is stored in this browser only. A shared database is required for people to work together from different computers.',
     demoPins: 'Demo PINs: Master 1234 · Logistics 2222 · Office 3333',
     forbidden: 'Your profile does not have permission for this action.',

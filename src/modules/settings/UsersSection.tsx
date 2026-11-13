@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
-import { CLOUD, repos } from '@/data/db';
+import { EMAIL_AUTH, repos } from '@/data/db';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useCollection } from '@/data/hooks';
@@ -32,9 +32,9 @@ export function UsersSection() {
             <UserCog className="size-5 text-slate-400" /> {t('users.title')}
           </h2>
           <p className="text-sm text-slate-500">{t('users.hint')}</p>
-          {CLOUD && <p className="mt-1 text-sm text-slate-500">{t('cloud.usersHint')}</p>}
+          {EMAIL_AUTH && <p className="mt-1 text-sm text-slate-500">{t('cloud.usersHint')}</p>}
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => (CLOUD ? setHowTo(true) : setEditing({}))}>
+        <Button variant="primary" icon={Plus} onClick={() => (EMAIL_AUTH ? setHowTo(true) : setEditing({}))}>
           {t('users.new')}
         </Button>
       </div>
@@ -89,11 +89,11 @@ function UserDrawer({ open, user, onClose }: { open: boolean; user?: User; onClo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return setError('users.nameRequired');
-    if (!CLOUD && (!user || pin) && !/^\d{4,8}$/.test(pin)) return setError('users.pinInvalid');
+    if (!EMAIL_AUTH && (!user || pin) && !/^\d{4,8}$/.test(pin)) return setError('users.pinInvalid');
     const otherMasters = users.filter((u) => u.id !== user?.id && u.role === 'master' && u.active).length;
     if (user?.role === 'master' && (role !== 'master' || !active) && otherMasters === 0) return setError('users.lastMaster');
     const id = user?.id ?? newId('u');
-    const pinHash = !CLOUD && pin ? await hashPin(id, pin) : (user?.pinHash ?? '');
+    const pinHash = !EMAIL_AUTH && pin ? await hashPin(id, pin) : (user?.pinHash ?? '');
     const data: User = { id, name: name.trim(), email: email.trim(), role, active, pinHash, pending: false };
     if (user) repos.users.update(id, data);
     else repos.users.create(data);
@@ -121,12 +121,12 @@ function UserDrawer({ open, user, onClose }: { open: boolean; user?: User; onClo
           {(id) => <Input id={id} name="userName" value={name} onChange={(e) => setName(e.target.value)} autoFocus />}
         </Field>
         <Field label={t('users.email')}>
-          {(id) => <Input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={CLOUD} />}
+          {(id) => <Input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={EMAIL_AUTH} />}
         </Field>
         <Field label={t('users.role')} hint={t(`users.roleHints.${role}`)}>
           {(id) => <Select<UserRole> id={id} name="userRole" value={role} onChange={setRole} options={enumOptions(t, 'userRole')} />}
         </Field>
-        {!CLOUD && (
+        {!EMAIL_AUTH && (
         <Field label={t('users.pin')} required={!user} hint={user ? t('users.pinKeep') : undefined}>
           {(id) => <Input id={id} name="userPin" type="password" inputMode="numeric" maxLength={8} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="font-mono tracking-widest" />}
         </Field>

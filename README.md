@@ -29,24 +29,34 @@ Abra http://localhost:5173. PINs de demonstração: **Master 1234 · Logística 
 ## Modo nuvem (Supabase): dados compartilhados pela equipe
 
 Sem configuração, o app roda no **modo local** (dados no navegador, com demonstração e login por PIN).
-Com o Supabase configurado, todos usam **os mesmos dados**, com login por e-mail e senha e atualização em tempo real.
+Com o Supabase configurado, todos usam **os mesmos dados**, com atualização em tempo real.
+
+Há dois jeitos de entrar:
+
+| Login | Como funciona | Quando usar |
+| --- | --- | --- |
+| **PIN** (padrão) | Escolhe o usuário (Master, Logística, Office…) e digita o PIN. Sem e-mail. | Testes com dados fictícios |
+| **E-mail** (`VITE_AUTH_MODE=email`) | Cada pessoa cria conta com e-mail/senha; o Master libera o perfil. | Dados reais |
+
+> ⚠️ No login por PIN o banco é acessado com a chave pública: quem tiver o endereço do site consegue
+> ler e gravar os dados. Use só com dados fictícios.
 
 1. Crie um projeto gratuito em https://supabase.com (região mais próxima da equipe).
 2. **SQL Editor → New query**: cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**.
-3. **Authentication → URL Configuration**: em *Site URL*, coloque o endereço do app (ex.: `https://weiss-ops.vercel.app`).
-   *Opcional:* em **Authentication → Providers → Email**, desative "Confirm email" para não exigir confirmação por e-mail.
-4. **Project Settings → API**: copie a *Project URL* e a chave *anon / publishable* (é pública por design;
-   a segurança vem das regras RLS do passo 2).
-5. Na Vercel (**Settings → Environment Variables**) ou num arquivo `.env.local` (veja `.env.example`):
+   Para o login por **PIN**, rode também [`supabase/team-pin-mode.sql`](supabase/team-pin-mode.sql).
+3. **Project Settings → API**: copie a *Project URL* e a chave *anon / publishable*.
+4. Na Vercel (**Settings → Environment Variables**) ou num arquivo `.env.local` (veja `.env.example`):
    ```
    VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
    VITE_SUPABASE_ANON_KEY=sua-chave-anon
+   # opcional: VITE_AUTH_MODE=email
    ```
    e publique de novo (na Vercel: **Deployments → Redeploy**).
-6. **Primeiro acesso:** quem criar a primeira conta vira **Master**. A base começa vazia: o Master usa
-   "Restaurar backup" (JSON exportado do modo local) ou "Carregar demonstração".
-7. **Equipe:** cada pessoa clica em "Criar conta" na tela de login e fica *aguardando liberação*;
-   o Master define o perfil em **Dados & Backup → Usuários** (Logística ou Office).
+5. **Login por PIN:** no primeiro acesso são criados Master `1234`, Logística `2222` e Office `3333`
+   (troque os PINs em **Dados & Backup → Usuários**). O Master usa "Carregar demonstração" ou "Restaurar backup".
+6. **Login por e-mail:** em **Authentication → URL Configuration** coloque o endereço do app em *Site URL*
+   (opcional: desative "Confirm email"). Quem criar a primeira conta vira **Master**; os demais clicam em
+   "Criar conta" e aguardam o Master definir o perfil em **Dados & Backup → Usuários**.
 
 ## Publicar na Vercel
 

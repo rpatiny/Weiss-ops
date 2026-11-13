@@ -491,6 +491,7 @@ export const pt = {
     wrongPin: 'PIN incorreto. Tente novamente.',
     logout: 'Sair / trocar usuário',
     loggedAs: 'Conectado como',
+    cloudNote: 'Os dados ficam na nuvem e são compartilhados com toda a equipe em tempo real.',
     localNote: 'Os dados ficam neste navegador. Para várias pessoas usarem em computadores diferentes é preciso um banco de dados compartilhado.',
     demoPins: 'PINs de demonstração: Master 1234 · Logística 2222 · Office 3333',
     forbidden: 'Seu perfil não tem permissão para esta ação.',

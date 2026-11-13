@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import type { AuthSession, ProfileRow } from '@/data/cloud/backend';
 import { connectCloud, disconnectCloud } from '@/data/cloud/connect';
-import { CLOUD_URL, getCloudBackend, TimeoutError, withTimeout } from '@/data/cloud/runtime';
+import { CLOUD_URL, EMAIL_AUTH, getCloudBackend, TimeoutError, withTimeout } from '@/data/cloud/runtime';
+import { db } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
@@ -47,7 +48,24 @@ export function CloudGate({ children }: { children: ReactNode }) {
     }
   }, [fail]);
 
+  /** Login por PIN: só carrega os dados compartilhados; a escolha do usuário fica na tela de PIN do app. */
+  const loadTeam = useCallback(async () => {
+    setPhase({ kind: 'loading' });
+    try {
+      await getCloudBackend();
+      await withTimeout(connectCloud(), 45);
+      db.ensureUsers();
+      setPhase({ kind: 'ready' });
+    } catch (e) {
+      fail(e);
+    }
+  }, [fail]);
+
   useEffect(() => {
+    if (!EMAIL_AUTH) {
+      void loadTeam();
+      return;
+    }
     let unsub = () => {};
     getCloudBackend()
       .then(async (b) => {
@@ -59,7 +77,7 @@ export function CloudGate({ children }: { children: ReactNode }) {
       })
       .catch(fail);
     return () => unsub();
-  }, [enter, fail]);
+  }, [enter, fail, loadTeam]);
 
   if (phase.kind === 'ready') return <>{children}</>;
 
@@ -89,6 +107,7 @@ export function CloudGate({ children }: { children: ReactNode }) {
           </div>
           <div className="flex gap-2">
             <Button variant="primary" icon={RefreshCw} onClick={() => {
+                if (!EMAIL_AUTH) return void loadTeam();
                 setPhase({ kind: 'checking' });
                 getCloudBackend()
                   .then(async (b) => enter(await withTimeout(b.getSession())))
@@ -96,9 +115,11 @@ export function CloudGate({ children }: { children: ReactNode }) {
               }}>
               {t('cloud.retry')}
             </Button>
-            <Button icon={LogOut} onClick={() => void getCloudBackend().then((b) => b.signOut()).catch(() => undefined).then(() => enter(null))}>
-              {t('cloud.logout')}
-            </Button>
+            {EMAIL_AUTH && (
+              <Button icon={LogOut} onClick={() => void getCloudBackend().then((b) => b.signOut()).catch(() => undefined).then(() => enter(null))}>
+                {t('cloud.logout')}
+              </Button>
+            )}
           </div>
         </div>
       ) : phase.kind === 'blocked' ? (

@@ -488,6 +488,7 @@ export const de: Dictionary = {
     wrongPin: 'Falsche PIN. Bitte erneut versuchen.',
     logout: 'Abmelden / Benutzer wechseln',
     loggedAs: 'Angemeldet als',
+    cloudNote: 'Die Daten liegen in der Cloud und werden in Echtzeit mit dem ganzen Team geteilt.',
     localNote: 'Die Daten liegen in diesem Browser. Für mehrere Personen an verschiedenen Rechnern ist eine gemeinsame Datenbank nötig.',
     demoPins: 'Demo-PINs: Master 1234 · Logistik 2222 · Office 3333',
     forbidden: 'Ihr Profil darf diese Aktion nicht ausführen.',
