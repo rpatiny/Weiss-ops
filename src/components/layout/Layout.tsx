@@ -6,6 +6,7 @@ import { usePendingCounts, usePendingExtensions } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { EmptyCloudBanner } from './EmptyCloudBanner';
 import { LocalModeBanner } from './LocalModeBanner';
+import { DisclaimerStrip } from './Disclaimer';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
@@ -161,6 +162,7 @@ export function Layout({ children }: { children: ReactNode }) {
       )}
 
       <main className="lg:pl-64">
+        <DisclaimerStrip />
         <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
           <LocalModeBanner />
           <EmptyCloudBanner />

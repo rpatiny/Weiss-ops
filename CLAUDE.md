@@ -4,6 +4,8 @@ SPA React para uma empresa de reparo de spindles e motores industriais: equipe, 
 ordens de compra (POs) e hub financeiro (spindles, cotações, forecast). Dados persistidos localmente
 (`localStorage`) através de uma camada de repositório desacoplada.
 
+- Aviso de plataforma de teste: `StartupDisclaimer` (ao abrir, 1x por sessão) e `DisclaimerStrip` (faixa fixa no topo e no login), em `components/layout/Disclaimer.tsx`.
+
 ## Comandos
 
 | Comando             | O que faz                                         |

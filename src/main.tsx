@@ -7,6 +7,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { db } from './data/db';
 import { CLOUD } from './data/cloud/runtime';
 import { CloudGate } from './modules/auth/CloudGate';
+import { StartupDisclaimer } from './components/layout/Disclaimer';
 import './index.css';
 
 // Popula a base com dados de demonstração no primeiro acesso.
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
     <I18nProvider>
       <ThemeProvider>
         <ToastProvider>
+          <StartupDisclaimer />
           {CLOUD ? (
             <CloudGate>
               <App />

@@ -24,6 +24,10 @@ export const pt = {
     closeMenu: 'Fechar menu',
   },
   app: {
+    disclaimerTitle: 'Plataforma de teste',
+    disclaimerText: 'Todos os dados exibidos aqui (clientes, projetos, valores, pedidos e pessoas) são fictícios e em nenhum caso representam valores ou informações reais da empresa. Esta é apenas uma plataforma de teste, sem valor legal ou institucional.',
+    disclaimerShort: 'Plataforma de teste: dados fictícios, sem valor legal ou institucional.',
+    disclaimerOk: 'Entendi',
     tagline: 'Reparo de Spindles & Motores',
     sectionOperation: 'Operação',
     themeLight: 'Tema claro',

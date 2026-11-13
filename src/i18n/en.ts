@@ -21,6 +21,10 @@ export const en: Dictionary = {
     closeMenu: 'Close menu',
   },
   app: {
+    disclaimerTitle: 'Test platform',
+    disclaimerText: 'All data shown here (customers, projects, amounts, orders and people) is fictitious and in no case represents real figures or information of the company. This is a test platform only, with no legal or institutional value.',
+    disclaimerShort: 'Test platform: fictitious data, no legal or institutional value.',
+    disclaimerOk: 'I understand',
     tagline: 'Spindle & Motor Repair',
     sectionOperation: 'Operations',
     themeLight: 'Light theme',

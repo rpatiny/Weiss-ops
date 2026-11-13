@@ -9,6 +9,7 @@ import { getCloudBackend } from '@/data/cloud/runtime';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
+import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 type Phase =
   | { kind: 'checking' }
@@ -107,7 +108,9 @@ export function CloudGate({ children }: { children: ReactNode }) {
 function Shell({ children }: { children: ReactNode }) {
   const { t, locale, setLocale } = useI18n();
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4 dark:bg-slate-950">
+    <div className="flex min-h-screen flex-col bg-slate-900 dark:bg-slate-950">
+      <DisclaimerStrip />
+      <div className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-3 text-white">
           <div className="flex size-11 items-center justify-center rounded-xl bg-brand-500 text-slate-950">
@@ -126,6 +129,7 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
