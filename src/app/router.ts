@@ -5,10 +5,10 @@ import { useSyncExternalStore } from 'react';
  * Funciona em qualquer hospedagem estática e permite deep-links para registros
  * (ex.: `#/purchase-orders?open=po_123`), base da navegação cruzada entre módulos.
  */
-export type RoutePath = '/calendar' | '/projects' | '/employees' | '/purchase-orders' | '/extensions' | '/financial' | '/settings';
+export type RoutePath = '/calendar' | '/projects' | '/timesheet' | '/clock' | '/employees' | '/purchase-orders' | '/extensions' | '/financial' | '/settings';
 
 export const DEFAULT_ROUTE: RoutePath = '/calendar';
-const VALID: RoutePath[] = ['/calendar', '/projects', '/employees', '/purchase-orders', '/extensions', '/financial', '/settings'];
+const VALID: RoutePath[] = ['/calendar', '/projects', '/timesheet', '/clock', '/employees', '/purchase-orders', '/extensions', '/financial', '/settings'];
 
 export interface Route {
   path: RoutePath;

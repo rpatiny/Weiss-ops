@@ -3,8 +3,11 @@
  * Todas as datas são RELATIVAS ao dia em que o seed é gerado, para que a demo
  * sempre mostre atividades da semana, POs atrasadas, entregas do mês etc.
  */
-import { addBusinessDays, addDays, addMonths, startOfWeek, todayISO } from '@/lib/dates';
+import { addBusinessDays, addDays, addMonths, parseISODate, startOfWeek, todayISO } from '@/lib/dates';
+import { clockPinHash } from '@/lib/sha256';
 import type {
+  TimeEntry,
+  WorkPhase,
   Absence,
   AppDatabase,
   CatalogMaterial,
@@ -449,11 +452,44 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
   ];
 
+  // ───────────── Oficina: fases e apontamentos de horas ─────────────
+  const workPhases: WorkPhase[] = [
+    'Desmontagem', 'Inspeção / Diagnóstico', 'Limpeza', 'Remontagem', 'Balanceamento', 'Teste', 'Embalagem',
+  ].map((name, i) => ({ id: `ph_${i + 1}`, name, order: i + 1, active: true }));
+  /** Dias úteis a partir de hoje (apontamentos ficam sempre no passado recente). */
+  const bd = (n: number) => addBusinessDays(today, n);
+  /** Data/hora local → ISO completo. */
+  const at = (date: string, hhmm: string) => {
+    const dt = parseISODate(date);
+    const [h, mi] = hhmm.split(':').map(Number);
+    dt.setHours(h ?? 0, mi ?? 0, 0, 0);
+    return dt.toISOString();
+  };
+  const minutesAgo = (n: number) => new Date(Date.now() - n * 60000).toISOString();
+  let te = 0;
+  const entry = (employeeId: string, projectId: string, phase: number, start: string, end?: string, extra: Partial<TimeEntry> = {}): TimeEntry => ({
+    id: `te_${++te}`, employeeId, projectId, phaseId: `ph_${phase}`, start, end, source: 'qr', note: '', ...extra,
+  });
+  const timeEntries: TimeEntry[] = [
+    entry('emp_juliana', 'prj_001', 1, at(bd(-3), '08:02'), at(bd(-3), '12:05')),
+    entry('emp_juliana', 'prj_001', 2, at(bd(-3), '13:01'), at(bd(-3), '17:10')),
+    entry('emp_marcos', 'prj_001', 3, at(bd(-2), '08:30'), at(bd(-2), '11:45')),
+    entry('emp_juliana', 'prj_001', 4, at(bd(-2), '08:00'), at(bd(-2), '16:40')),
+    entry('emp_juliana', 'prj_001', 4, at(bd(-1), '08:05'), at(bd(-1), '11:30')),
+    entry('emp_juliana', 'prj_001', 5, at(bd(-1), '11:30'), at(bd(-1), '17:02'), { autoClosed: false }),
+    // Esqueceu de encerrar ontem: aparece para revisão da supervisão.
+    entry('emp_marcos', 'prj_009', 6, at(bd(-1), '14:20')),
+    // Em andamento agora.
+    entry('emp_juliana', 'prj_001', 6, minutesAgo(95)),
+    entry('emp_patricia', 'prj_004', 2, minutesAgo(40)),
+  ];
+
   return {
     users,
     requisitions,
     extensions,
-    employees: employees.map((e) => ({ ...e })),
+    // PIN do ponto da oficina na demonstração: 1111 para todos.
+    employees: employees.map((e) => ({ ...e, clockPinHash: clockPinHash(e.id, '1111') })),
     projects,
     assignments,
     absences,
@@ -462,5 +498,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     materials,
     spindles,
     forecast,
+    workPhases,
+    timeEntries,
   };
 }

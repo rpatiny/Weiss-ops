@@ -14,7 +14,7 @@ type Repos = { [K in CollectionName]: Repository<EntityOf<K>> };
 
 const DATA_COLLECTIONS = [
   'requisitions', 'extensions', 'employees', 'projects', 'assignments', 'absences',
-  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast',
+  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast', 'workPhases', 'timeEntries',
 ] as const satisfies readonly Exclude<CollectionName, 'users'>[];
 
 /** Modo nuvem: repositórios sincronizados com o Supabase; modo local: localStorage. */
@@ -38,6 +38,8 @@ export const repos: Repos = {
   materials: makeRepo('materials'),
   spindles: makeRepo('spindles'),
   forecast: makeRepo('forecast'),
+  workPhases: makeRepo('workPhases'),
+  timeEntries: makeRepo('timeEntries'),
 } as Repos;
 
 export const COLLECTIONS = Object.keys(repos) as CollectionName[];
@@ -68,6 +70,7 @@ export const db = {
       driver.remove('activities'); // coleção do schema v1
       db.resetToDemo();
     }
+    db.ensureDefaults();
   },
 
   /** Snapshot completo (base do backup JSON / exportação Excel). */
@@ -85,6 +88,8 @@ export const db = {
       materials: [...repos.materials.getAll()],
       spindles: [...repos.spindles.getAll()],
       forecast: [...repos.forecast.getAll()],
+      workPhases: [...repos.workPhases.getAll()],
+      timeEntries: [...repos.timeEntries.getAll()],
     };
   },
 
@@ -102,6 +107,10 @@ export const db = {
     repos.materials.replaceAll(data.materials);
     repos.spindles.replaceAll(data.spindles);
     repos.forecast.replaceAll(data.forecast);
+    // Coleções novas: backups antigos não as têm.
+    repos.workPhases.replaceAll(data.workPhases ?? []);
+    repos.timeEntries.replaceAll(data.timeEntries ?? []);
+    db.ensureDefaults();
     writeMeta({ id: META_KEY, schemaVersion: APP_CONFIG.schemaVersion, initializedAt: new Date().toISOString(), source });
   },
 
@@ -119,7 +128,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [] }, 'empty');
+    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [], workPhases: [], timeEntries: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {
@@ -130,6 +139,11 @@ export const db = {
   /** Nuvem com login por PIN: garante os usuários padrão (Master 1234 / Logística 2222 / Office 3333) na primeira vez. */
   ensureUsers(): void {
     if (repos.users.getAll().length === 0) repos.users.replaceAll(buildSeed().users);
+  },
+
+  /** Cadastros padrão que precisam existir (fases da oficina) — também em bases antigas. */
+  ensureDefaults(): void {
+    if (repos.workPhases.getAll().length === 0) repos.workPhases.replaceAll(buildSeed().workPhases);
   },
 
   isEmpty(): boolean {

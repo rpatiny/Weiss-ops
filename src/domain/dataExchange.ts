@@ -12,6 +12,7 @@ import type { AppDatabase, CollectionName } from '@/types/models';
 import { billedValue, weightedValue } from './financial';
 import { lineTotal, poTotal } from './purchasing';
 import { materialStatus } from './schedule';
+import { entryMinutes } from './timeTracking';
 
 const label = (key: string) => translate('pt-BR', key as TranslationKey);
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
@@ -25,6 +26,7 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
   const sup = new Map(data.suppliers.map((s) => [s.id, s]));
   const usr = new Map(data.users.map((u) => [u.id, u]));
   const rc = new Map(data.requisitions.map((r) => [r.id, r]));
+  const phases = new Map(data.workPhases.map((p) => [p.id, p]));
 
   return {
     Colaboradores: data.employees.map((e) => ({
@@ -179,6 +181,19 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       'Dias úteis': businessDaysBetween(a.startDate, a.endDate),
       Observação: a.note,
     })),
+    Horas_Oficina: [...data.timeEntries]
+      .sort((a, b) => a.start.localeCompare(b.start))
+      .map((e) => ({
+        Colaborador: emp.get(e.employeeId)?.name ?? '',
+        Projeto: prj.get(e.projectId)?.projectNumber ?? '',
+        Cliente: prj.get(e.projectId)?.customer ?? '',
+        Fase: phases.get(e.phaseId)?.name ?? '',
+        Início: new Date(e.start),
+        Fim: e.end ? new Date(e.end) : undefined,
+        'Horas': e.end ? Math.round(entryMinutes(e) / 6) / 10 : undefined,
+        Origem: e.source === 'qr' ? 'QR code' : 'Manual',
+        Observação: e.note,
+      })),
   };
 }
 
@@ -253,7 +268,11 @@ const RULES: Record<CollectionName, FieldRule[]> = {
   materials: [['partNumber', 'string'], ['description', 'string'], ['offers', 'array']],
   spindles: [['serialNumber', 'string'], ['customer', 'string'], ['receivedDate', 'date'], ['quotedValue', 'number'], ['quoteStatus', 'string'], ['status', 'string']],
   forecast: [['customer', 'string'], ['estimatedValue', 'number'], ['expectedDate', 'date'], ['probability', 'number']],
+  workPhases: [['name', 'string'], ['order', 'number'], ['active', 'boolean']],
+  timeEntries: [['employeeId', 'string'], ['projectId', 'string'], ['phaseId', 'string'], ['start', 'string']],
 };
+/** Coleções criadas depois da v5: podem faltar em backups antigos (viram listas vazias). */
+const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries']);
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 const okType = (v: unknown, kind: FieldRule[1]) =>
@@ -277,6 +296,10 @@ export function checkBackup(text: string): BackupCheck {
   for (const name of Object.keys(RULES) as CollectionName[]) {
     const list = data[name];
     ids[name] = new Set();
+    if (list === undefined && OPTIONAL.has(name)) {
+      data[name] = [];
+      continue;
+    }
     if (!Array.isArray(list)) {
       issues.push({ key: 'dataio.errors.missing', vars: { name } });
       continue;
@@ -305,6 +328,9 @@ export function checkBackup(text: string): BackupCheck {
     ref('spindles', db_.spindles, 'poId', 'purchaseOrders', true);
     ref('projects', db_.projects, 'poId', 'purchaseOrders', true);
     ref('projects', db_.projects, 'spindleId', 'spindles', true);
+    ref('timeEntries', db_.timeEntries, 'employeeId', 'employees');
+    ref('timeEntries', db_.timeEntries, 'projectId', 'projects');
+    ref('timeEntries', db_.timeEntries, 'phaseId', 'workPhases');
     // Na nuvem os usuários são as contas do Supabase (não vêm do backup).
     if (!EMAIL_AUTH && !db_.users.some((u) => u.role === 'master' && u.active)) issues.push({ key: 'dataio.errors.noMaster' });
   }

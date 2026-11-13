@@ -11,6 +11,7 @@ import {
   Hammer,
   PackageCheck,
   Search,
+  Timer,
   Truck,
   type LucideIcon,
 } from 'lucide-react';
@@ -25,7 +26,8 @@ import { cn } from '@/lib/cn';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { usePersistentState } from '@/lib/usePersistentState';
 import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
-import type { ProjectAssignment } from '@/types/models';
+import type { ProjectAssignment, WorkPhase } from '@/types/models';
+import { formatHoursDecimal, formatMinutes, minutesByPhase } from '@/domain/timeTracking';
 
 type Filter = 'active' | 'finished' | 'all';
 const FILTERS: Filter[] = ['active', 'finished', 'all'];
@@ -38,6 +40,9 @@ export function ProjectsPage() {
   const spindles = useCollection('spindles');
   const assignments = useCollection('assignments');
   const requisitions = useCollection('requisitions');
+  const timeEntries = useCollection('timeEntries');
+  const workPhases = useCollection('workPhases');
+  const phaseById = useMemo(() => new Map(workPhases.map((p) => [p.id, p])), [workPhases]);
   const { projects, poById, readinessOf, today } = usePurchasingData();
   const [filter, setFilter] = usePersistentState<Filter>('projects.filter', 'active', isFilter);
   const [query, setQuery] = useState('');
@@ -118,7 +123,7 @@ export function ProjectsPage() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {visible.map((d) => (
-            <ProjectCard key={d.project.id} d={d} />
+            <ProjectCard key={d.project.id} d={d} hours={minutesByPhase(d.project.id, timeEntries)} phases={phaseById} />
           ))}
         </div>
       )}
@@ -128,7 +133,7 @@ export function ProjectsPage() {
 
 const PHASE_TONE = { unscheduled: 'slate', scheduled: 'cyan', in_production: 'blue', finished: 'green' } as const;
 
-function ProjectCard({ d }: { d: ProjectDossier }) {
+function ProjectCard({ d, hours, phases }: { d: ProjectDossier; hours: Map<string, number>; phases: Map<string, WorkPhase> }) {
   const { t } = useI18n();
   const [showHistory, setShowHistory] = useState(false);
   const { project, spindle, customerPO } = d;
@@ -198,6 +203,25 @@ function ProjectCard({ d }: { d: ProjectDossier }) {
               </div>
             ) : (
               <Muted>{t('projects.notScheduled')}</Muted>
+            )}
+          </Fact>
+          <Fact icon={Timer} label={t('projects.hours')} className="sm:col-span-2">
+            {hours.size === 0 ? (
+              <Muted>{t('projects.noHours')}</Muted>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal([...hours.values()].reduce((a, b) => a + b, 0)) })}</span>
+                {[...hours.entries()]
+                  .sort((a, b) => (phases.get(a[0])?.order ?? 99) - (phases.get(b[0])?.order ?? 99))
+                  .map(([id, min]) => (
+                    <Badge key={id} tone="slate">
+                      {phases.get(id)?.name ?? '—'} · {formatMinutes(min)}
+                    </Badge>
+                  ))}
+                <LinkBtn className="ml-auto font-sans text-xs" onClick={() => navigate('/timesheet')}>
+                  {t('timesheet.title')} →
+                </LinkBtn>
+              </div>
             )}
           </Fact>
         </dl>

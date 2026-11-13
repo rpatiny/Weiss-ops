@@ -27,7 +27,8 @@ export function StartupDisclaimer() {
       return true;
     }
   });
-  if (!open) return null;
+  // No ponto da oficina (QR code) o aviso fica só na faixa: o técnico abre a tela várias vezes por dia.
+  if (!open || window.location.hash.startsWith('#/clock')) return null;
   const close = () => {
     try {
       sessionStorage.setItem(SEEN_KEY, '1');

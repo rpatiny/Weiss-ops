@@ -46,6 +46,8 @@ export interface Employee {
   /** Cor hex (`#RRGGBB`) para identificação no calendário. */
   color: string;
   status: EmployeeStatus;
+  /** Hash do PIN do ponto da oficina (QR code). Sem PIN o colaborador não marca horas. */
+  clockPinHash?: string;
 }
 
 // ───────────────────────── Schedule (Projetos) ─────────────────────────
@@ -344,6 +346,34 @@ export interface ForecastItem {
 // ───────────────────────── Database ─────────────────────────
 
 /** Estado completo persistido da aplicação (também é o formato do backup JSON). */
+/** Fase do trabalho na oficina (desmontagem, remontagem, teste…). Lista editável. */
+export interface WorkPhase {
+  id: ID;
+  name: string;
+  /** Ordem de exibição. */
+  order: number;
+  active: boolean;
+}
+
+/** Apontamento de horas: check-in/check-out de um colaborador numa fase de um projeto. */
+export interface TimeEntry {
+  id: ID;
+  employeeId: ID;
+  projectId: ID;
+  phaseId: ID;
+  /** Data/hora ISO completa (com fuso), ex.: 2026-11-13T08:12:00.000Z. */
+  start: string;
+  /** Ausente = em andamento. */
+  end?: string;
+  /** `qr` = marcado pelo técnico no ponto; `manual` = lançado/corrigido pela supervisão. */
+  source: 'qr' | 'manual';
+  /** Fechado automaticamente ao iniciar outra fase. */
+  autoClosed?: boolean;
+  note: string;
+  /** Usuário que corrigiu/lançou (supervisão). */
+  editedBy?: ID;
+}
+
 export interface AppDatabase {
   users: User[];
   requisitions: PurchaseRequisition[];
@@ -357,6 +387,8 @@ export interface AppDatabase {
   materials: CatalogMaterial[];
   spindles: SpindleUnit[];
   forecast: ForecastItem[];
+  workPhases: WorkPhase[];
+  timeEntries: TimeEntry[];
 }
 
 export type CollectionName = keyof AppDatabase;
