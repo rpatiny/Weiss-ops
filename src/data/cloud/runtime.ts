@@ -6,8 +6,30 @@ import type { CloudBackend } from './backend';
 import { SyncQueue } from './syncQueue';
 
 const env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
-const URL_ = env.VITE_SUPABASE_URL?.trim();
-const KEY = env.VITE_SUPABASE_ANON_KEY?.trim();
+/** Remove espaços e aspas coladas junto com o valor na Vercel. */
+const clean = (v?: string) => v?.trim().replace(/^["'`]+|["'`]+$/g, '').trim() || undefined;
+
+/**
+ * Aceita os formatos que costumam ser colados por engano e devolve a Project URL
+ * (`https://<ref>.supabase.co`): sem `https://`, com `/rest/v1` no fim ou o endereço do painel
+ * (`supabase.com/dashboard/project/<ref>`).
+ */
+export function normalizeSupabaseUrl(raw?: string): string | undefined {
+  let v = clean(raw);
+  if (!v) return undefined;
+  if (!/^https?:\/\//i.test(v)) v = `https://${v}`;
+  try {
+    const u = new URL(v);
+    const dash = /\/project\/([a-z0-9]{10,})/i.exec(u.pathname);
+    if (/(^|\.)supabase\.com$/i.test(u.hostname) && dash) return `https://${dash[1]!.toLowerCase()}.supabase.co`;
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return v;
+  }
+}
+
+const URL_ = normalizeSupabaseUrl(env.VITE_SUPABASE_URL);
+const KEY = clean(env.VITE_SUPABASE_ANON_KEY);
 /** Somente testes automatizados: servidor simulado (ver devBackend.ts). */
 const FAKE = env.VITE_FAKE_CLOUD_URL?.trim();
 
@@ -30,9 +52,9 @@ export async function getCloudBackend(): Promise<CloudBackend> {
     backend = createDevBackend(FAKE);
   }
   if (!backend) {
-    if (!/^https?:\/\/[^/]+\/?$/.test(URL_ ?? '')) throw new Error(`VITE_SUPABASE_URL inválida: "${URL_ ?? ''}"`);
+    if (!/^https?:\/\/[^/\s]+$/.test(URL_ ?? '')) throw new Error(`VITE_SUPABASE_URL inválida: "${env.VITE_SUPABASE_URL ?? ''}"`);
     const { createSupabaseBackend } = await import('./supabaseBackend');
-    backend = createSupabaseBackend(URL_!.replace(/\/$/, ''), KEY!);
+    backend = createSupabaseBackend(URL_!, KEY!);
   }
   return backend;
 }
