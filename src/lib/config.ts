@@ -3,7 +3,7 @@ export const APP_CONFIG = {
   appName: 'SpindleOps',
   companyTagline: 'Reparo de Spindles & Motores',
   locale: 'pt-BR',
-  currency: 'BRL',
+  currency: 'GBP',
   storagePrefix: 'spindleops',
   schemaVersion: 5,
 } as const;

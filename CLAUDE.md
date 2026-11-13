@@ -136,7 +136,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Datas** como string `YYYY-MM-DD` em horário local; use `src/lib/dates.ts` (nunca `new Date('YYYY-MM-DD')`, que é UTC).
 - **Horas** `HH:mm`; comparar via `timeToMinutes`.
 - **IDs**: `newId('emp' | 'prj' | 'asg' | 'abs' | 'mat' | 'po' | 'pol' | 'att' | 'sp' | 'fc')`.
-- **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `pt-BR` / `BRL`); formate com `src/lib/format.ts`.
+- **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `pt-BR` / `GBP` (libra esterlina)); formate com `src/lib/format.ts`.
 - **Nenhum texto de UI hard-coded**: use `const { t } = useI18n()` e `t('modulo.chave', { var })`.
   Ao criar uma chave, adicione-a em `pt.ts` e o TypeScript exigirá a tradução em `en.ts` e `de.ts`.
 - **Erros de validação** no domínio retornam `TranslationKey` (não strings), e a UI traduz.
