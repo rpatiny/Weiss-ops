@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Clock, Cog, KeyRound, Loader2, LogIn, LogOut, Mail, RefreshCw, UserPlus } from 'lucide-react';
+import { AlertTriangle, Clock, Cog, KeyRound, Loader2, LogIn, LogOut, Mail, RefreshCw, UserPlus } from 'lucide-react';
 import { setCloudSignOut, setSessionUser } from '@/app/session';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
 import type { AuthSession, ProfileRow } from '@/data/cloud/backend';
 import { connectCloud, disconnectCloud } from '@/data/cloud/connect';
-import { getCloudBackend } from '@/data/cloud/runtime';
+import { CLOUD_URL, getCloudBackend, TimeoutError, withTimeout } from '@/data/cloud/runtime';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
@@ -26,6 +26,7 @@ type Phase =
 export function CloudGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
+  const fail = useCallback((e: unknown) => setPhase({ kind: 'error', message: e instanceof TimeoutError ? t('cloud.timeout', { s: e.seconds }) : (e as Error)?.message || String(e) }), [t]);
 
   const enter = useCallback(async (session: AuthSession | null) => {
     if (!session) {
@@ -36,27 +37,29 @@ export function CloudGate({ children }: { children: ReactNode }) {
     setPhase({ kind: 'loading' });
     try {
       const b = await getCloudBackend();
-      const me = (await b.fetchProfiles()).find((p) => p.id === session.userId);
+      const me = (await withTimeout(b.fetchProfiles())).find((p) => p.id === session.userId);
       if (!me || me.role === 'pending' || !me.active) return setPhase({ kind: 'blocked', session, profile: me });
-      await connectCloud();
+      await withTimeout(connectCloud(), 45);
       setSessionUser(session.userId);
       setPhase({ kind: 'ready' });
     } catch (e) {
-      setPhase({ kind: 'error', message: (e as Error).message });
+      fail(e);
     }
-  }, []);
+  }, [fail]);
 
   useEffect(() => {
     let unsub = () => {};
-    void getCloudBackend().then(async (b) => {
-      setCloudSignOut(() => b.signOut());
-      await enter(await b.getSession());
-      unsub = b.onAuthChange((s) => {
-        if (!s) void enter(null);
-      });
-    });
+    getCloudBackend()
+      .then(async (b) => {
+        setCloudSignOut(() => b.signOut());
+        await enter(await withTimeout(b.getSession()));
+        unsub = b.onAuthChange((s) => {
+          if (!s) void enter(null);
+        });
+      })
+      .catch(fail);
     return () => unsub();
-  }, [enter]);
+  }, [enter, fail]);
 
   if (phase.kind === 'ready') return <>{children}</>;
 
@@ -72,11 +75,28 @@ export function CloudGate({ children }: { children: ReactNode }) {
           <p role="alert" className="text-sm text-red-600">
             {t('cloud.loadError', { error: phase.message })}
           </p>
+          <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
+            <p className="mb-1 flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+              <AlertTriangle className="size-3.5 text-amber-500" /> {t('cloud.diagTitle')}
+            </p>
+            <ul className="list-disc space-y-1 pl-4 break-words">
+              <li>{t('cloud.diagUrl', { url: CLOUD_URL || '—' })}</li>
+              <li>{t('cloud.diagKey')}</li>
+              <li>{t('cloud.diagSchema')}</li>
+              <li>{t('cloud.diagPaused')}</li>
+              <li>{t('cloud.diagRedeploy')}</li>
+            </ul>
+          </div>
           <div className="flex gap-2">
-            <Button variant="primary" icon={RefreshCw} onClick={() => void getCloudBackend().then(async (b) => enter(await b.getSession()))}>
+            <Button variant="primary" icon={RefreshCw} onClick={() => {
+                setPhase({ kind: 'checking' });
+                getCloudBackend()
+                  .then(async (b) => enter(await withTimeout(b.getSession())))
+                  .catch(fail);
+              }}>
               {t('cloud.retry')}
             </Button>
-            <Button icon={LogOut} onClick={() => void getCloudBackend().then((b) => b.signOut()).then(() => enter(null))}>
+            <Button icon={LogOut} onClick={() => void getCloudBackend().then((b) => b.signOut()).catch(() => undefined).then(() => enter(null))}>
               {t('cloud.logout')}
             </Button>
           </div>
@@ -143,7 +163,9 @@ function CloudLogin({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [error, setErrorRaw] = useState('');
+  /** Erro de rede do navegador ("Failed to fetch") vira uma mensagem que orienta a configuração. */
+  const setError = (msg: string) => setErrorRaw(/failed to fetch|networkerror|load failed/i.test(msg) ? t('cloud.unreachable', { url: CLOUD_URL || '—' }) : msg);
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -160,24 +182,26 @@ function CloudLogin({ onSignedIn }: { onSignedIn: () => void }) {
     if (!email.trim() || (mode !== 'reset' && !password)) return setError(t('cloud.required'));
     if (mode === 'signUp' && password.length < 8) return setError(t('cloud.passwordShort'));
     setBusy(true);
-    const b = await getCloudBackend();
     try {
+      const b = await getCloudBackend();
       if (mode === 'signIn') {
-        const r = await b.signIn(email.trim(), password);
+        const r = await withTimeout(b.signIn(email.trim(), password));
         if (r.error) setError(r.error);
         else onSignedIn();
       } else if (mode === 'signUp') {
-        const r = await b.signUp(email.trim(), password, name.trim());
+        const r = await withTimeout(b.signUp(email.trim(), password, name.trim()));
         if (r.error) setError(r.error);
         else if (r.needsConfirmation) {
           setInfo(t('cloud.checkEmail'));
           setMode('signIn');
         } else onSignedIn();
       } else {
-        const r = await b.resetPassword(email.trim());
+        const r = await withTimeout(b.resetPassword(email.trim()));
         if (r.error) setError(r.error);
         else setInfo(t('cloud.resetSent'));
       }
+    } catch (err) {
+      setError(err instanceof TimeoutError ? t('cloud.timeout', { s: err.seconds }) : (err as Error)?.message || String(err));
     } finally {
       setBusy(false);
     }

@@ -11,6 +11,9 @@ const KEY = env.VITE_SUPABASE_ANON_KEY?.trim();
 /** Somente testes automatizados: servidor simulado (ver devBackend.ts). */
 const FAKE = env.VITE_FAKE_CLOUD_URL?.trim();
 
+/** Endereço configurado (público), exibido no diagnóstico de erro de conexão. */
+export const CLOUD_URL = FAKE ?? URL_ ?? '';
+
 /** true quando o app está configurado para a nuvem. */
 export const CLOUD: boolean = !!((URL_ && KEY) || FAKE);
 
@@ -27,8 +30,9 @@ export async function getCloudBackend(): Promise<CloudBackend> {
     backend = createDevBackend(FAKE);
   }
   if (!backend) {
+    if (!/^https?:\/\/[^/]+\/?$/.test(URL_ ?? '')) throw new Error(`VITE_SUPABASE_URL inválida: "${URL_ ?? ''}"`);
     const { createSupabaseBackend } = await import('./supabaseBackend');
-    backend = createSupabaseBackend(URL_!, KEY!);
+    backend = createSupabaseBackend(URL_!.replace(/\/$/, ''), KEY!);
   }
   return backend;
 }
@@ -40,3 +44,19 @@ export function cloudBackend(): CloudBackend {
 }
 
 export const syncQueue = new SyncQueue(cloudBackend);
+
+/** Rejeita se a operação não terminar no prazo (evita tela de carregamento infinita). */
+export class TimeoutError extends Error {
+  constructor(public seconds: number) {
+    super(`timeout ${seconds}s`);
+  }
+}
+export function withTimeout<T>(p: Promise<T>, seconds = 20): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new TimeoutError(seconds)), seconds * 1000);
+    p.then(
+      (v) => (clearTimeout(timer), resolve(v)),
+      (e: unknown) => (clearTimeout(timer), reject(e)),
+    );
+  });
+}
