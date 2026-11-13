@@ -9,7 +9,7 @@ import { CLOUD } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
-import { DisclaimerStrip } from '@/components/layout/Disclaimer';
+import { BuildInfo, DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 /** Tela de entrada: escolha do usuário + PIN. */
 export function LoginScreen() {
@@ -124,6 +124,7 @@ export function LoginScreen() {
             </button>
           ))}
         </div>
+        <BuildInfo className="mt-3" />
       </div>
       </div>
     </div>

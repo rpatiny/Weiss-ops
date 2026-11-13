@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
+import { CLOUD, EMAIL_AUTH } from '@/data/cloud/runtime';
 
 const SEEN_KEY = 'spindleops:disclaimer-seen';
 
@@ -53,4 +54,10 @@ export function StartupDisclaimer() {
       </div>
     </div>
   );
+}
+
+/** Versão publicada + modo de dados/login (para conferir o deploy). */
+export function BuildInfo({ className }: { className?: string }) {
+  const mode = CLOUD ? (EMAIL_AUTH ? 'cloud · e-mail' : 'cloud · PIN') : 'local';
+  return <p className={cn('text-center text-[11px] text-slate-500', className)}>v{__APP_VERSION__} · {mode}</p>;
 }

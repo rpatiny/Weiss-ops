@@ -10,7 +10,7 @@ import { db } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
 import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
-import { DisclaimerStrip } from '@/components/layout/Disclaimer';
+import { BuildInfo, DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 type Phase =
   | { kind: 'checking' }
@@ -170,6 +170,7 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
           ))}
         </div>
+        <BuildInfo className="mt-3" />
       </div>
       </div>
     </div>
