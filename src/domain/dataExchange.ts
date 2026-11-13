@@ -96,6 +96,7 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       Cliente: s.customer,
       Recebido: d(s.receivedDate),
       'Nº cotação': s.quoteNumber,
+      'Data cotação': d(s.quoteDate),
       'Valor cotado': s.quotedValue,
       'Status da cotação': label(`enums.quoteStatus.${s.quoteStatus}`),
       Status: label(`enums.spindleStatus.${s.status}`),

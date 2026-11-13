@@ -320,6 +320,8 @@ export interface SpindleUnit {
   customer: string;
   receivedDate: ISODate;
   quoteNumber: string;
+  /** Data em que a cotação foi enviada ao cliente. */
+  quoteDate?: ISODate;
   quotedValue: number;
   quoteStatus: QuoteStatus;
   status: SpindleStatus;

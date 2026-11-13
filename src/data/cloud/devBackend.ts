@@ -3,7 +3,7 @@
  * (scripts de teste) imitando Supabase Auth + RLS + Realtime. Ativado apenas quando
  * VITE_FAKE_CLOUD_URL está definido; nunca é usado em produção.
  */
-import type { AuthSession, CloudBackend, ProfileRow, RecordRow, RemoteChange } from './backend';
+import type { AuthSession, CloudBackend, PresenceInfo, ProfileRow, RecordRow, RemoteChange } from './backend';
 
 const KEY = 'spindleops:fake-session';
 
@@ -70,6 +70,27 @@ export function createDevBackend(base: string): CloudBackend {
       es.onerror = () => onStatus?.(false);
       es.onmessage = (m) => onChange(JSON.parse(m.data) as RemoteChange);
       return () => es.close();
+    },
+    presence(me, onSync) {
+      // Servidor simulado: batimento a cada 2 s; a lista traz quem bateu nos últimos 6 s.
+      const key = `${me.userId}:${Math.random().toString(36).slice(2, 10)}`;
+      let current = me;
+      const beat = () =>
+        void call<PresenceInfo[]>('/presence', { method: 'POST', body: JSON.stringify({ key, info: current }) })
+          .then(onSync)
+          .catch(() => undefined);
+      beat();
+      const timer = setInterval(beat, 2000);
+      return {
+        update(next) {
+          current = next;
+          beat();
+        },
+        stop() {
+          clearInterval(timer);
+          void call('/presence', { method: 'POST', body: JSON.stringify({ key, leave: true }) }).catch(() => undefined);
+        },
+      };
     },
   };
 }

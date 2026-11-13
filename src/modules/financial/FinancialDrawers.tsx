@@ -136,9 +136,12 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
                 <option key={c} value={c} />
               ))}
             </datalist>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('financial.spindleForm.quoteNumber')}>
                 {(id) => <Input id={id} value={d.quoteNumber} onChange={(e) => set('quoteNumber', e.target.value)} className="font-mono" />}
+              </Field>
+              <Field label={t('financial.spindleForm.quoteDate')}>
+                {(id) => <Input id={id} type="date" value={d.quoteDate ?? ''} onChange={(e) => set('quoteDate', e.target.value || undefined)} />}
               </Field>
               <Field label={t('financial.spindleForm.quotedValue')} error={err('quotedValue')}>
                 {(id) => <Input id={id} name="quotedValue" type="number" min={0} step="0.01" value={d.quotedValue} onChange={(e) => set('quotedValue', Number(e.target.value))} className="text-right" />}

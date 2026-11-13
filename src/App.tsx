@@ -6,6 +6,7 @@ import { SchedulePage } from '@/modules/calendar/SchedulePage';
 import { EmployeesPage } from '@/modules/employees/EmployeesPage';
 import { PurchaseOrdersPage } from '@/modules/purchasing/PurchaseOrdersPage';
 import { ExtensionsPage } from '@/modules/extensions/ExtensionsPage';
+import { ProjectsPage } from '@/modules/projects/ProjectsPage';
 import { lazy, Suspense } from 'react';
 
 // Hub Financeiro (recharts) carregado sob demanda para manter o pacote inicial leve.
@@ -22,6 +23,8 @@ function Page({ path }: { path: RoutePath }) {
       return <SchedulePage />;
     case '/purchase-orders':
       return <PurchaseOrdersPage />;
+    case '/projects':
+      return <ProjectsPage />;
     case '/extensions':
       return <ExtensionsPage />;
     case '/financial':

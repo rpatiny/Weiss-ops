@@ -211,6 +211,8 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     { id: 'sp_h7', serialNumber: 'MZ-QTN-70011', model: 'QTN-200 Spindle', manufacturer: 'Mazak', customer: CUSTOMERS.autopecas.name, receivedDate: m(-1, -22), quoteNumber: 'COT-2609-028', quotedValue: 15600, quoteStatus: 'approved', status: 'delivered', deliveryDate: m(-1), invoicedValue: 15600 },
     { id: 'sp_h8', serialNumber: 'GMN-120-3902', model: 'HC 120', manufacturer: 'GMN', customer: CUSTOMERS.aeromec.name, receivedDate: m(-1, -30), quoteNumber: 'COT-2609-031', quotedValue: 44100, quoteStatus: 'approved', status: 'delivered', deliveryDate: m(-1, 4), invoicedValue: 44100 },
   ];
+  // Cotação enviada 2 dias após o recebimento (exceto as ainda pendentes).
+  for (const s of spindles) if (s.quoteStatus !== 'pending') s.quoteDate = addDays(s.receivedDate, 2);
 
   // ───────────── Forecast ─────────────
   const forecast: ForecastItem[] = [

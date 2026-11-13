@@ -29,6 +29,17 @@ export interface AuthSession {
   email: string;
 }
 
+/** Quem está com o app aberto agora (uma entrada por aba). */
+export interface PresenceInfo {
+  userId: string;
+  name: string;
+  role: string;
+  /** Rota atual (ex.: `/calendar`). */
+  page: string;
+  /** Início da sessão (ISO). */
+  since: string;
+}
+
 export interface CloudBackend {
   // Autenticação
   getSession(): Promise<AuthSession | null>;
@@ -43,4 +54,6 @@ export interface CloudBackend {
   fetchAll(): Promise<RecordRow[]>;
   write(collection: string, upserts: { id: string; data: unknown }[], deletes: string[]): Promise<void>;
   subscribe(onChange: (c: RemoteChange) => void, onStatus?: (connected: boolean) => void): () => void;
+  /** Presença: anuncia esta aba e recebe a lista de quem está online. `update` troca os dados anunciados. */
+  presence(me: PresenceInfo, onSync: (online: PresenceInfo[]) => void): { update(me: PresenceInfo): void; stop(): void };
 }

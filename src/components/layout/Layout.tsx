@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
 import { usePendingCounts, usePendingExtensions } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
+import { OnlineButton } from './OnlineButton';
+import { announcePresence } from '@/data/cloud/presence';
 import { EmptyCloudBanner } from './EmptyCloudBanner';
 import { LocalModeBanner } from './LocalModeBanner';
 import { DisclaimerStrip } from './Disclaimer';
@@ -113,7 +115,10 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           {theme === 'dark' ? t('app.themeLight') : t('app.themeDark')}
         </button>
         <LanguageSwitcher />
-        <SyncIndicator />
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <SyncIndicator />
+          <OnlineButton />
+        </div>
         {user && (
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-2">
             <div className="min-w-0 flex-1">
@@ -135,6 +140,13 @@ export function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t } = useI18n();
   const close = () => setMobileOpen(false);
+  const me = useCurrentUser();
+  const { path } = useRoute();
+  // Presença (modo nuvem): anuncia quem está nesta aba e em qual página.
+  useEffect(() => {
+    announcePresence(me ? { userId: me.id, name: me.name, role: me.role, page: path } : null);
+  }, [me, path]);
+  useEffect(() => () => announcePresence(null), []);
 
   return (
     <div className="min-h-screen">

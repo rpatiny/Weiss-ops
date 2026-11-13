@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { AuthSession, CloudBackend, ProfileRow, RecordRow } from './backend';
+import type { AuthSession, CloudBackend, PresenceInfo, ProfileRow, RecordRow } from './backend';
 
 const PAGE = 1000;
 const CHUNK = 500;
@@ -79,6 +79,30 @@ export function createSupabaseBackend(url: string, anonKey: string): CloudBacken
         .subscribe((status) => onStatus?.(status === 'SUBSCRIBED'));
       return () => {
         void sb.removeChannel(ch);
+      };
+    },
+    presence(me, onSync) {
+      const key = `${me.userId}:${Math.random().toString(36).slice(2, 10)}`;
+      let current = me;
+      let joined = false;
+      const ch = sb.channel('spindleops-presence', { config: { presence: { key } } });
+      ch.on('presence', { event: 'sync' }, () => {
+        const state = ch.presenceState<PresenceInfo>();
+        onSync(Object.values(state).flatMap((metas) => metas.map(({ userId, name, role, page, since }) => ({ userId, name, role, page, since }))));
+      }).subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          joined = true;
+          void ch.track(current);
+        }
+      });
+      return {
+        update(next) {
+          current = next;
+          if (joined) void ch.track(next);
+        },
+        stop() {
+          void sb.removeChannel(ch);
+        },
       };
     },
   };

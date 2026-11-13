@@ -235,6 +235,15 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   de componentes — sem isso, enviar um formulário aberto a partir de outro formulário enviava os dois.
 - **i18n — plural**: textos `"singular || plural"` escolhidos pela variável `count` (ou `days`/`qty`/`late`). Não use "(s)".
 
+- **Projetos** (`domain/projects.ts`, tela `#/projects`): ficha por projeto montada só com dados derivados (`buildDossier`):
+  cotação do spindle (nº, `quoteDate`, valor, status), PO do cliente, produção (fase, período, equipe pelas alocações),
+  materiais (recebidos/total + pendentes com requisição → PO → previsão/atraso) e histórico em linha do tempo
+  (recebimento, cotação, PO do cliente, requisições, POs de compra, GRs, início/fim, entrega). Ordem: em produção →
+  programados → sem data → concluídos. Busca por nº, cliente, PO, RC, spindle, colaborador ou PN.
+- **Quem está online** (modo nuvem, `data/cloud/presence.ts` + `OnlineButton` ao lado do indicador de sincronização):
+  cada aba logada anuncia usuário/perfil/página via Realtime Presence; lista agrupada por usuário (nº de abas).
+- **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.
+
 - **Hub Financeiro** (`domain/financial.ts`, permissão `financial.edit` = Master e Office; Logística só lê):
   - Valor faturado de uma unidade entregue = `invoicedValue`, senão `quotedValue` (avisado na aba Entregas).
   - "Em aberto / pendente" = valor cotado de unidades aprovadas e ainda não entregues (approved/in_repair/testing);
