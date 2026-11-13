@@ -26,6 +26,28 @@ Abra http://localhost:5173. PINs de demonstração: **Master 1234 · Logística 
 | `npm run preview` | Serve o build de produção |
 | `npm run build:artifact` | Versão de arquivo único em `dist-artifact/spindleops.html` |
 
+## Modo nuvem (Supabase): dados compartilhados pela equipe
+
+Sem configuração, o app roda no **modo local** (dados no navegador, com demonstração e login por PIN).
+Com o Supabase configurado, todos usam **os mesmos dados**, com login por e-mail e senha e atualização em tempo real.
+
+1. Crie um projeto gratuito em https://supabase.com (região mais próxima da equipe).
+2. **SQL Editor → New query**: cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**.
+3. **Authentication → URL Configuration**: em *Site URL*, coloque o endereço do app (ex.: `https://weiss-ops.vercel.app`).
+   *Opcional:* em **Authentication → Providers → Email**, desative "Confirm email" para não exigir confirmação por e-mail.
+4. **Project Settings → API**: copie a *Project URL* e a chave *anon / publishable* (é pública por design;
+   a segurança vem das regras RLS do passo 2).
+5. Na Vercel (**Settings → Environment Variables**) ou num arquivo `.env.local` (veja `.env.example`):
+   ```
+   VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+   VITE_SUPABASE_ANON_KEY=sua-chave-anon
+   ```
+   e publique de novo (na Vercel: **Deployments → Redeploy**).
+6. **Primeiro acesso:** quem criar a primeira conta vira **Master**. A base começa vazia: o Master usa
+   "Restaurar backup" (JSON exportado do modo local) ou "Carregar demonstração".
+7. **Equipe:** cada pessoa clica em "Criar conta" na tela de login e fica *aguardando liberação*;
+   o Master define o perfil em **Dados & Backup → Usuários** (Logística ou Office).
+
 ## Publicar na Vercel
 
 1. Em https://vercel.com, entre com o GitHub e use **Add New… → Project** neste repositório.

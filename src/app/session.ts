@@ -51,7 +51,7 @@ function emit() {
 
 export function getCurrentUser(): User | undefined {
   const u = currentId ? repos.users.getById(currentId) : undefined;
-  return u?.active ? u : undefined;
+  return u?.active && !u.pending ? u : undefined;
 }
 
 export function can(permission: Permission, user: User | undefined = getCurrentUser()): boolean {
@@ -92,7 +92,23 @@ export async function login(userId: string, pin: string): Promise<boolean> {
   return true;
 }
 
+/** Modo nuvem: define o usuário (conta do Supabase) depois do login e da carga dos dados. */
+export function setSessionUser(id: string | null): void {
+  currentId = id;
+  emit();
+}
+
+let cloudSignOut: (() => Promise<void>) | null = null;
+/** Modo nuvem: registra como encerrar a sessão no Supabase. */
+export function setCloudSignOut(fn: () => Promise<void>): void {
+  cloudSignOut = fn;
+}
+
 export function logout(): void {
+  if (cloudSignOut) {
+    void cloudSignOut().finally(() => window.location.reload());
+    return;
+  }
   currentId = null;
   try {
     localStorage.removeItem(KEY);

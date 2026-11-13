@@ -29,6 +29,8 @@ export interface User {
   /** SHA-256 de `spindleops:<id>:<pin>` (proteção de uso local — não substitui autenticação de servidor). */
   pinHash: string;
   active: boolean;
+  /** Modo nuvem: conta criada e aguardando o Master definir o perfil. */
+  pending?: boolean;
 }
 
 // ───────────────────────── Employees ─────────────────────────

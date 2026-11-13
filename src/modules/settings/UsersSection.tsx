@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
-import { repos } from '@/data/db';
+import { CLOUD, repos } from '@/data/db';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { useCollection } from '@/data/hooks';
 import { enumOptions } from '@/domain/labels';
 import { useI18n } from '@/i18n';
@@ -20,6 +22,7 @@ export function UsersSection() {
   const users = useCollection('users');
   const me = useCurrentUser();
   const [editing, setEditing] = useState<{ user?: User } | null>(null);
+  const [howTo, setHowTo] = useState(false);
 
   return (
     <section className="card p-5 lg:col-span-2">
@@ -29,8 +32,9 @@ export function UsersSection() {
             <UserCog className="size-5 text-slate-400" /> {t('users.title')}
           </h2>
           <p className="text-sm text-slate-500">{t('users.hint')}</p>
+          {CLOUD && <p className="mt-1 text-sm text-slate-500">{t('cloud.usersHint')}</p>}
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => setEditing({})}>
+        <Button variant="primary" icon={Plus} onClick={() => (CLOUD ? setHowTo(true) : setEditing({}))}>
           {t('users.new')}
         </Button>
       </div>
@@ -45,12 +49,15 @@ export function UsersSection() {
                 {u.email} · {t(`users.roleHints.${u.role}`)}
               </p>
             </div>
-            <StatusBadge kind="userRole" value={u.role} />
+            {u.pending ? <Badge tone="amber" dot>{t('cloud.pending')}</Badge> : <StatusBadge kind="userRole" value={u.role} />}
             <Button size="sm" variant="ghost" icon={Pencil} onClick={() => setEditing({ user: u })} aria-label={t('common.edit')} />
           </li>
         ))}
       </ul>
       <UserDrawer open={!!editing} user={editing?.user} onClose={() => setEditing(null)} />
+      <Modal open={howTo} onClose={() => setHowTo(false)} title={t('cloud.newUserTitle')} footer={<Button onClick={() => setHowTo(false)}>{t('common.close')}</Button>}>
+        {t('cloud.newUserText')}
+      </Modal>
     </section>
   );
 }
@@ -82,12 +89,12 @@ function UserDrawer({ open, user, onClose }: { open: boolean; user?: User; onClo
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return setError('users.nameRequired');
-    if ((!user || pin) && !/^\d{4,8}$/.test(pin)) return setError('users.pinInvalid');
+    if (!CLOUD && (!user || pin) && !/^\d{4,8}$/.test(pin)) return setError('users.pinInvalid');
     const otherMasters = users.filter((u) => u.id !== user?.id && u.role === 'master' && u.active).length;
     if (user?.role === 'master' && (role !== 'master' || !active) && otherMasters === 0) return setError('users.lastMaster');
     const id = user?.id ?? newId('u');
-    const pinHash = pin ? await hashPin(id, pin) : user!.pinHash;
-    const data: User = { id, name: name.trim(), email: email.trim(), role, active, pinHash };
+    const pinHash = !CLOUD && pin ? await hashPin(id, pin) : (user?.pinHash ?? '');
+    const data: User = { id, name: name.trim(), email: email.trim(), role, active, pinHash, pending: false };
     if (user) repos.users.update(id, data);
     else repos.users.create(data);
     toast.success(t('users.saved'));
@@ -114,14 +121,16 @@ function UserDrawer({ open, user, onClose }: { open: boolean; user?: User; onClo
           {(id) => <Input id={id} name="userName" value={name} onChange={(e) => setName(e.target.value)} autoFocus />}
         </Field>
         <Field label={t('users.email')}>
-          {(id) => <Input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
+          {(id) => <Input id={id} type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={CLOUD} />}
         </Field>
         <Field label={t('users.role')} hint={t(`users.roleHints.${role}`)}>
           {(id) => <Select<UserRole> id={id} name="userRole" value={role} onChange={setRole} options={enumOptions(t, 'userRole')} />}
         </Field>
+        {!CLOUD && (
         <Field label={t('users.pin')} required={!user} hint={user ? t('users.pinKeep') : undefined}>
           {(id) => <Input id={id} name="userPin" type="password" inputMode="numeric" maxLength={8} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} className="font-mono tracking-widest" />}
         </Field>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="size-4 accent-amber-500" checked={active} onChange={(e) => setActive(e.target.checked)} /> {t('users.active')}
         </label>

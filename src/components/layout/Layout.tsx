@@ -3,6 +3,8 @@ import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
 import { usePendingCounts, usePendingExtensions } from './usePendingCounts';
+import { SyncIndicator } from './SyncIndicator';
+import { EmptyCloudBanner } from './EmptyCloudBanner';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
@@ -109,6 +111,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
           {theme === 'dark' ? t('app.themeLight') : t('app.themeDark')}
         </button>
         <LanguageSwitcher />
+        <SyncIndicator />
         {user && (
           <div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-800/60 px-3 py-2">
             <div className="min-w-0 flex-1">
@@ -157,7 +160,10 @@ export function Layout({ children }: { children: ReactNode }) {
       )}
 
       <main className="lg:pl-64">
-        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+          <EmptyCloudBanner />
+          {children}
+        </div>
       </main>
     </div>
   );

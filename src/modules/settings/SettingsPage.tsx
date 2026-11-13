@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
-import { db } from '@/data/db';
+import { CLOUD, db } from '@/data/db';
+import { useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { useCan } from '@/app/session';
@@ -46,13 +47,14 @@ export function SettingsPage() {
   const { t } = useI18n();
   const [confirm, setConfirm] = useState<'reset' | 'clear' | null>(null);
   const allowed = useCan();
+  const me = useCurrentUser();
   // Re-renderiza após reset/limpeza (meta muda junto com as coleções).
   useCollection('employees');
   const meta = db.getMeta();
 
   const run = () => {
     if (confirm === 'reset') {
-      db.resetToDemo();
+      db.resetToDemo(me?.id);
       toast.success(t('settings.toastReset'));
     } else if (confirm === 'clear') {
       db.clearAll();
@@ -63,7 +65,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader icon={Database} title={t('settings.title')} description={t('settings.description')} />
+      <PageHeader icon={Database} title={t('settings.title')} description={CLOUD ? t('cloud.mode') : t('settings.description')} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="card p-5">

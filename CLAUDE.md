@@ -49,6 +49,15 @@ src/
 │  ├─ repository.ts         # Repository<T> + StoredRepository (cache + subscribe)
 │  ├─ db.ts                 # repos por coleção + db.snapshot/load/resetToDemo/clearAll
 │  ├─ hooks.ts              # useCollection(name) via useSyncExternalStore
+│  ├─ cloud/                # MODO NUVEM (Supabase)
+│  │  ├─ backend.ts         # contrato CloudBackend (auth, perfis, registros, tempo real)
+│  │  ├─ supabaseBackend.ts # implementação real (carregada sob demanda)
+│  │  ├─ devBackend.ts      # SÓ TESTES: fala com servidor simulado (VITE_FAKE_CLOUD_URL)
+│  │  ├─ runtime.ts         # CLOUD (env), backend, syncQueue
+│  │  ├─ syncQueue.ts       # fila de gravação: lote, última versão vence, retry com backoff, status
+│  │  ├─ remoteRepository.ts# Repository síncrono c/ cache + escrita otimista + applyRemote
+│  │  ├─ profilesRepository.ts # users = tabela profiles
+│  │  └─ connect.ts         # carga inicial + assinatura do tempo real
 │  └─ seed.ts               # buildSeed(today): dados demo com datas RELATIVAS a hoje
 ├─ domain/                  # Regras de negócio puras + serviços (comandos)
 │  ├─ labels.ts             # tons de badge por enum + enumLabel/enumOptions (rótulos vêm do i18n)
@@ -246,6 +255,30 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   referências (alocações, ausências, requisições, PO/spindle) e existência de Master ativo; mostra prévia com contagens
   antes de substituir tudo. Se o usuário logado não existir no backup, a sessão é encerrada.
 
+## Modo nuvem (Supabase) — Fase 6
+
+- **Ativação:** `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` ⇒ `CLOUD = true`. Sem elas, modo local (localStorage + PIN),
+  usado também na página de demonstração.
+- **Esquema** (`supabase/schema.sql`): `profiles` (1 por conta do Auth; trigger cria; primeira conta = master, demais
+  `pending`) e `records(collection, id, data jsonb)` — um documento por entidade, espelhando os repositórios.
+  RLS: `my_role()` (perfil ativo e não pendente) é exigido para ler/gravar `records`; só master altera `profiles`.
+  Realtime publicado para as duas tabelas.
+- **Sincronização:** os repositórios continuam **síncronos** para o domínio/UI. `RemoteRepository` mantém cache,
+  aplica escrita otimista e envia via `SyncQueue` (agrupa por coleção; a última versão de cada id vence; falha ⇒
+  devolve à fila e tenta de novo com backoff 1s→30s; evento `online` força envio). Eventos remotos de ids com
+  gravação pendente são ignorados (a versão local mais nova prevalece). Conflito entre usuários: último a gravar vence
+  por registro. `replaceAll` envia só a diferença. Comparação com JSON de chaves ordenadas (jsonb reordena chaves).
+- **Boot:** `CloudGate` → sessão do Supabase → perfil (pendente/inativo ⇒ tela "Aguardando liberação") → `connectCloud()`
+  (carga de tudo + tempo real) → `setSessionUser`. Logout encerra a sessão no Supabase e recarrega.
+- **Usuários na nuvem:** sem PIN; contas criadas por "Criar conta"; Master define perfil/ativo. Backups não substituem
+  contas (`ProfilesRepository.replaceAll` é no-op) e a checagem "Master ativo" do backup não se aplica.
+- **Base vazia:** `EmptyCloudBanner` oferece "Restaurar backup" ou "Carregar demonstração" (autorias da demo passam para
+  o usuário atual). Metadados em `records` coleção `_meta`.
+- **Indicador:** `SyncIndicator` (Sincronizado / Salvando / Sem conexão / Erro: tentando de novo / Reconectando).
+  Status do tempo real via `useSyncExternalStore` (evita perder o "conectado" entre render e efeito).
+- **Testes:** com `VITE_FAKE_CLOUD_URL` o app usa `devBackend.ts` contra um servidor simulado que imita Auth + RLS +
+  Realtime (SSE) — validado: cadastro/pendente/liberação, tempo real entre 2 usuários, falha de rede e reenvio.
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -262,6 +295,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - [x] **Fase 3.2** — Botão/assistente de nova requisição, extensões de material SAP (tela própria), revisão do inglês e plurais.
 - [x] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.
+- [x] **Fase 6** — Modo nuvem (Supabase): login e-mail/senha, perfis com liberação pelo Master, dados compartilhados,
+      tempo real, fila offline com reenvio, RLS.
 - [x] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas
       (`Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`, `Itens_PO`, `Spindles`, `Forecast`), backup/restore JSON
       com validação, revisão final de UX e build de produção.
