@@ -147,6 +147,7 @@ export const db = {
   },
 
   isEmpty(): boolean {
-    return DATA_COLLECTIONS.every((c) => repos[c].getAll().length === 0);
+    // As fases padrão da oficina são criadas automaticamente: não contam como dados de negócio.
+    return DATA_COLLECTIONS.every((c) => c === 'workPhases' || repos[c].getAll().length === 0);
   },
 };

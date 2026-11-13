@@ -470,18 +470,29 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   const entry = (employeeId: string, projectId: string, phase: number, start: string, end?: string, extra: Partial<TimeEntry> = {}): TimeEntry => ({
     id: `te_${++te}`, employeeId, projectId, phaseId: `ph_${phase}`, start, end, source: 'qr', note: '', ...extra,
   });
+  // Ordem obrigatória: cada fase é concluída ("Concluir fase") antes da próxima; pausa = sem `completesPhase`.
+  const done = { completesPhase: true } as const;
   const timeEntries: TimeEntry[] = [
-    entry('emp_juliana', 'prj_001', 1, at(bd(-3), '08:02'), at(bd(-3), '12:05')),
-    entry('emp_juliana', 'prj_001', 2, at(bd(-3), '13:01'), at(bd(-3), '17:10')),
-    entry('emp_marcos', 'prj_001', 3, at(bd(-2), '08:30'), at(bd(-2), '11:45')),
-    entry('emp_juliana', 'prj_001', 4, at(bd(-2), '08:00'), at(bd(-2), '16:40')),
-    entry('emp_juliana', 'prj_001', 4, at(bd(-1), '08:05'), at(bd(-1), '11:30')),
-    entry('emp_juliana', 'prj_001', 5, at(bd(-1), '11:30'), at(bd(-1), '17:02'), { autoClosed: false }),
-    // Esqueceu de encerrar ontem: aparece para revisão da supervisão.
-    entry('emp_marcos', 'prj_009', 6, at(bd(-1), '14:20')),
-    // Em andamento agora.
+    // PRJ-2611-006: serviço já concluído na oficina (todas as fases) — Carlos ficou livre.
+    entry('emp_carlos', 'prj_006', 1, at(bd(-6), '08:00'), at(bd(-6), '10:30'), done),
+    entry('emp_carlos', 'prj_006', 2, at(bd(-6), '10:30'), at(bd(-6), '16:45'), done),
+    entry('emp_carlos', 'prj_006', 3, at(bd(-5), '08:05'), at(bd(-5), '09:40'), done),
+    entry('emp_carlos', 'prj_006', 4, at(bd(-5), '09:40'), at(bd(-5), '17:00'), done),
+    entry('emp_carlos', 'prj_006', 5, at(bd(-4), '08:00'), at(bd(-4), '11:15'), done),
+    entry('emp_carlos', 'prj_006', 6, at(bd(-4), '11:15'), at(bd(-4), '15:50'), done),
+    entry('emp_carlos', 'prj_006', 7, at(bd(-4), '15:50'), at(bd(-4), '16:40'), done),
+    // PRJ-2611-001: Juliana nas fases em ordem; Marcos ajudou na limpeza; agora em Teste.
+    entry('emp_juliana', 'prj_001', 1, at(bd(-3), '08:02'), at(bd(-3), '12:05'), done),
+    entry('emp_juliana', 'prj_001', 2, at(bd(-3), '13:01'), at(bd(-3), '17:10'), done),
+    entry('emp_marcos', 'prj_001', 3, at(bd(-2), '08:30'), at(bd(-2), '11:45'), done),
+    entry('emp_juliana', 'prj_001', 4, at(bd(-2), '12:00'), at(bd(-2), '16:40')), // pausa (fim do dia)
+    entry('emp_juliana', 'prj_001', 4, at(bd(-1), '08:05'), at(bd(-1), '11:30'), done),
+    entry('emp_juliana', 'prj_001', 5, at(bd(-1), '11:30'), at(bd(-1), '17:02'), done),
     entry('emp_juliana', 'prj_001', 6, minutesAgo(95)),
-    entry('emp_patricia', 'prj_004', 2, minutesAgo(40)),
+    // Esqueceu de encerrar ontem: aparece para revisão da supervisão.
+    entry('emp_marcos', 'prj_009', 1, at(bd(-1), '14:20')),
+    // Em andamento agora.
+    entry('emp_patricia', 'prj_004', 1, minutesAgo(40)),
   ];
 
   return {

@@ -244,12 +244,19 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   cada aba logada anuncia usuário/perfil/página via Realtime Presence; lista agrupada por usuário (nº de abas).
 - **Horas da oficina** (`domain/timeTracking.ts`):
   - **Ponto por QR code** (`#/clock`, `modules/clock/ClockPage.tsx`): um QR na entrada abre a tela; nome → PIN do ponto
-    (`Employee.clockPinHash`, sal = id, `lib/sha256.ts`) → projeto ativo (os do cronograma de hoje primeiro) → fase → Iniciar.
-    Não usa o login do app; a sessão fecha sozinha 6 s após registrar (ou 90 s sem uso) e exige ler o QR de novo.
-  - Uma coisa por vez: iniciar outra fase fecha a aberta no mesmo instante (`autoClosed`). "Encerrar fase" = check-out.
+    (`Employee.clockPinHash`, sal = id, `lib/sha256.ts`). Não usa o login do app; a sessão fecha sozinha 6 s após
+    registrar (ou 90 s sem uso) e exige ler o QR de novo.
+  - **Um serviço por vez, fases em ordem obrigatória** (`jobProgress`, `currentJobOf`): quem inicia um projeto fica preso
+    a ele (`currentJobOf` = projeto do último apontamento, enquanto houver fase ativa pendente e sem `released`).
+    A fase não é escolhida: é sempre a próxima pendente do projeto (progresso compartilhado entre técnicos).
+    "Concluir fase" (toque duplo) grava `completesPhase` e libera a próxima; "Pausar" só para o relógio.
+    Última fase concluída ⇒ "Serviço concluído!" e o técnico fica livre. Lista para escolher: iniciados primeiro,
+    depois por data de início no cronograma. `clockService.start/stop` validam a regra (não só a UI).
+  - Supervisão pode **Liberar** um técnico de um serviço parado (aba Serviços; grava `released` no último apontamento,
+    encerra a fase aberta como pausa) e corrigir "Fase concluída" no apontamento.
   - Aberto desde um dia anterior ou > 12 h ⇒ **para revisar** (nunca fechado com hora inventada); fora dos totais.
   - Supervisão `#/timesheet` (`time.manage` = Master/Office corrigem; demais só leem): Agora, Apontamentos (filtros,
-    horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Equipe & PINs, Fases (editáveis, ordem, ativa),
+    horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Serviços (fases ✓/em andamento/próxima, Liberar), Equipe & PINs, Fases (editáveis, ordem, ativa),
     QR code (imprimir cartaz / baixar PNG; URL = origem do site + `#/clock`). Card do projeto mostra horas por fase.
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
     Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.

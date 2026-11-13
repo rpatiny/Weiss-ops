@@ -369,6 +369,10 @@ export interface TimeEntry {
   source: 'qr' | 'manual';
   /** Fechado automaticamente ao iniciar outra fase. */
   autoClosed?: boolean;
+  /** Encerrado com "Concluir fase": a fase deste projeto está pronta (libera a próxima). */
+  completesPhase?: boolean;
+  /** Supervisão liberou o colaborador do serviço sem concluir todas as fases (ex.: aguardando material). */
+  released?: { by: ID; at: string; note: string };
   note: string;
   /** Usuário que corrigiu/lançou (supervisão). */
   editedBy?: ID;

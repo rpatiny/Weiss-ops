@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Check,
   CalendarRange,
   ChevronDown,
   ChevronUp,
@@ -26,8 +27,8 @@ import { cn } from '@/lib/cn';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { usePersistentState } from '@/lib/usePersistentState';
 import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
-import type { ProjectAssignment, WorkPhase } from '@/types/models';
-import { formatHoursDecimal, formatMinutes, minutesByPhase } from '@/domain/timeTracking';
+import type { ProjectAssignment } from '@/types/models';
+import { formatHoursDecimal, formatMinutes, jobProgress, type JobProgress } from '@/domain/timeTracking';
 
 type Filter = 'active' | 'finished' | 'all';
 const FILTERS: Filter[] = ['active', 'finished', 'all'];
@@ -42,7 +43,6 @@ export function ProjectsPage() {
   const requisitions = useCollection('requisitions');
   const timeEntries = useCollection('timeEntries');
   const workPhases = useCollection('workPhases');
-  const phaseById = useMemo(() => new Map(workPhases.map((p) => [p.id, p])), [workPhases]);
   const { projects, poById, readinessOf, today } = usePurchasingData();
   const [filter, setFilter] = usePersistentState<Filter>('projects.filter', 'active', isFilter);
   const [query, setQuery] = useState('');
@@ -123,7 +123,7 @@ export function ProjectsPage() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {visible.map((d) => (
-            <ProjectCard key={d.project.id} d={d} hours={minutesByPhase(d.project.id, timeEntries)} phases={phaseById} />
+            <ProjectCard key={d.project.id} d={d} job={jobProgress(d.project.id, workPhases, timeEntries)} />
           ))}
         </div>
       )}
@@ -133,7 +133,7 @@ export function ProjectsPage() {
 
 const PHASE_TONE = { unscheduled: 'slate', scheduled: 'cyan', in_production: 'blue', finished: 'green' } as const;
 
-function ProjectCard({ d, hours, phases }: { d: ProjectDossier; hours: Map<string, number>; phases: Map<string, WorkPhase> }) {
+function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
   const { t } = useI18n();
   const [showHistory, setShowHistory] = useState(false);
   const { project, spindle, customerPO } = d;
@@ -206,22 +206,37 @@ function ProjectCard({ d, hours, phases }: { d: ProjectDossier; hours: Map<strin
             )}
           </Fact>
           <Fact icon={Timer} label={t('projects.hours')} className="sm:col-span-2">
-            {hours.size === 0 ? (
+            {!job.started ? (
               <Muted>{t('projects.noHours')}</Muted>
             ) : (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal([...hours.values()].reduce((a, b) => a + b, 0)) })}</span>
-                {[...hours.entries()]
-                  .sort((a, b) => (phases.get(a[0])?.order ?? 99) - (phases.get(b[0])?.order ?? 99))
-                  .map(([id, min]) => (
-                    <Badge key={id} tone="slate">
-                      {phases.get(id)?.name ?? '—'} · {formatMinutes(min)}
-                    </Badge>
+              <>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge tone={job.complete ? 'green' : 'blue'}>{t('projects.phasesProgress', { done: job.done, total: job.total })}</Badge>
+                  <span className="font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal(job.phases.reduce((a, r) => a + r.minutes, 0)) })}</span>
+                  <LinkBtn className="ml-auto font-sans text-xs" onClick={() => navigate('/timesheet')}>
+                    {t('timesheet.title')} →
+                  </LinkBtn>
+                </div>
+                <ol className="flex flex-wrap gap-1.5">
+                  {job.phases.map(({ phase, state, minutes }) => (
+                    <li
+                      key={phase.id}
+                      title={t(`timesheet.state.${state}`)}
+                      className={cn(
+                        'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium',
+                        state === 'done' && 'border-green-500 bg-green-50 text-green-800 dark:bg-green-500/10 dark:text-green-300',
+                        state === 'active' && 'border-blue-600 bg-blue-600 text-white',
+                        state === 'next' && 'border-blue-500 text-blue-700 dark:text-blue-300',
+                        state === 'pending' && 'border-slate-200 text-slate-400 dark:border-slate-700',
+                      )}
+                    >
+                      {state === 'done' && <Check className="size-3" strokeWidth={3} />}
+                      {phase.name}
+                      {minutes > 0 && <span className="tabular-nums opacity-80">· {formatMinutes(minutes)}</span>}
+                    </li>
                   ))}
-                <LinkBtn className="ml-auto font-sans text-xs" onClick={() => navigate('/timesheet')}>
-                  {t('timesheet.title')} →
-                </LinkBtn>
-              </div>
+                </ol>
+              </>
             )}
           </Fact>
         </dl>

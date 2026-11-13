@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import { ArrowDown, ArrowUp, Clock3, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCheck, Clock3, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
 import { useCan } from '@/app/session';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { canClock, entryMinutes, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
+import { canClock, currentJobOf, entryMinutes, jobProgress, type PhaseState, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { addDays, startOfWeek, todayISO } from '@/lib/dates';
@@ -20,8 +20,8 @@ import { newId } from '@/lib/id';
 import { usePersistentState } from '@/lib/usePersistentState';
 import type { TimeEntry, WorkPhase } from '@/types/models';
 
-type Tab = 'now' | 'entries' | 'team' | 'phases' | 'qr';
-const TABS: Tab[] = ['now', 'entries', 'team', 'phases', 'qr'];
+type Tab = 'now' | 'jobs' | 'entries' | 'team' | 'phases' | 'qr';
+const TABS: Tab[] = ['now', 'jobs', 'entries', 'team', 'phases', 'qr'];
 const isTab = (v: unknown): v is Tab => TABS.includes(v as Tab);
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(getFormatLocale(), { hour: '2-digit', minute: '2-digit' });
@@ -73,12 +73,13 @@ export function TimesheetPage() {
               tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
             )}
           >
-            {t(`timesheet.tabs.${x}`)}
+            {x === 'jobs' ? t('timesheet.jobsTab') : t(`timesheet.tabs.${x}`)}
           </button>
         ))}
       </div>
 
       {tab === 'now' && <NowTab />}
+      {tab === 'jobs' && <JobsTab />}
       {tab === 'entries' && <EntriesTab />}
       {tab === 'team' && <TeamTab />}
       {tab === 'phases' && <PhasesTab />}
@@ -267,7 +268,11 @@ function EntriesTab() {
                     <td className="td">
                       <span className="font-mono text-xs">{prj.get(e.projectId)?.projectNumber}</span> <span className="text-slate-500">{prj.get(e.projectId)?.customer}</span>
                     </td>
-                    <td className="td">{ph.get(e.phaseId)?.name}</td>
+                    <td className="td">
+                      {ph.get(e.phaseId)?.name}
+                      {e.completesPhase && <CheckCheck className="ml-1 inline size-4 text-green-600" aria-label={t('timesheet.state.done')} />}
+                      {e.released && <span className="ml-1 text-xs text-amber-600">({t('timesheet.releasedTag')})</span>}
+                    </td>
                     <td className="td tabular-nums">
                       {formatDate(localDay(e.start))} {timeOf(e.start)}
                     </td>
@@ -310,13 +315,13 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
   const toast = useToast();
   const { employees, projects, phases } = useLookups();
   const open = isNew || !!entry;
-  const blank: EntryDraft = { employeeId: '', projectId: '', phaseId: '', start: '', end: '', note: '' };
+  const blank: EntryDraft = { employeeId: '', projectId: '', phaseId: '', start: '', end: '', note: '', completesPhase: false };
   const [d, setD] = useState<EntryDraft>(blank);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
   useEffect(() => {
     if (open) {
-      setD(entry ? { employeeId: entry.employeeId, projectId: entry.projectId, phaseId: entry.phaseId, start: entry.start, end: entry.end ?? '', note: entry.note } : blank);
+      setD(entry ? { employeeId: entry.employeeId, projectId: entry.projectId, phaseId: entry.phaseId, start: entry.start, end: entry.end ?? '', note: entry.note, completesPhase: !!entry.completesPhase } : blank);
       setError('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -376,6 +381,10 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
             {(id) => <Input id={id} type="datetime-local" value={toLocalInput(d.end)} onChange={(e) => set('end', fromLocalInput(e.target.value))} />}
           </Field>
         </div>
+        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+          <input type="checkbox" checked={!!d.completesPhase} disabled={!d.end} onChange={(e) => set('completesPhase', e.target.checked)} className="size-4 accent-amber-500" />
+          {t('timesheet.phaseDone')}
+        </label>
         <Field label={t('timesheet.note')}>{(id) => <Input id={id} value={d.note} onChange={(e) => set('note', e.target.value)} />}</Field>
         {error && (
           <p role="alert" className="text-sm text-red-600">
@@ -396,6 +405,122 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
         }}
       />
     </Drawer>
+  );
+}
+
+// ───────────── Serviços (progresso pelas fases) ─────────────
+
+const STATE_STYLE: Record<PhaseState, string> = {
+  done: 'bg-green-500 text-white border-green-500',
+  active: 'bg-blue-600 text-white border-blue-600',
+  next: 'border-blue-600 text-blue-700 dark:text-blue-300',
+  pending: 'border-slate-300 text-slate-400 dark:border-slate-600',
+};
+
+function JobsTab() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const entries = useCollection('timeEntries');
+  const { employees, projects, phases, emp } = useLookups();
+  const allowed = useCan()('time.manage');
+  const [filter, setFilter] = useState<'open' | 'complete'>('open');
+  const [releasing, setReleasing] = useState<{ employeeId: string; projectId: string } | null>(null);
+  const [note, setNote] = useState('');
+  const prjById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+
+  const jobs = projects
+    .filter((p) => entries.some((e) => e.projectId === p.id))
+    .map((p) => ({ p, prog: jobProgress(p.id, phases, entries), holders: employees.filter((e) => currentJobOf(e.id, entries, phases, prjById) === p.id) }))
+    .filter(({ prog, p }) => (filter === 'complete' ? prog.complete : !prog.complete && isProjectActive(p)))
+    .sort((a, b) => a.p.projectNumber.localeCompare(b.p.projectNumber));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-3xl text-sm text-slate-500">{t('timesheet.jobsHint')}</p>
+        <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+          {(['open', 'complete'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
+              className={cn('rounded-md px-3 py-1.5 text-sm font-medium', filter === f ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500')}
+            >
+              {t(`timesheet.jobsFilter.${f}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {jobs.length === 0 ? (
+        <EmptyState icon={Timer} title={t('timesheet.jobsEmpty')} />
+      ) : (
+        <div className="grid gap-3 xl:grid-cols-2">
+          {jobs.map(({ p, prog, holders }) => (
+            <div key={p.id} className="card border-l-4 p-4" style={{ borderLeftColor: p.color }}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-mono text-xs text-slate-500">{p.projectNumber}</p>
+                  <p className="truncate font-semibold text-slate-900 dark:text-white">{p.customer}</p>
+                </div>
+                <Badge tone={prog.complete ? 'green' : 'blue'}>{t('projects.phasesProgress', { done: prog.done, total: prog.total })}</Badge>
+              </div>
+              <ol className="mt-3 flex flex-wrap gap-1.5">
+                {prog.phases.map(({ phase, state, minutes }, i) => (
+                  <li key={phase.id} title={`${t(`timesheet.state.${state}`)} · ${formatMinutes(minutes)}`} className={cn('flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-xs font-medium', STATE_STYLE[state])}>
+                    {state === 'done' ? <CheckCheck className="size-3" /> : <span className="tabular-nums">{i + 1}</span>}
+                    {phase.name}
+                    {minutes > 0 && <span className="opacity-80 tabular-nums">· {formatMinutes(minutes)}</span>}
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-slate-500">{t('timesheet.holders')}:</span>
+                {holders.length === 0 && <span className="text-slate-400">{t('timesheet.noHolder')}</span>}
+                {holders.map((h) => (
+                  <span key={h.id} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-0.5 pr-1 pl-0.5 dark:bg-slate-800">
+                    <Avatar name={h.name} color={h.color} size="sm" />
+                    <span className="text-slate-700 dark:text-slate-200">{h.name}</span>
+                    {allowed && (
+                      <button
+                        onClick={() => {
+                          setReleasing({ employeeId: h.id, projectId: p.id });
+                          setNote('');
+                        }}
+                        className="rounded-full px-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-500/15"
+                      >
+                        <Unlock className="mr-0.5 inline size-3" />
+                        {t('timesheet.release')}
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <Modal
+        open={!!releasing}
+        onClose={() => setReleasing(null)}
+        title={releasing ? t('timesheet.releaseTitle', { name: emp.get(releasing.employeeId)?.name ?? '', project: prjById.get(releasing.projectId)?.projectNumber ?? '' }) : ''}
+        footer={
+          <Button
+            variant="primary"
+            icon={Unlock}
+            onClick={() => {
+              timesheetService.release(releasing!.employeeId, note.trim());
+              toast.success(t('timesheet.released'));
+              setReleasing(null);
+            }}
+          >
+            {t('timesheet.release')}
+          </Button>
+        }
+      >
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">{t('timesheet.releaseText', { name: releasing ? (emp.get(releasing.employeeId)?.name ?? '') : '' })}</p>
+        <Field label={t('timesheet.releaseNote')}>{(id) => <Input id={id} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
+      </Modal>
+    </div>
   );
 }
 

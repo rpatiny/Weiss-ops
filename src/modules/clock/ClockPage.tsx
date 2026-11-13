@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, Clock3, Cog, Delete, LogOut, Play, Search, Square, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck, Clock3, Cog, Delete, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 import { Avatar } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { activePhases, canClock, clockService, entryMinutes, formatMinutes, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
+import { canClock, clockService, currentJobOf, entryMinutes, formatMinutes, jobProgress, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
 import { LOCALES, useI18n } from '@/i18n';
 import type { TranslationKey } from '@/i18n/types';
 import { APP_CONFIG } from '@/lib/config';
@@ -17,7 +17,7 @@ type Step =
   | { kind: 'who' }
   | { kind: 'pin'; employee: Employee }
   | { kind: 'home'; employee: Employee; pin: string }
-  | { kind: 'done'; title: TranslationKey; entry: TimeEntry; closed?: TimeEntry }
+  | { kind: 'done'; title: TranslationKey; entry: TimeEntry; hint?: string }
   | { kind: 'bye' };
 
 const INACTIVITY_MS = 90_000;
@@ -193,149 +193,214 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   const phases = useCollection('workPhases');
   const entries = useCollection('timeEntries');
   const assignments = useCollection('assignments');
-  const [projectId, setProjectId] = useState('');
-  const [phaseId, setPhaseId] = useState('');
+  const employees = useCollection('employees');
+  const [pickedId, setPickedId] = useState('');
   const [query, setQuery] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 30_000);
     return () => clearInterval(id);
   }, []);
 
-  const open = openEntryOf(employee.id, entries);
-  const projectById = new Map(projects.map((p) => [p.id, p]));
+  const projectById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const phaseById = new Map(phases.map((p) => [p.id, p]));
-  const phaseList = activePhases(phases);
+  const empName = (id: string) => employees.find((e) => e.id === id)?.name.split(' ')[0] ?? '';
+  const open = openEntryOf(employee.id, entries);
+  const jobId = currentJobOf(employee.id, entries, phases, projectById) ?? open?.projectId;
+  const job = jobId ? projectById.get(jobId) : undefined;
+  const progress = jobId ? jobProgress(jobId, phases, entries) : undefined;
 
+  // Serviços livres para escolher (sem serviço atual): ativos e com fase pendente; os do cronograma de hoje primeiro.
   const { mine, others } = useMemo(() => {
     const today = todayISO();
     const mineIds = new Set(assignments.filter((a) => a.employeeId === employee.id && a.startDate <= today && a.endDate >= today).map((a) => a.projectId));
+    const startOf = new Map<string, string>();
+    for (const a of assignments) if (!startOf.has(a.projectId) || a.startDate < startOf.get(a.projectId)!) startOf.set(a.projectId, a.startDate);
     const q = query.trim().toLowerCase();
     const list = projects
       .filter(isProjectActive)
-      .filter((p) => !q || `${p.projectNumber} ${p.customer} ${p.description}`.toLowerCase().includes(q))
-      .sort((a, b) => a.projectNumber.localeCompare(b.projectNumber));
-    return { mine: list.filter((p) => mineIds.has(p.id)), others: list.filter((p) => !mineIds.has(p.id)) };
-  }, [projects, assignments, employee.id, query]);
+      .map((p) => ({ p, prog: jobProgress(p.id, phases, entries) }))
+      .filter(({ prog }) => !prog.complete && prog.next)
+      .filter(({ p }) => !q || `${p.projectNumber} ${p.customer} ${p.description}`.toLowerCase().includes(q))
+      // Prioridade: serviços já iniciados primeiro; depois pela data de início no cronograma (mais cedo = mais urgente).
+      .sort(
+        (a, b) =>
+          Number(b.prog.started) - Number(a.prog.started) ||
+          (startOf.get(a.p.id) ?? '9999').localeCompare(startOf.get(b.p.id) ?? '9999') ||
+          a.p.projectNumber.localeCompare(b.p.projectNumber),
+      );
+    return { mine: list.filter(({ p }) => mineIds.has(p.id)), others: list.filter(({ p }) => !mineIds.has(p.id)) };
+  }, [projects, phases, entries, assignments, employee.id, query]);
 
-  const start = () => {
-    const r = clockService.start(employee.id, pin, projectId, phaseId);
-    if (r.ok) onDone({ kind: 'done', title: 'clock.doneStart', entry: r.entry, closed: r.closed });
+  const fail = (r: { error: Parameters<typeof t>[0]; vars?: Record<string, string> }) => setError(t(r.error, r.vars));
+  const start = (projectId: string) => {
+    const r = clockService.start(employee.id, pin, projectId);
+    if (!r.ok) return fail(r);
+    onDone({ kind: 'done', title: 'clock.doneStart', entry: r.entry });
   };
-  const stop = () => {
-    const r = clockService.stop(employee.id, pin);
-    if (r.ok) onDone({ kind: 'done', title: 'clock.doneStop', entry: r.entry });
+  const stop = (complete: boolean) => {
+    const r = clockService.stop(employee.id, pin, complete);
+    if (!r.ok) return fail(r);
+    const next = jobProgress(r.entry.projectId, phases, [...entries.filter((e) => e.id !== r.entry.id), r.entry]).next;
+    onDone({
+      kind: 'done',
+      title: r.jobComplete ? 'clock.jobDone' : complete ? 'clock.doneComplete' : 'clock.donePause',
+      entry: r.entry,
+      hint: r.jobComplete ? t('clock.jobDoneHint') : complete ? (next ? t('clock.nextUp', { phase: next.name }) : undefined) : t('clock.donePauseHint'),
+    });
   };
 
-  const projectBtn = (p: (typeof projects)[number]) => (
-    <li key={p.id} className="min-w-0">
-      <button
-        onClick={() => setProjectId(p.id)}
-        aria-pressed={projectId === p.id}
-        className={cn(
-          'flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border-2 bg-white p-3 text-left dark:bg-slate-900',
-          projectId === p.id ? 'border-brand-500' : 'border-transparent shadow-sm',
-        )}
-      >
-        <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-xs text-slate-500">{p.projectNumber}</span>
-          <span className="block truncate font-semibold text-slate-900 dark:text-white">{p.customer}</span>
-          <span className="block truncate text-xs text-slate-500">{p.description}</span>
-        </span>
+  const header = (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <Avatar name={employee.name} color={employee.color} />
+        <p className="text-lg font-semibold text-slate-900 dark:text-white">{t('clock.hello', { name: employee.name.split(' ')[0] ?? employee.name })}</p>
+      </div>
+      <button onClick={onExit} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800" aria-label={t('clock.closeNow')}>
+        <LogOut className="size-5" />
       </button>
-    </li>
+    </div>
   );
+  const errorBox = error && (
+    <p role="alert" className="mb-3 flex gap-2 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-700 dark:bg-red-500/10 dark:text-red-300">
+      <TriangleAlert className="size-4 shrink-0" /> {error}
+    </p>
+  );
+
+  // ── Com serviço atual: só este serviço, fase definida pela ordem ──
+  if (job && progress) {
+    const phase = open ? phaseById.get(open.phaseId) : progress.next;
+    const resumed = !!phase && entries.some((e) => e.projectId === job.id && e.phaseId === phase.id);
+    return (
+      <>
+        {header}
+        {errorBox}
+        <section className="card mb-4 border-l-4 p-4" style={{ borderLeftColor: job.color }}>
+          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t('clock.jobTitle')}</p>
+          <p className="mt-1 font-mono text-xs text-slate-500">{job.projectNumber}</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">{job.customer}</p>
+          <p className="truncate text-sm text-slate-500">{job.description}</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div className="h-full rounded-full bg-green-500" style={{ width: `${(progress.done / Math.max(1, progress.total)) * 100}%` }} />
+          </div>
+          <p className="mt-1 text-xs text-slate-500">{t('clock.progress', { done: progress.done, total: progress.total })}</p>
+          <ol className="mt-3 space-y-1">
+            {progress.phases.map(({ phase: ph, state }, i) => (
+              <li key={ph.id} className={cn('flex items-center gap-2 text-sm', state === 'pending' && 'text-slate-400', (state === 'active' || state === 'next') && 'font-semibold text-slate-900 dark:text-white')}>
+                <span
+                  className={cn(
+                    'flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                    state === 'done' ? 'bg-green-500 text-white' : state === 'active' ? 'bg-blue-600 text-white' : state === 'next' ? 'border-2 border-blue-600 text-blue-600' : 'border border-slate-300 dark:border-slate-600',
+                  )}
+                >
+                  {state === 'done' ? <Check className="size-3" strokeWidth={3} /> : i + 1}
+                </span>
+                {ph.name}
+                {state === 'active' && <span className="ml-auto text-xs font-medium text-blue-600">{t('timesheet.state.active')}</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {open ? (
+          <section className="card p-4">
+            <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t('clock.phaseNow')}</p>
+            <p className="mt-1 text-xl font-bold text-slate-900 dark:text-white">{phase?.name}</p>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+              <Clock3 className="size-4" /> {t('clock.since', { time: timeOf(open.start), duration: formatMinutes(entryMinutes(open)) })}
+            </p>
+            {needsReview(open) && (
+              <p className="mt-2 flex gap-1.5 rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                <TriangleAlert className="size-4 shrink-0" /> {t('clock.review', { date: formatDate(open.start.slice(0, 10)) })}
+              </p>
+            )}
+            <button
+              onClick={() => (confirming ? stop(true) : setConfirming(true))}
+              className={cn('mt-4 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-3 text-lg font-semibold text-white active:scale-[0.99]', confirming ? 'bg-green-700 ring-4 ring-green-300' : 'bg-green-600')}
+            >
+              <CheckCheck className="size-6 shrink-0" /> {confirming ? t('clock.confirmComplete', { phase: phase?.name ?? '' }) : t('clock.complete', { phase: phase?.name ?? '' })}
+            </button>
+            <button onClick={() => stop(false)} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-200 font-semibold text-slate-800 active:scale-[0.99] dark:bg-slate-800 dark:text-slate-100">
+              <Pause className="size-5" /> {t('clock.pause')}
+            </button>
+            <p className="mt-1 text-center text-xs text-slate-500">{t('clock.pauseHint')}</p>
+          </section>
+        ) : (
+          phase && (
+            <button onClick={() => start(job.id)} className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg active:scale-[0.99]">
+              <Play className="size-5 fill-current" /> {resumed ? t('clock.resume', { phase: phase.name }) : t('clock.startPhase', { phase: phase.name })}
+            </button>
+          )
+        )}
+        <p className="mt-4 flex gap-2 text-xs text-slate-500">
+          <Lock className="size-4 shrink-0" /> {t('clock.jobHint')}
+        </p>
+      </>
+    );
+  }
+
+  // ── Livre: escolher o próximo serviço ──
+  const picked = [...mine, ...others].find(({ p }) => p.id === pickedId);
+  const projectBtn = ({ p, prog }: (typeof mine)[number]) => {
+    const busy = [...new Set(entries.filter((e) => e.projectId === p.id && !e.end).map((e) => empName(e.employeeId)))].filter(Boolean);
+    return (
+      <li key={p.id} className="min-w-0">
+        <button
+          onClick={() => setPickedId(p.id)}
+          aria-pressed={pickedId === p.id}
+          className={cn('flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border-2 bg-white p-3 text-left dark:bg-slate-900', pickedId === p.id ? 'border-brand-500' : 'border-transparent shadow-sm')}
+        >
+          <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs text-slate-500">
+              <span className="font-mono">{p.projectNumber}</span> · {t('clock.progress', { done: prog.done, total: prog.total })}
+            </span>
+            <span className="block truncate font-semibold text-slate-900 dark:text-white">{p.customer}</span>
+            <span className="block truncate text-xs text-slate-500">
+              {t('clock.startsAt', { phase: prog.next?.name ?? '' })}
+              {busy.length > 0 && ` · ${t('clock.busyWith', { names: busy.join(', ') })}`}
+            </span>
+          </span>
+        </button>
+      </li>
+    );
+  };
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Avatar name={employee.name} color={employee.color} />
-          <p className="text-lg font-semibold text-slate-900 dark:text-white">{t('clock.hello', { name: employee.name.split(' ')[0] ?? employee.name })}</p>
-        </div>
-        <button onClick={onExit} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800" aria-label={t('clock.closeNow')}>
-          <LogOut className="size-5" />
-        </button>
-      </div>
-
-      {/* Fase em andamento */}
-      {open ? (
-        <section className="card mb-5 border-l-4 p-4" style={{ borderLeftColor: projectById.get(open.projectId)?.color }}>
-          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{t('clock.nowOn')}</p>
-          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{phaseById.get(open.phaseId)?.name ?? '—'}</p>
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            <span className="font-mono">{projectById.get(open.projectId)?.projectNumber}</span> · {projectById.get(open.projectId)?.customer}
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-            <Clock3 className="size-4" /> {t('clock.since', { time: timeOf(open.start), duration: formatMinutes(entryMinutes(open)) })}
-          </p>
-          {needsReview(open) && (
-            <p className="mt-2 flex gap-1.5 rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-              <TriangleAlert className="size-4 shrink-0" /> {t('clock.review', { date: formatDate(open.start.slice(0, 10)) })}
-            </p>
-          )}
-          <button onClick={stop} className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-red-600 text-lg font-semibold text-white active:scale-[0.99]">
-            <Square className="size-5 fill-current" /> {t('clock.stop')}
-          </button>
-        </section>
-      ) : (
-        <p className="card mb-5 p-4 text-sm text-slate-600 dark:text-slate-300">{t('clock.idle')}</p>
+      {header}
+      {errorBox}
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('clock.pickTitle')}</h2>
+      <p className="mb-3 text-sm text-slate-500">{t('clock.pickHint')}</p>
+      <label className="relative mb-2 block">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+        <input className="input h-11 pl-9 text-base" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('clock.searchProject')} aria-label={t('clock.searchProject')} />
+      </label>
+      {mine.length > 0 && (
+        <>
+          <p className="mt-2 mb-1 text-xs text-slate-500">{t('clock.yourProjects')}</p>
+          <ul className="grid grid-cols-1 gap-2 p-0.5">{mine.map(projectBtn)}</ul>
+        </>
       )}
-
-      {/* Iniciar / trocar */}
-      <section>
-        <h2 className="mb-2 text-base font-semibold text-slate-900 dark:text-white">{open ? t('clock.switchTitle') : t('clock.startTitle')}</h2>
-        <p className="mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">1 · {t('clock.project')}</p>
-        <label className="relative mb-2 block">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
-          <input className="input h-11 pl-9 text-base" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('clock.searchProject')} aria-label={t('clock.searchProject')} />
-        </label>
-        {mine.length > 0 && (
-          <>
-            <p className="mt-2 mb-1 text-xs text-slate-500">{t('clock.yourProjects')}</p>
-            <ul className="grid grid-cols-1 gap-2 p-0.5">{mine.map(projectBtn)}</ul>
-          </>
+      {others.length > 0 && (
+        <>
+          <p className="mt-3 mb-1 text-xs text-slate-500">{t('clock.otherProjects')}</p>
+          <ul className="grid grid-cols-1 gap-2 p-0.5">{others.map(projectBtn)}</ul>
+        </>
+      )}
+      {mine.length + others.length === 0 && <p className="text-sm text-slate-500">{t('clock.noProjects')}</p>}
+      <button
+        onClick={() => picked && start(picked.p.id)}
+        disabled={!picked}
+        className={cn(
+          'mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-800',
+          picked && 'sticky bottom-3 z-10',
         )}
-        {others.length > 0 && (
-          <>
-            <p className="mt-3 mb-1 text-xs text-slate-500">{t('clock.otherProjects')}</p>
-            <ul className="grid max-h-72 grid-cols-1 gap-2 overflow-x-hidden overflow-y-auto p-0.5">{others.map(projectBtn)}</ul>
-          </>
-        )}
-        {mine.length + others.length === 0 && <p className="text-sm text-slate-500">{t('clock.noProjects')}</p>}
-
-        <p className="mt-5 mb-1.5 text-xs font-semibold tracking-wide text-slate-500 uppercase">2 · {t('clock.phase')}</p>
-        <div className="grid grid-cols-2 gap-2">
-          {phaseList.map((ph) => (
-            <button
-              key={ph.id}
-              onClick={() => setPhaseId(ph.id)}
-              aria-pressed={phaseId === ph.id}
-              className={cn(
-                'min-h-14 rounded-xl border-2 px-3 py-2 text-sm font-semibold',
-                phaseId === ph.id ? 'border-brand-500 bg-brand-50 text-slate-900 dark:bg-brand-500/15 dark:text-white' : 'border-transparent bg-white text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200',
-              )}
-            >
-              {ph.name}
-            </button>
-          ))}
-        </div>
-
-        {open && projectId && phaseId && (
-          <p className="mt-3 text-center text-xs text-slate-500">{t('clock.willClose', { phase: phaseById.get(open.phaseId)?.name ?? '' })}</p>
-        )}
-        <button
-          onClick={start}
-          disabled={!projectId || !phaseId}
-          className={cn(
-            'mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-800',
-            projectId && phaseId && 'sticky bottom-3 z-10',
-          )}
-        >
-          <Play className="size-5 fill-current" /> {t('clock.start')}
-        </button>
-      </section>
+      >
+        <Play className="size-5 fill-current" /> {picked?.prog.next ? t('clock.startPhase', { phase: picked.prog.next.name }) : t('clock.start')}
+      </button>
     </>
   );
 }
@@ -353,20 +418,19 @@ function DoneStep({ step, onClose }: { step: Extract<Step, { kind: 'done' }>; on
     if (left <= 0) onClose();
   }, [left, onClose]);
 
-  const phase = (id: string) => phases.find((p) => p.id === id)?.name ?? '';
+  const phase = phases.find((p) => p.id === step.entry.phaseId)?.name ?? '';
   const project = projects.find((p) => p.id === step.entry.projectId);
-  const stopped = step.title === 'clock.doneStop';
+  const ended = !!step.entry.end;
+  const jobDone = step.title === 'clock.jobDone';
   return (
     <div className="card mt-6 flex flex-col items-center gap-2 p-8 text-center" role="status">
-      <span className={cn('flex size-16 items-center justify-center rounded-full text-white', stopped ? 'bg-slate-700' : 'bg-green-600')}>
-        <Check className="size-9" strokeWidth={3} />
+      <span className={cn('flex size-16 items-center justify-center rounded-full text-white', step.title === 'clock.donePause' ? 'bg-slate-600' : 'bg-green-600')}>
+        {step.title === 'clock.donePause' ? <Pause className="size-8" /> : jobDone ? <Trophy className="size-8" /> : <Check className="size-9" strokeWidth={3} />}
       </span>
       <p className="mt-2 text-xl font-bold text-slate-900 dark:text-white">{t(step.title)}</p>
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        {t('clock.doneDetail', { phase: phase(step.entry.phaseId), project: project?.projectNumber ?? '', time: timeOf(stopped ? step.entry.end! : step.entry.start) })}
-      </p>
-      {stopped && <p className="text-sm font-semibold text-slate-700 tabular-nums dark:text-slate-200">{formatMinutes(entryMinutes(step.entry))}</p>}
-      {step.closed && <p className="mt-1 text-xs text-slate-500">{t('clock.closedPrev', { phase: phase(step.closed.phaseId), duration: formatMinutes(entryMinutes(step.closed)) })}</p>}
+      <p className="text-sm text-slate-600 dark:text-slate-300">{t('clock.doneDetail', { phase, project: project?.projectNumber ?? '', time: timeOf(ended ? step.entry.end! : step.entry.start) })}</p>
+      {ended && <p className="text-sm font-semibold text-slate-700 tabular-nums dark:text-slate-200">{formatMinutes(entryMinutes(step.entry))}</p>}
+      {step.hint && <p className="mt-1 text-sm text-slate-500">{step.hint}</p>}
       <button onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">
         {t('clock.closeNow')} · {t('clock.closing', { s: Math.max(0, left) })}
       </button>
