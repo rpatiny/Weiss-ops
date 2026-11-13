@@ -57,7 +57,8 @@ src/
 │  ├─ purchasing.ts         # POs (totais, atrasos, status), último valor, cotações, demanda, prontidão
 │  ├─ requisitions.ts       # requisição → PO do SAP → GR (processo de compras)
 │  ├─ extensions.ts         # pedidos de extensão de material no SAP (planta origem → HOME_PLANT)
-│  └─ financial.ts          # KPIs do mês, carteira, taxa de aprovação, série Realizado×Forecast, ranking
+│  ├─ financial.ts          # KPIs do mês, carteira, taxa de aprovação, série Realizado×Forecast, ranking
+│  └─ dataExchange.ts       # exportação Excel multi-abas, backup/restore JSON com validação
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
 │  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
@@ -73,7 +74,7 @@ src/
    ├─ purchasing/           # PurchaseOrdersPage (abas), PODrawer, CatalogTab/CatalogDrawer, ReadinessTab,
    │                        # SuppliersTab, usePurchasingData (lookups compartilhados com o cronograma)
    ├─ employees/            # EmployeesPage, EmployeeFormDrawer
-   └─ settings/             # SettingsPage (reset/limpar; backup na Fase 5)
+   └─ settings/             # SettingsPage, DataIOSection (Excel/backup/restore), UsersSection
 ```
 
 ## Arquitetura de dados
@@ -235,6 +236,16 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Ranking: por faturado, desempate por nº de unidades; mostra carteira em aberto e forecast ponderado do cliente.
   - Formulário: cotação aprovada sugere status "Aprovado"; recusada → "Recusado"; status "Entregue" preenche data e valor faturado.
 
+- **Exportação Excel** (`domain/dataExchange.ts`, todos os perfis): abas `Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`,
+  `Itens_PO`, `Spindles`, `Forecast` + `Materiais_Projeto`, `Requisicoes`, `Extensoes`, `Fornecedores`, `Catalogo`,
+  `Ferias_Ausencias`. Abas e cabeçalhos em pt-BR (independem do idioma da tela); datas como datas do Excel (testado
+  em fusos BR/UK/DE); inclui derivados (totais, ponderado, dias úteis, qtd. recebida). `xlsx` é carregado sob demanda
+  (import dinâmico); no build de arquivo único (`SINGLE_FILE=1`) o import é embutido.
+- **Backup/Restore JSON** (somente Master): `{ app, schemaVersion, exportedAt, data }`. `checkBackup` valida JSON, app,
+  versão do schema (precisa ser igual), presença de todas as coleções, campos obrigatórios por coleção, IDs únicos,
+  referências (alocações, ausências, requisições, PO/spindle) e existência de Master ativo; mostra prévia com contagens
+  antes de substituir tudo. Se o usuário logado não existir no backup, a sessão é encerrada.
+
 ## Plano de fases
 
 - [x] **Fase 1** — Setup, CLAUDE.md, layout/navegação, tema claro/escuro, modelos TS, persistência + seed, módulo Colaboradores.
@@ -251,6 +262,6 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - [x] **Fase 3.2** — Botão/assistente de nova requisição, extensões de material SAP (tela própria), revisão do inglês e plurais.
 - [x] **Fase 4** — Hub Financeiro: spindles/motores, cotações + taxa de aprovação, entregues no mês (filtro mês/ano),
       forecast ponderado, KPIs, gráfico Realizado vs. Forecast, ranking de clientes.
-- [ ] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas
+- [x] **Fase 5** — Navegação cruzada Agenda↔PO↔Spindle, exportação Excel multi-abas
       (`Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`, `Itens_PO`, `Spindles`, `Forecast`), backup/restore JSON
       com validação, revisão final de UX e build de produção.

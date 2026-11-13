@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Boxes, FileInput, Globe2, UserCog, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, LineChart, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { Boxes, FileInput, Globe2, UserCog, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/misc';
@@ -9,6 +9,7 @@ import { useCollection } from '@/data/hooks';
 import { useI18n } from '@/i18n';
 import { useCan } from '@/app/session';
 import { UsersSection } from './UsersSection';
+import { DataIOSection } from './DataIOSection';
 import { getFormatLocale } from '@/lib/format';
 import type { CollectionName } from '@/types/models';
 
@@ -101,12 +102,10 @@ export function SettingsPage() {
                 {t('settings.clearButton')}
               </Button>
             </div>
-            <div className="flex items-center gap-3 rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700">
-              <LineChart className="size-4" /> {t('settings.phase5Note')}
-            </div>
           </div>
         </section>
         )}
+        <DataIOSection />
         {allowed('users.manage') && <UsersSection />}
       </div>
 

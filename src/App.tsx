@@ -6,7 +6,10 @@ import { SchedulePage } from '@/modules/calendar/SchedulePage';
 import { EmployeesPage } from '@/modules/employees/EmployeesPage';
 import { PurchaseOrdersPage } from '@/modules/purchasing/PurchaseOrdersPage';
 import { ExtensionsPage } from '@/modules/extensions/ExtensionsPage';
-import { FinancialPage } from '@/modules/financial/FinancialPage';
+import { lazy, Suspense } from 'react';
+
+// Hub Financeiro (recharts) carregado sob demanda para manter o pacote inicial leve.
+const FinancialPage = lazy(() => import('@/modules/financial/FinancialPage').then((m) => ({ default: m.FinancialPage })));
 import { SettingsPage } from '@/modules/settings/SettingsPage';
 
 function Page({ path }: { path: RoutePath }) {
@@ -22,7 +25,11 @@ function Page({ path }: { path: RoutePath }) {
     case '/extensions':
       return <ExtensionsPage />;
     case '/financial':
-      return <FinancialPage />;
+      return (
+        <Suspense fallback={<div className="card h-64 animate-pulse" />}>
+          <FinancialPage />
+        </Suspense>
+      );
   }
 }
 

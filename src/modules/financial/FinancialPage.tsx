@@ -189,7 +189,7 @@ function Overview({ onOpenSpindle }: { onOpenSpindle: (id: string) => void }) {
           <h2 className="mb-3 font-semibold text-slate-900 dark:text-white">{t('financial.kpi.backlog')}</h2>
           <div className="flex flex-wrap gap-2">
             {backlog.map((s) => (
-              <button key={s.id} onClick={() => onOpenSpindle(s.id)} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm hover:border-brand-500 dark:border-slate-700">
+              <button key={s.id} onClick={() => onOpenSpindle(s.id)} className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-slate-200 px-3 py-1.5 text-left text-sm hover:border-brand-500 dark:border-slate-700">
                 <span className="font-mono text-xs">{s.serialNumber}</span>
                 <span className="text-slate-500">{s.customer}</span>
                 <StatusBadge kind="spindleStatus" value={s.status} />
