@@ -844,6 +844,8 @@ export const en: Dictionary = {
     },
   },
   cloud: {
+    localTitle: 'Local mode: data stays in this browser only',
+    localText: 'This address is not connected to the cloud database (Supabase) yet. Changes are not visible to other people and are lost if the browser data is cleared. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY on Vercel and redeploy.',
     signInTitle: 'Sign in',
     signInSubtitle: 'Use the e-mail and password of your account.',
     signUpTitle: 'Create account',

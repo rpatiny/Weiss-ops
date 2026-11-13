@@ -847,6 +847,8 @@ export const pt = {
     },
   },
   cloud: {
+    localTitle: 'Modo local: os dados ficam só neste navegador',
+    localText: 'Este endereço ainda não está ligado ao banco na nuvem (Supabase). As alterações não aparecem para outras pessoas e se perdem se o navegador for limpo. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY na Vercel e faça um novo deploy.',
     signInTitle: 'Entrar',
     signInSubtitle: 'Use o e-mail e a senha da sua conta.',
     signUpTitle: 'Criar conta',
