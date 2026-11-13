@@ -41,6 +41,7 @@ export function CloudGate({ children }: { children: ReactNode }) {
       const me = (await withTimeout(b.fetchProfiles())).find((p) => p.id === session.userId);
       if (!me || me.role === 'pending' || !me.active) return setPhase({ kind: 'blocked', session, profile: me });
       await withTimeout(connectCloud(), 45);
+      db.ensureDefaults();
       setSessionUser(session.userId);
       setPhase({ kind: 'ready' });
     } catch (e) {
@@ -55,6 +56,7 @@ export function CloudGate({ children }: { children: ReactNode }) {
       await getCloudBackend();
       await withTimeout(connectCloud(), 45);
       db.ensureUsers();
+      db.ensureDefaults();
       setPhase({ kind: 'ready' });
     } catch (e) {
       fail(e);
