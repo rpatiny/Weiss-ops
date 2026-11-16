@@ -265,7 +265,7 @@ export function SchedulePage() {
                 const on = empFilter.includes(e.id);
                 return (
                   <button key={e.id} onClick={() => setEmpFilter(toggleIn(empFilter, e.id))} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800" role="menuitemcheckbox" aria-checked={on}>
-                    <span className={cn('flex size-4 items-center justify-center rounded border', on ? 'border-brand-500 bg-brand-500 text-slate-950' : 'border-slate-300 dark:border-slate-600')}>{on && <Check className="size-3" strokeWidth={3} />}</span>
+                    <span className={cn('flex size-4 items-center justify-center rounded border', on ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-300 dark:border-slate-600')}>{on && <Check className="size-3" strokeWidth={3} />}</span>
                     <Avatar name={e.name} color={e.color} size="sm" muted={e.status === 'inactive'} />
                     <span className={cn('truncate', e.status === 'inactive' && 'text-slate-400')}>{e.name}</span>
                   </button>

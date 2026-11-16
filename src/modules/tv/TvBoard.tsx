@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Cog, Hourglass, Wrench } from 'lucide-react';
+import { Hourglass, Wrench } from 'lucide-react';
 import { useRoute } from '@/app/router';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { useCollection } from '@/data/hooks';
 import { enumLabel } from '@/domain/labels';
 import { computeLanes, getVisibleDays } from '@/domain/schedule';
 import { workerStatus } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
-import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
 import { isWeekend, todayISO } from '@/lib/dates';
 import { getFormatLocale, initials } from '@/lib/format';
@@ -84,13 +84,11 @@ export function TvBoard() {
       {/* Cabeçalho */}
       <header className="flex items-center justify-between gap-6 px-[2vw] py-[1.2vh]">
         <div className="flex items-center gap-4">
-          <span className="flex size-[5vh] items-center justify-center rounded-xl bg-brand-500 text-slate-950">
-            <Cog className="size-[3.2vh]" strokeWidth={2.5} />
-          </span>
+          <BrandLogo className="h-[8vh] w-auto" />
           <div>
             <p className="text-[3.2vh] leading-tight font-bold">{t('tv.title')}</p>
             <p className="text-[1.8vh] text-slate-400">
-              {APP_CONFIG.appName} · {view === 'week' ? t('tv.week') : t('tv.biweekly')} ·{' '}
+              Ops · {view === 'week' ? t('tv.week') : t('tv.biweekly')} ·{' '}
               {new Date(`${first}T12:00:00`).toLocaleDateString(getFormatLocale(), { day: '2-digit', month: 'short' })} –{' '}
               {new Date(`${last}T12:00:00`).toLocaleDateString(getFormatLocale(), { day: '2-digit', month: 'short' })}
             </p>
@@ -111,7 +109,7 @@ export function TvBoard() {
             const isToday = d === today;
             const we = isWeekend(d);
             return (
-              <div key={d} className={cn('min-w-0 border-b border-slate-800 px-1 pb-[0.8vh] text-center', isToday && 'rounded-t-lg bg-brand-500 text-slate-950', we && !isToday && 'bg-slate-800/60 text-slate-500')}>
+              <div key={d} className={cn('min-w-0 border-b border-slate-800 px-1 pb-[0.8vh] text-center', isToday && 'rounded-t-lg bg-brand-500 text-white', we && !isToday && 'bg-slate-800/60 text-slate-500')}>
                 <p className={cn('truncate text-[1.7vh] font-semibold', !isToday && !we && 'text-slate-400')}>{isToday ? t('tv.today') : we ? h.wdShort : h.wd}</p>
                 <p className={cn('font-bold tabular-nums', we ? 'text-[1.7vh]' : 'text-[2.2vh]')}>{h.dm}</p>
               </div>
@@ -137,7 +135,7 @@ export function TvBoard() {
               <div className="relative border-b border-slate-800" style={{ gridColumn: `span ${days.length}` }}>
                 <div className="absolute inset-0 grid" style={{ gridTemplateColumns: cols }}>
                   {days.map((d) => (
-                    <div key={d} className={cn('border-l border-slate-800/70', d === today && 'bg-brand-500/10', isWeekend(d) && 'bg-slate-800/60')} style={isWeekend(d) ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(148,163,184,.08) 0 6px, transparent 6px 12px)' } : undefined} />
+                    <div key={d} className={cn('border-l border-slate-800/70', d === today && 'bg-brand-500/15', isWeekend(d) && 'bg-slate-800/60')} style={isWeekend(d) ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(148,163,184,.08) 0 6px, transparent 6px 12px)' } : undefined} />
                   ))}
                 </div>
                 <div className="absolute inset-x-0 inset-y-[0.5vh] grid gap-y-[0.5vh]" style={{ gridTemplateColumns: cols, gridTemplateRows: `repeat(${lanes.count}, minmax(0, 1fr))` }}>

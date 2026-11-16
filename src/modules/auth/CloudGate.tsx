@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { AlertTriangle, Clock, Cog, KeyRound, Loader2, LogIn, LogOut, Mail, RefreshCw, UserPlus } from 'lucide-react';
+import { AlertTriangle, Clock, KeyRound, Loader2, LogIn, LogOut, Mail, RefreshCw, UserPlus } from 'lucide-react';
 import { setCloudSignOut, setSessionUser } from '@/app/session';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -8,8 +8,8 @@ import { connectCloud, disconnectCloud } from '@/data/cloud/connect';
 import { CLOUD_URL, EMAIL_AUTH, getCloudBackend, TimeoutError, withTimeout } from '@/data/cloud/runtime';
 import { db } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
-import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { BuildInfo, DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 type Phase =
@@ -162,14 +162,11 @@ function Shell({ children }: { children: ReactNode }) {
       <DisclaimerStrip />
       <div className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-3 text-white">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-brand-500 text-slate-950">
-            <Cog className="size-6" strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-xl font-bold">{APP_CONFIG.appName}</p>
-            <p className="text-xs text-slate-400">{t('app.tagline')}</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center gap-1 text-white">
+          <BrandLogo className="w-48" />
+          <p className="text-xs text-slate-400">
+            <span className="font-semibold text-slate-200">Ops</span> · {t('app.tagline')}
+          </p>
         </div>
         {children}
         <div className="mt-4 flex justify-center gap-1">

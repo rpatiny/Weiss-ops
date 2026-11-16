@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
 import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
@@ -12,21 +12,18 @@ import { DisclaimerStrip } from './Disclaimer';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
-import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
 import { NAV_FOOTER, NAV_ITEMS, type NavItem } from './nav';
+import { BrandLogo } from './BrandLogo';
 
 function Brand() {
   const { t } = useI18n();
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-brand-500 text-slate-950 shadow-inner">
-        <Cog className="size-5" strokeWidth={2.5} />
-      </div>
-      <div className="leading-tight">
-        <p className="text-base font-bold tracking-tight text-white">{APP_CONFIG.appName}</p>
-        <p className="text-[11px] text-slate-400">{t('app.tagline')}</p>
-      </div>
+    <div>
+      <BrandLogo className="w-36" />
+      <p className="mt-1 text-[11px] text-slate-400">
+        <span className="font-semibold text-slate-200">Ops</span> · {t('app.tagline')}
+      </p>
     </div>
   );
 }

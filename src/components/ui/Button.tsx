@@ -13,7 +13,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-500 text-slate-950 hover:bg-brand-400 shadow-sm font-semibold',
+  // Preto do logo Weiss (no tema escuro, branco); o vermelho fica para destaques — não confunde com "Excluir".
+  primary: 'bg-neutral-900 text-white hover:bg-neutral-700 shadow-sm font-semibold dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200',
   secondary:
     'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
   ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, CheckCheck, Clock3, Cog, Delete, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck, Clock3, Delete, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { Avatar } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
 import { canClock, clockService, currentJobOf, entryMinutes, formatMinutes, jobProgress, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
 import { LOCALES, useI18n } from '@/i18n';
 import type { TranslationKey } from '@/i18n/types';
-import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
 import { todayISO } from '@/lib/dates';
 import { formatDate, getFormatLocale } from '@/lib/format';
@@ -59,13 +59,8 @@ export function ClockPage() {
       <DisclaimerStrip />
       <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white">
         <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-brand-500 text-slate-950">
-            <Cog className="size-5" strokeWidth={2.5} />
-          </span>
-          <div className="leading-tight">
-            <p className="font-bold">{t('clock.title')}</p>
-            <p className="text-xs text-slate-400">{APP_CONFIG.appName}</p>
-          </div>
+          <BrandLogo className="w-20" />
+          <p className="border-l border-slate-700 pl-2.5 font-bold leading-tight">{t('clock.title')}</p>
         </div>
         <div className="flex gap-0.5">
           {LOCALES.map((l) => (
@@ -166,7 +161,7 @@ function PinStep({ employee, onBack, onOk }: { employee: Employee; onBack: () =>
           <Delete className="mx-auto size-6" />
         </Key>
         <Key onClick={() => press('0')}>0</Key>
-        <Key onClick={submit} disabled={pin.length < 4} className="bg-brand-500 text-slate-950 dark:bg-brand-500">
+        <Key onClick={submit} disabled={pin.length < 4} className="bg-neutral-900 text-white dark:bg-white dark:text-neutral-900">
           <Check className="mx-auto size-6" />
         </Key>
       </div>

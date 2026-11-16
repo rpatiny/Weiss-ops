@@ -196,7 +196,7 @@ export function GanttChart(props: Props) {
                 >
                   {!(we && view === 'month') && <span className="text-[10px] font-semibold text-slate-500 uppercase">{view === 'month' ? formatWeekday(d).slice(0, 1) : formatWeekday(d)}</span>}
                   {!(we && view === 'month') && (
-                    <span className={cn('inline-flex min-w-5 items-center justify-center rounded-full px-0.5 text-xs font-bold tabular-nums', isToday ? 'bg-brand-500 text-slate-950' : we ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200')}>
+                    <span className={cn('inline-flex min-w-5 items-center justify-center rounded-full px-0.5 text-xs font-bold tabular-nums', isToday ? 'bg-brand-500 text-white' : we ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200')}>
                       {parseISODate(d).getDate()}
                     </span>
                   )}

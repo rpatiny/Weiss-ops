@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Cog, KeyRound, LogIn, Info } from 'lucide-react';
+import { KeyRound, LogIn, Info } from 'lucide-react';
 import { login } from '@/app/session';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/Field';
 import { useCollection } from '@/data/hooks';
 import { CLOUD } from '@/data/db';
 import { LOCALES, useI18n } from '@/i18n';
-import { APP_CONFIG } from '@/lib/config';
 import { cn } from '@/lib/cn';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { BuildInfo, DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 /** Tela de entrada: escolha do usuário + PIN. */
@@ -36,14 +36,11 @@ export function LoginScreen() {
       <DisclaimerStrip />
       <div className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-3 text-white">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-brand-500 text-slate-950">
-            <Cog className="size-6" strokeWidth={2.5} />
-          </div>
-          <div>
-            <p className="text-xl font-bold">{APP_CONFIG.appName}</p>
-            <p className="text-xs text-slate-400">{t('app.tagline')}</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center gap-1 text-white">
+          <BrandLogo className="w-48" />
+          <p className="text-xs text-slate-400">
+            <span className="font-semibold text-slate-200">Ops</span> · {t('app.tagline')}
+          </p>
         </div>
 
         <form onSubmit={submit} className="card space-y-5 p-6">

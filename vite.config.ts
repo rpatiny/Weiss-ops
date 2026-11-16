@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   define: { __APP_VERSION__: JSON.stringify(commit) },
   // Versão de arquivo único (npm run build:artifact): embute os imports dinâmicos (ex.: xlsx).
-  build: process.env.SINGLE_FILE ? { rollupOptions: { output: { inlineDynamicImports: true } } } : undefined,
+  build: process.env.SINGLE_FILE ? { assetsInlineLimit: 100_000_000, rollupOptions: { output: { inlineDynamicImports: true } } } : undefined,
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

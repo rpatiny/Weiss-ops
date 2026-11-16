@@ -48,7 +48,7 @@ export function StartupDisclaimer() {
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-300">{t('app.disclaimerText')}</p>
         <div className="mt-6 flex justify-end">
-          <button autoFocus onClick={close} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-brand-400">
+          <button autoFocus onClick={close} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900">
             {t('app.disclaimerOk')}
           </button>
         </div>

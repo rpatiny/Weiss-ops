@@ -72,7 +72,7 @@ src/
 │  └─ dataExchange.ts       # exportação Excel multi-abas, backup/restore JSON com validação
 ├─ lib/                     # utilitários (dates, format, id, cn, config)
 ├─ components/
-│  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, ComingSoon
+│  ├─ layout/               # Layout (sidebar fixa + topbar mobile), nav, BrandLogo, Disclaimer
 │  └─ ui/                   # Button, Badge/StatusBadge, Field/Input/Select, Drawer, Modal/ConfirmDialog, Toast, Popover, misc
 └─ modules/                 # Uma pasta por módulo/página
    ├─ calendar/             # SchedulePage, GanttChart (arraste por pointer events), ProjectDrawer (abas),
@@ -147,7 +147,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Criação/edição**: `Drawer` lateral; **confirmações destrutivas**: `ConfirmDialog`; **feedback**: `useToast()`.
 - **Deep-link** para registros: `navigate('/purchase-orders', { open: poId })`; a página lê `params.get('open')`.
 - Componentes de página ficam em `modules/<módulo>/`; regras em `domain/<módulo>.ts`.
-- Tailwind: tokens `brand-*` (amber) para destaque; sempre prever variantes `dark:`.
+- **Identidade Weiss:** logo em `src/assets/weiss-logo.png` (letras pretas) e `weiss-logo-white.png` (letras brancas, para
+  fundo escuro), via `components/layout/BrandLogo.tsx`; favicon `public/favicon.png` (W vermelho). Tokens `brand-*` = vermelho
+  Weiss (#E40E0E) para destaques (menu ativo, hoje, abas, links, foco); **botão principal = preto do logo** (branco no tema
+  escuro), para não confundir com botões de excluir (vermelho). Cores de status (verde/amarelo/vermelho) não mudam.
+- Tailwind: sempre prever variantes `dark:`.
 
 ## Internacionalização
 
