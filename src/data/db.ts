@@ -58,6 +58,22 @@ export const metaRepo = CLOUD ? new RemoteRepository<Meta>('_meta', syncQueue) :
 const readMeta = (): Meta | undefined => (metaRepo ? metaRepo.getById(META_KEY) : driver.read<Meta>(META_KEY));
 const writeMeta = (m: Meta) => (metaRepo ? metaRepo.upsert(m) : driver.write<Meta>(META_KEY, m));
 
+/** Nomes da demonstração antiga → atuais (migração única e idempotente). */
+const LEGACY_RENAMES = {
+  employees: [
+    ['emp_carlos', 'Carlos Menezes', 'Emma'],
+    ['emp_juliana', 'Juliana Prado', 'Dave'],
+    ['emp_rafael', 'Rafael Souza', 'Nigel'],
+    ['emp_marcos', 'Marcos Oliveira', 'Rupert'],
+    ['emp_patricia', 'Patrícia Lima', 'Owen'],
+    ['emp_eduardo', 'Eduardo Tanaka', 'Jaimie'],
+  ],
+  users: [
+    ['u_log', 'Rafael Souza', 'Logística'],
+    ['u_office', 'Fernanda Alves', 'Office'],
+  ],
+} as const;
+
 export const db = {
   /**
    * Popula com dados de demonstração no primeiro acesso. Se a base local tiver um
@@ -144,6 +160,15 @@ export const db = {
   /** Cadastros padrão que precisam existir (fases da oficina) — também em bases antigas. */
   ensureDefaults(): void {
     if (repos.workPhases.getAll().length === 0) repos.workPhases.replaceAll(buildSeed().workPhases);
+    // Renomeia os nomes antigos da demonstração (só se ainda forem exatamente os antigos — edições são preservadas).
+    for (const [id, from, to] of LEGACY_RENAMES.employees) {
+      const e = repos.employees.getById(id);
+      if (e?.name === from) repos.employees.upsert({ ...e, name: to });
+    }
+    for (const [id, from, to] of LEGACY_RENAMES.users) {
+      const u = repos.users.getById(id);
+      if (u?.name === from) repos.users.upsert({ ...u, name: to });
+    }
   },
 
   isEmpty(): boolean {

@@ -206,7 +206,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   "roubar" o parâmetro destinado a outra durante a navegação).
 
 - **Usuários e perfis** (`app/session.ts`): login com PIN (SHA-256 com sal por usuário; fallback em JS puro sem `crypto.subtle`).
-  - `master`: tudo + usuários + manutenção de dados.
+  - `master`: tudo + usuários + manutenção de dados. **Escondido na tela de login**: aparece com o link `#/admin` (já vem
+    selecionado; após entrar vai para a Agenda) ou com 5 cliques na logo da tela de login.
+  - Contas da demonstração: "Logística" (2222) e "Office" (3333); colaboradores Emma, Dave, Nigel, Rupert, Owen, Jaimie.
+    `db.ensureDefaults()` renomeia os nomes antigos da demo (`LEGACY_RENAMES`) só se ainda forem idênticos.
   - `office` (orçamento): cronograma/projetos, colaboradores, materiais dos projetos, criar/cancelar requisições.
   - `logistics`: processar requisições (cotação, registrar PO do SAP, rejeitar), POs, GR, catálogo/cotações, fornecedores.
   - A UI esconde/desabilita (fieldset `disabled`) e os **serviços de domínio chamam `assertCan`** — a regra vale mesmo se a UI falhar.

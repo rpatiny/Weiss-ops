@@ -33,6 +33,8 @@ function Page({ path }: { path: RoutePath }) {
     case '/clock':
     case '/tv':
       return null;
+    case '/admin':
+      return <SchedulePage />;
     case '/extensions':
       return <ExtensionsPage />;
     case '/financial':
@@ -51,7 +53,8 @@ export default function App() {
   if (path === '/clock') return <ClockPage />;
   // Tela da TV da oficina: só leitura, sem login.
   if (path === '/tv') return <TvBoard />;
-  if (!user) return <LoginScreen />;
+  // Master não aparece na lista do login: acesso por #/admin (ou 5 cliques na logo da tela de login).
+  if (!user) return <LoginScreen revealMaster={path === '/admin'} />;
   return (
     <Layout>
       <Page key={path} path={path} />

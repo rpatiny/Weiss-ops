@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { KeyRound, LogIn, Info } from 'lucide-react';
 import { login } from '@/app/session';
+import { navigate } from '@/app/router';
+import { repos } from '@/data/db';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Field';
@@ -12,10 +14,13 @@ import { BrandLogo } from '@/components/layout/BrandLogo';
 import { BuildInfo, DisclaimerStrip } from '@/components/layout/Disclaimer';
 
 /** Tela de entrada: escolha do usuário + PIN. */
-export function LoginScreen() {
+export function LoginScreen({ revealMaster = false }: { revealMaster?: boolean }) {
   const { t, locale, setLocale } = useI18n();
-  const users = useCollection('users').filter((u) => u.active);
-  const [userId, setUserId] = useState(users[0]?.id ?? '');
+  // Master fica escondido: aparece com #/admin ou com 5 cliques na logo.
+  const [logoClicks, setLogoClicks] = useState(0);
+  const showMaster = revealMaster || logoClicks >= 5;
+  const users = useCollection('users').filter((u) => u.active && (showMaster || u.role !== 'master'));
+  const [userId, setUserId] = useState(() => (revealMaster ? users.find((u) => u.role === 'master')?.id : users[0]?.id) ?? '');
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,6 +30,7 @@ export function LoginScreen() {
     setBusy(true);
     const ok = await login(userId, pin);
     setBusy(false);
+    if (ok && window.location.hash.startsWith('#/admin')) navigate('/calendar');
     if (!ok) {
       setError(true);
       setPin('');
@@ -37,7 +43,25 @@ export function LoginScreen() {
       <div className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-1 text-white">
-          <BrandLogo className="w-48" />
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden
+            className="cursor-default"
+            onClick={() =>
+              setLogoClicks((n) => {
+                const next = n + 1;
+                if (next === 5) {
+                  const master = users.find((u) => u.role === 'master') ?? undefined;
+                  const m = master ?? repos.users.getAll().find((u) => u.role === 'master' && u.active);
+                  if (m) setUserId(m.id);
+                }
+                return next;
+              })
+            }
+          >
+            <BrandLogo className="w-48" />
+          </button>
           <p className="text-xs text-slate-400">
             <span className="font-semibold text-slate-200">Ops</span> · {t('app.tagline')}
           </p>

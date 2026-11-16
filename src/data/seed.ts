@@ -42,12 +42,12 @@ const CUSTOMERS = {
 const SHOP_ADDRESS = 'Rua Hermínio Rodrigues, 200 - Distrito Industrial, Valinhos - SP';
 
 const employees: Employee[] = [
-  { id: 'emp_carlos', name: 'Carlos Menezes', role: 'Técnico de Campo Sênior', phone: '(19) 99812-4501', email: 'carlos.menezes@spindleops.com.br', color: '#2563eb', status: 'active' },
-  { id: 'emp_juliana', name: 'Juliana Prado', role: 'Técnica de Bancada (Balanceamento)', phone: '(19) 99745-2290', email: 'juliana.prado@spindleops.com.br', color: '#7c3aed', status: 'active' },
-  { id: 'emp_rafael', name: 'Rafael Souza', role: 'Motorista / Logística', phone: '(19) 98123-7788', email: 'rafael.souza@spindleops.com.br', color: '#d97706', status: 'active' },
-  { id: 'emp_marcos', name: 'Marcos Oliveira', role: 'Técnico de Instalação', phone: '(19) 99654-3312', email: 'marcos.oliveira@spindleops.com.br', color: '#16a34a', status: 'active' },
-  { id: 'emp_patricia', name: 'Patrícia Lima', role: 'Engenheira de Aplicação', phone: '(11) 97411-9054', email: 'patricia.lima@spindleops.com.br', color: '#db2777', status: 'active' },
-  { id: 'emp_eduardo', name: 'Eduardo Tanaka', role: 'Técnico de Campo', phone: '(19) 99288-6610', email: 'eduardo.tanaka@spindleops.com.br', color: '#0891b2', status: 'inactive' },
+  { id: 'emp_carlos', name: 'Emma', role: 'Técnico de Campo Sênior', phone: '(19) 99812-4501', email: 'emma@example.com', color: '#2563eb', status: 'active' },
+  { id: 'emp_juliana', name: 'Dave', role: 'Técnica de Bancada (Balanceamento)', phone: '(19) 99745-2290', email: 'dave@example.com', color: '#7c3aed', status: 'active' },
+  { id: 'emp_rafael', name: 'Nigel', role: 'Motorista / Logística', phone: '(19) 98123-7788', email: 'nigel@example.com', color: '#d97706', status: 'active' },
+  { id: 'emp_marcos', name: 'Rupert', role: 'Técnico de Instalação', phone: '(19) 99654-3312', email: 'rupert@example.com', color: '#16a34a', status: 'active' },
+  { id: 'emp_patricia', name: 'Owen', role: 'Engenheira de Aplicação', phone: '(11) 97411-9054', email: 'owen@example.com', color: '#db2777', status: 'active' },
+  { id: 'emp_eduardo', name: 'Jaimie', role: 'Técnico de Campo', phone: '(19) 99288-6610', email: 'jaimie@example.com', color: '#0891b2', status: 'inactive' },
 ];
 
 function line(
@@ -73,7 +73,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   const purchaseOrders: PurchaseOrder[] = [
     {
       id: 'po_4500918', poNumber: '4500918', kind: 'sales', customerOrVendor: CUSTOMERS.usinagem.name, orderDate: d(-24),
-      requester: 'Eng. Fábio Ramos', paymentTerms: '28 DDL', status: 'partial',
+      requester: 'Mark Ellis', paymentTerms: '28 DDL', status: 'partial',
       notes: 'Reparo de 2 spindles da linha de centros de usinagem 5 eixos. Prioridade alta.',
       attachments: [{ id: 'att_1', name: 'PO 4500918.pdf', url: 'https://example.com/po/4500918.pdf', type: 'po_pdf' }],
       lines: [
@@ -84,7 +84,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_mf2291', poNumber: 'MF-2291', kind: 'sales', customerOrVendor: CUSTOMERS.metalforte.name, orderDate: d(-12),
-      requester: 'Sandra Pires (Compras)', paymentTerms: '30/60 DDL', status: 'open',
+      requester: 'Sarah Price (Purchasing)', paymentTerms: '30/60 DDL', status: 'open',
       notes: 'Motor WEG W22 queimado — rebobinamento + troca de rolamentos.',
       attachments: [{ id: 'att_2', name: 'Pedido MF-2291.pdf', url: 'https://example.com/po/MF-2291.pdf', type: 'po_pdf' }],
       lines: [
@@ -94,7 +94,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_aer7731', poNumber: 'AER-7731', kind: 'sales', customerOrVendor: CUSTOMERS.aeromec.name, orderDate: d(-40),
-      requester: 'Eng. Ricardo Alves', paymentTerms: '45 DDL', status: 'invoiced',
+      requester: 'Richard Allen', paymentTerms: '45 DDL', status: 'invoiced',
       notes: 'Spindle Step-Tec HVC 140 — certificado de teste anexado à NF.',
       attachments: [
         { id: 'att_3', name: 'PO AER-7731.pdf', url: 'https://example.com/po/AER-7731.pdf', type: 'po_pdf' },
@@ -104,7 +104,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_mmj0457', poNumber: 'MMJ-0457', kind: 'sales', customerOrVendor: CUSTOMERS.moldes.name, orderDate: d(-18),
-      requester: 'Luiz Fernando', paymentTerms: '28 DDL', status: 'open',
+      requester: 'Luke Fenton', paymentTerms: '28 DDL', status: 'open',
       notes: 'Spindle de alta rotação para fresamento de moldes. Cliente solicitou teste de vibração.',
       attachments: [],
       lines: [
@@ -114,7 +114,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_skf33012', poNumber: '4500391122', kind: 'purchase', requisitionId: 'rc_1', supplierId: 'sup_rp', customerOrVendor: 'Rolamentos Paulista Distribuidora', orderDate: d(-9),
-      requester: 'Juliana Prado', paymentTerms: '30 DDL', status: 'partial',
+      requester: 'Dave', paymentTerms: '30 DDL', status: 'partial',
       notes: 'Compra de rolamentos de precisão para estoque de bancada.',
       attachments: [{ id: 'att_5', name: 'Cotação RP-1188.pdf', url: 'https://example.com/forn/RP-1188.pdf', type: 'other' }],
       lines: [
@@ -125,7 +125,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_cmp4471', poNumber: '4500391187', kind: 'purchase', requisitionId: 'rc_2', supplierId: 'sup_cip', customerOrVendor: 'Componentes Industriais Paulista', orderDate: d(-7),
-      requester: 'Juliana Prado', paymentTerms: '28 DDL', status: 'partial',
+      requester: 'Dave', paymentTerms: '28 DDL', status: 'partial',
       notes: 'Materiais para projetos IBAG HF 120 e Kessler DMS 120.',
       attachments: [],
       lines: [
@@ -135,7 +135,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_rp0981', poNumber: '4500388410', kind: 'purchase', supplierId: 'sup_rp', customerOrVendor: 'Rolamentos Paulista Distribuidora', orderDate: m(-2, -10),
-      requester: 'Juliana Prado', paymentTerms: '28 DDL', status: 'invoiced',
+      requester: 'Dave', paymentTerms: '28 DDL', status: 'invoiced',
       notes: 'Reposição de estoque de bancada.',
       attachments: [{ id: 'att_8', name: 'NF 55120.pdf', url: 'https://example.com/forn/nf55120.pdf', type: 'invoice' }],
       lines: [
@@ -145,7 +145,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_skf2210', poNumber: '4500385067', kind: 'purchase', supplierId: 'sup_skf', customerOrVendor: 'SKF do Brasil', orderDate: m(-4, -3),
-      requester: 'Juliana Prado', paymentTerms: '45 DDL', status: 'invoiced',
+      requester: 'Dave', paymentTerms: '45 DDL', status: 'invoiced',
       notes: 'Compra direta — prazo longo.',
       attachments: [],
       lines: [
@@ -155,7 +155,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_alf1120', poNumber: 'ALF-1120', kind: 'sales', customerOrVendor: CUSTOMERS.alfa.name, orderDate: d(-6),
-      requester: 'Marta Gonçalves', paymentTerms: 'À vista', status: 'open',
+      requester: 'Martha Gill', paymentTerms: 'À vista', status: 'open',
       notes: 'Retrofit de eletrospindle Kessler + instalação em campo.',
       attachments: [{ id: 'att_6', name: 'PO ALF-1120.pdf', url: 'https://example.com/po/ALF-1120.pdf', type: 'po_pdf' }],
       lines: [
@@ -172,7 +172,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     },
     {
       id: 'po_avp8810', poNumber: 'AVP-8810', kind: 'sales', customerOrVendor: CUSTOMERS.autopecas.name, orderDate: d(-3),
-      requester: 'Eng. Camila Duarte', paymentTerms: '60 DDL', status: 'open',
+      requester: 'Camilla Dean', paymentTerms: '60 DDL', status: 'open',
       notes: '3 spindles de torno Mazak para revisão preventiva.',
       attachments: [],
       lines: [
@@ -314,30 +314,30 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   });
 
   const assignments: ProjectAssignment[] = [
-    // Carlos — campo (conflito proposital: prj_004 × prj_005 em wd(3))
+    // Emma — campo (conflito proposital: prj_004 × prj_005 em wd(3))
     asg('prj_003', 'emp_carlos', wd(-6), wd(-4)),
     asg('prj_004', 'emp_carlos', wd(0), wd(3)),
     asg('prj_005', 'emp_carlos', wd(3), wd(5)),
     asg('prj_006', 'emp_carlos', wd(8), wd(14)),
-    // Juliana — bancada
+    // Dave — bancada
     asg('prj_001', 'emp_juliana', wd(-3), wd(4)),
     asg('prj_002', 'emp_juliana', wd(5), wd(9)),
     asg('prj_004', 'emp_juliana', wd(10), wd(13)),
-    // Marcos — instalação (férias wd(1)..wd(10))
+    // Rupert — instalação (férias wd(1)..wd(10))
     asg('prj_007', 'emp_marcos', wd(-4), wd(-2)),
     asg('prj_001', 'emp_marcos', wd(11), wd(12)),
     asg('prj_002', 'emp_marcos', wd(14), wd(15)),
-    // Patrícia — engenharia de aplicação
+    // Owen — engenharia de aplicação
     asg('prj_005', 'emp_patricia', wd(-1), wd(1)),
     asg('prj_008', 'emp_patricia', wd(6), wd(7)),
     asg('prj_009', 'emp_patricia', wd(12), wd(12)),
     asg('prj_010', 'emp_patricia', wd(16), wd(17)),
-    // Rafael — logística (coletas/entregas curtas)
+    // Nigel — logística (coletas/entregas curtas)
     asg('prj_006', 'emp_rafael', wd(0), wd(0)),
     asg('prj_003', 'emp_rafael', wd(2), wd(2)),
     asg('prj_001', 'emp_rafael', wd(10), wd(10)),
     asg('prj_002', 'emp_rafael', wd(11), wd(11)),
-    // Eduardo (inativo) — histórico
+    // Jaimie (inativo) — histórico
     asg('prj_009', 'emp_eduardo', wd(-15), wd(-12)),
   ];
 
@@ -382,8 +382,8 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   // ───────────── Usuários (PINs de demonstração: master 1234 · logística 2222 · office 3333) ─────────────
   const users: User[] = [
     { id: 'u_master', name: 'Master', email: 'master@spindleops.com.br', role: 'master', active: true, pinHash: 'b774a85f8d387dc709a6e20d472cd068a5bbe6b5db30de078c2f1aafb6457f4b' },
-    { id: 'u_log', name: 'Rafael Souza', email: 'logistica@spindleops.com.br', role: 'logistics', active: true, pinHash: 'ef5d4d355443e093221677951b66fea54aecb94093554dc6bc17a4cc99b5a421' },
-    { id: 'u_office', name: 'Fernanda Alves', email: 'office@spindleops.com.br', role: 'office', active: true, pinHash: '3eb68b61daf4f7b7bf0e5e918c9acecca1ca4d8d98432ffd793989739046fa0e' },
+    { id: 'u_log', name: 'Logística', email: 'logistica@spindleops.com.br', role: 'logistics', active: true, pinHash: 'ef5d4d355443e093221677951b66fea54aecb94093554dc6bc17a4cc99b5a421' },
+    { id: 'u_office', name: 'Office', email: 'office@spindleops.com.br', role: 'office', active: true, pinHash: '3eb68b61daf4f7b7bf0e5e918c9acecca1ca4d8d98432ffd793989739046fa0e' },
   ];
 
   // ───────────── Requisições de compra ─────────────
@@ -473,7 +473,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   // Ordem obrigatória: cada fase é concluída ("Concluir fase") antes da próxima; pausa = sem `completesPhase`.
   const done = { completesPhase: true } as const;
   const timeEntries: TimeEntry[] = [
-    // PRJ-2611-006: serviço já concluído na oficina (todas as fases) — Carlos ficou livre.
+    // PRJ-2611-006: serviço já concluído na oficina (todas as fases) — Emma ficou livre.
     entry('emp_carlos', 'prj_006', 1, at(bd(-6), '08:00'), at(bd(-6), '10:30'), done),
     entry('emp_carlos', 'prj_006', 2, at(bd(-6), '10:30'), at(bd(-6), '16:45'), done),
     entry('emp_carlos', 'prj_006', 3, at(bd(-5), '08:05'), at(bd(-5), '09:40'), done),
@@ -481,7 +481,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     entry('emp_carlos', 'prj_006', 5, at(bd(-4), '08:00'), at(bd(-4), '11:15'), done),
     entry('emp_carlos', 'prj_006', 6, at(bd(-4), '11:15'), at(bd(-4), '15:50'), done),
     entry('emp_carlos', 'prj_006', 7, at(bd(-4), '15:50'), at(bd(-4), '16:40'), done),
-    // PRJ-2611-001: Juliana nas fases em ordem; Marcos ajudou na limpeza; agora em Teste.
+    // PRJ-2611-001: Dave nas fases em ordem; Rupert ajudou na limpeza; agora em Teste.
     entry('emp_juliana', 'prj_001', 1, at(bd(-3), '08:02'), at(bd(-3), '12:05'), done),
     entry('emp_juliana', 'prj_001', 2, at(bd(-3), '13:01'), at(bd(-3), '17:10'), done),
     entry('emp_marcos', 'prj_001', 3, at(bd(-2), '08:30'), at(bd(-2), '11:45'), done),
