@@ -46,6 +46,23 @@
   }
 }
 
+/*
+ * Sem zoom no celular: o iOS amplia a tela ao focar um campo com fonte < 16px — no celular os campos usam 16px
+ * (fora das camadas para vencer o text-sm do .input). touch-action: manipulation desliga o zoom do toque duplo.
+ */
+html {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@media (max-width: 639.98px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @layer components {
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
