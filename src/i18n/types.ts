@@ -10,5 +10,5 @@ type Paths<T, P extends string = ''> = {
 }[keyof T & string];
 export type TranslationKey = Paths<Dictionary>;
 
-export type Locale = 'pt-BR' | 'en-US' | 'de-DE';
+export type Locale = 'en-GB' | 'pt-BR' | 'de-DE';
 export type TFunction = (key: TranslationKey, vars?: Record<string, string | number>) => string;

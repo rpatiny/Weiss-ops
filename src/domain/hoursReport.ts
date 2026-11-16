@@ -41,47 +41,47 @@ export function buildHoursReportSheets(projectId: string, data: AppDatabase): Re
   const people = [...new Set(entries.map((e) => e.employeeId))];
 
   const resumo = [
-    { Campo: 'Projeto', Valor: project.projectNumber },
-    { Campo: 'Cliente', Valor: project.customer },
-    { Campo: 'Descrição', Valor: project.description },
-    { Campo: 'Spindle / motor', Valor: spindle ? `${spindle.manufacturer} ${spindle.model} · S/N ${spindle.serialNumber}` : '' },
-    { Campo: 'Início na oficina', Valor: first ? `${localDay(first).split('-').reverse().join('/')} ${hhmm(first)}` : '' },
-    { Campo: 'Conclusão da última fase', Valor: finished ? `${localDay(finished).split('-').reverse().join('/')} ${hhmm(finished)}` : '' },
-    { Campo: 'Total de horas', Valor: hours(total) },
-    { Campo: 'Técnicos', Valor: people.map((id) => emp.get(id)?.name ?? id).join(', ') },
-    { Campo: 'Fases', Valor: progress.phases.map((r) => r.phase.name).join(' → ') },
-    { Campo: 'Gerado em', Valor: `${todayISO().split('-').reverse().join('/')} ${hhmm(new Date().toISOString())}` },
+    { Field: 'Project', Value: project.projectNumber },
+    { Field: 'Customer', Value: project.customer },
+    { Field: 'Description', Value: project.description },
+    { Field: 'Spindle / motor', Value: spindle ? `${spindle.manufacturer} ${spindle.model} · S/N ${spindle.serialNumber}` : '' },
+    { Field: 'Workshop start', Value: first ? `${localDay(first).split('-').reverse().join('/')} ${hhmm(first)}` : '' },
+    { Field: 'Last phase completed', Value: finished ? `${localDay(finished).split('-').reverse().join('/')} ${hhmm(finished)}` : '' },
+    { Field: 'Total hours', Value: hours(total) },
+    { Field: 'Technicians', Value: people.map((id) => emp.get(id)?.name ?? id).join(', ') },
+    { Field: 'Phases', Value: progress.phases.map((r) => r.phase.name).join(' → ') },
+    { Field: 'Generated on', Value: `${todayISO().split('-').reverse().join('/')} ${hhmm(new Date().toISOString())}` },
   ];
 
   const porFase = progress.phases.map((r) => ({
-    Ordem: r.phase.order,
-    Fase: r.phase.name,
-    Horas: hours(r.minutes),
-    'Concluída em': r.doneAt ? parseISODate(localDay(r.doneAt)) : undefined,
-    Técnicos: r.workers.map((id) => emp.get(id)?.name ?? id).join(', '),
+    Order: r.phase.order,
+    Phase: r.phase.name,
+    Hours: hours(r.minutes),
+    'Completed on': r.doneAt ? parseISODate(localDay(r.doneAt)) : undefined,
+    Technicians: r.workers.map((id) => emp.get(id)?.name ?? id).join(', '),
   }));
 
   // Colaborador × fase (horas), com total por pessoa.
   const porColaborador = people.map((id) => {
-    const row: Record<string, unknown> = { Colaborador: emp.get(id)?.name ?? id };
+    const row: Record<string, unknown> = { Employee: emp.get(id)?.name ?? id };
     for (const r of progress.phases) row[r.phase.name] = hours(entries.filter((e) => e.employeeId === id && e.phaseId === r.phase.id).reduce((s, e) => s + entryMinutes(e), 0));
     row.Total = hours(entries.filter((e) => e.employeeId === id).reduce((s, e) => s + entryMinutes(e), 0));
     return row;
   });
 
   const apontamentos = entries.map((e) => ({
-    Data: parseISODate(localDay(e.start)),
-    Colaborador: emp.get(e.employeeId)?.name ?? e.employeeId,
-    Fase: phaseName.get(e.phaseId) ?? '',
-    Início: hhmm(e.start),
-    Fim: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
-    Horas: hours(entryMinutes(e)),
-    'Concluiu a fase': e.completesPhase ? 'Sim' : 'Não',
-    Origem: e.source === 'qr' ? 'QR code' : 'Manual (supervisão)',
-    Observação: [e.note, e.released ? `Liberado pela supervisão: ${e.released.note}` : ''].filter(Boolean).join(' · '),
+    Date: parseISODate(localDay(e.start)),
+    Employee: emp.get(e.employeeId)?.name ?? e.employeeId,
+    Phase: phaseName.get(e.phaseId) ?? '',
+    Start: hhmm(e.start),
+    End: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
+    Hours: hours(entryMinutes(e)),
+    'Completed the phase': e.completesPhase ? 'Yes' : 'No',
+    Source: e.source === 'qr' ? 'QR code' : 'Manual (supervisor)',
+    Note: [e.note, e.released ? `Released by supervisor: ${e.released.note}` : ''].filter(Boolean).join(' · '),
   }));
 
-  return { Resumo: resumo, Por_Fase: porFase, Por_Colaborador: porColaborador, Apontamentos: apontamentos };
+  return { Summary: resumo, By_Phase: porFase, By_Employee: porColaborador, Time_Entries: apontamentos };
 }
 
 /** Projetos com relatório liberado (concluídos, nada aberto). */
@@ -107,7 +107,7 @@ export function buildEmployeeHoursSheets(employeeId: string | 'all', data: AppDa
 
   const resumo = people.map((id) => {
     const mine = entries.filter((e) => e.employeeId === id);
-    return { Funcionário: emp.get(id)?.name ?? id, Projetos: new Set(mine.map((e) => e.projectId)).size, 'Total de horas': sum(mine) };
+    return { Employee: emp.get(id)?.name ?? id, Projects: new Set(mine.map((e) => e.projectId)).size, 'Total hours': sum(mine) };
   });
 
   const porProjeto = people.flatMap((id) => {
@@ -117,10 +117,10 @@ export function buildEmployeeHoursSheets(employeeId: string | 'all', data: AppDa
       const list = mine.filter((e) => e.projectId === pid);
       const at = completedAt(pid);
       const row: Record<string, unknown> = {
-        Funcionário: emp.get(id)?.name ?? id,
-        Projeto: p?.projectNumber ?? pid,
-        Cliente: p?.customer ?? '',
-        'Projeto concluído em': at ? parseISODate(localDay(at)) : undefined,
+        Employee: emp.get(id)?.name ?? id,
+        Project: p?.projectNumber ?? pid,
+        Customer: p?.customer ?? '',
+        'Project completed on': at ? parseISODate(localDay(at)) : undefined,
       };
       for (const ph of [...data.workPhases].sort((a, b) => a.order - b.order)) {
         const h = sum(list.filter((e) => e.phaseId === ph.id));
@@ -132,17 +132,17 @@ export function buildEmployeeHoursSheets(employeeId: string | 'all', data: AppDa
   });
 
   const apontamentos = entries.map((e) => ({
-    Funcionário: emp.get(e.employeeId)?.name ?? e.employeeId,
-    Data: parseISODate(localDay(e.start)),
-    Projeto: prj.get(e.projectId)?.projectNumber ?? '',
-    Cliente: prj.get(e.projectId)?.customer ?? '',
-    Fase: phaseName.get(e.phaseId) ?? '',
-    Início: hhmm(e.start),
-    Fim: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
-    Horas: hours(entryMinutes(e)),
+    Employee: emp.get(e.employeeId)?.name ?? e.employeeId,
+    Date: parseISODate(localDay(e.start)),
+    Project: prj.get(e.projectId)?.projectNumber ?? '',
+    Customer: prj.get(e.projectId)?.customer ?? '',
+    Phase: phaseName.get(e.phaseId) ?? '',
+    Start: hhmm(e.start),
+    End: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
+    Hours: hours(entryMinutes(e)),
   }));
 
-  return { Resumo: resumo, Por_Projeto: porProjeto, Apontamentos: apontamentos };
+  return { Summary: resumo, By_Project: porProjeto, Time_Entries: apontamentos };
 }
 
 /** Todos os projetos concluídos numa planilha: resumo projeto × fase + todos os horários agrupados por projeto. */
@@ -157,9 +157,9 @@ export function buildAllProjectsSheets(data: AppDatabase): Record<string, Record
     const prog = jobProgress(id, data.workPhases, data.timeEntries);
     const at = prog.phases.reduce<string | undefined>((m, r) => (r.doneAt && (!m || r.doneAt > m) ? r.doneAt : m), undefined);
     const row: Record<string, unknown> = {
-      Projeto: prj.get(id)?.projectNumber ?? id,
-      Cliente: prj.get(id)?.customer ?? '',
-      'Concluído em': at ? parseISODate(localDay(at)) : undefined,
+      Project: prj.get(id)?.projectNumber ?? id,
+      Customer: prj.get(id)?.customer ?? '',
+      'Completed on': at ? parseISODate(localDay(at)) : undefined,
     };
     for (const r of prog.phases) row[r.phase.name] = hours(r.minutes);
     row.Total = hours(prog.phases.reduce((s, r) => s + r.minutes, 0));
@@ -170,18 +170,18 @@ export function buildAllProjectsSheets(data: AppDatabase): Record<string, Record
       .filter((e) => e.projectId === id)
       .sort((a, b) => a.start.localeCompare(b.start))
       .map((e) => ({
-        Projeto: prj.get(id)?.projectNumber ?? id,
-        Cliente: prj.get(id)?.customer ?? '',
-        Fase: phaseName.get(e.phaseId) ?? '',
-        Data: parseISODate(localDay(e.start)),
-        Colaborador: emp.get(e.employeeId)?.name ?? e.employeeId,
-        Início: hhmm(e.start),
-        Fim: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
-        Horas: hours(entryMinutes(e)),
-        'Concluiu a fase': e.completesPhase ? 'Sim' : 'Não',
+        Project: prj.get(id)?.projectNumber ?? id,
+        Customer: prj.get(id)?.customer ?? '',
+        Phase: phaseName.get(e.phaseId) ?? '',
+        Date: parseISODate(localDay(e.start)),
+        Employee: emp.get(e.employeeId)?.name ?? e.employeeId,
+        Start: hhmm(e.start),
+        End: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
+        Hours: hours(entryMinutes(e)),
+        'Completed the phase': e.completesPhase ? 'Yes' : 'No',
       })),
   );
-  return { Resumo: resumo, Apontamentos: apontamentos };
+  return { Summary: resumo, Time_Entries: apontamentos };
 }
 
 /** Exporta todos os projetos concluídos (uma planilha, organizada por projeto). */
@@ -189,7 +189,7 @@ export async function exportAllProjectsReport(): Promise<ExportResult> {
   assertCan('time.manage');
   const data = db.snapshot();
   if (completedProjectIds(data).length === 0) return { ok: false, reason: 'timesheet.noCompleted' };
-  const filename = `Horas_por_projeto_${todayISO()}.xlsx`;
+  const filename = `Hours_by_project_${todayISO()}.xlsx`;
   await downloadWorkbook(buildAllProjectsSheets(data), filename);
   return { ok: true, filename };
 }
@@ -224,7 +224,7 @@ export async function exportHoursReport(projectId: string): Promise<ExportResult
   const check = reportCheck(projectId, data);
   if (!check.ok) return check;
   const project = data.projects.find((p) => p.id === projectId)!;
-  const filename = `Horas_${project.projectNumber}_${todayISO()}.xlsx`;
+  const filename = `Hours_${project.projectNumber}_${todayISO()}.xlsx`;
   await downloadWorkbook(buildHoursReportSheets(projectId, data), filename);
   return { ok: true, filename };
 }
@@ -234,9 +234,9 @@ export async function exportEmployeeHoursReport(employeeId: string | 'all'): Pro
   assertCan('time.manage');
   const data = db.snapshot();
   const sheets = buildEmployeeHoursSheets(employeeId, data);
-  if (!sheets.Apontamentos?.length) return { ok: false, reason: 'timesheet.employeeNoData' };
-  const who = employeeId === 'all' ? 'Todos' : (data.employees.find((e) => e.id === employeeId)?.name ?? employeeId).replace(/\s+/g, '_');
-  const filename = `Horas_${who}_${todayISO()}.xlsx`;
+  if (!sheets.Time_Entries?.length) return { ok: false, reason: 'timesheet.employeeNoData' };
+  const who = employeeId === 'all' ? 'All' : (data.employees.find((e) => e.id === employeeId)?.name ?? employeeId).replace(/\s+/g, '_');
+  const filename = `Hours_${who}_${todayISO()}.xlsx`;
   await downloadWorkbook(sheets, filename);
   return { ok: true, filename };
 }

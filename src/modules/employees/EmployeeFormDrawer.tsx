@@ -10,7 +10,6 @@ import { useCollection } from '@/data/hooks';
 import {
   emptyEmployee,
   employeeService,
-  maskPhone,
   upcomingAbsences,
   upcomingAssignments,
   validateEmployee,
@@ -38,7 +37,7 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
   const projects = useCollection('projects');
   const absences = useCollection('absences');
   const toast = useToast();
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const readOnly = !useCan()('employees.edit');
   const isEdit = Boolean(employee);
 
@@ -153,9 +152,9 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
                 type="tel"
                 inputMode="tel"
                 value={draft.phone}
-                onChange={(e) => set('phone', locale === 'pt-BR' ? maskPhone(e.target.value) : e.target.value)}
+                onChange={(e) => set('phone', e.target.value)}
                 invalid={!!errors.phone}
-                placeholder={locale === 'pt-BR' ? '(19) 99999-0000' : '+1 555 123 4567'}
+                placeholder="07700 900000"
               />
             )}
           </Field>

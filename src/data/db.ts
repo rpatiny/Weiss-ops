@@ -2,7 +2,7 @@ import { APP_CONFIG } from '@/lib/config';
 import type { AppDatabase, CollectionName, EntityOf } from '@/types/models';
 import type { Entity } from './repository';
 import { StoredRepository, type Repository } from './repository';
-import { buildSeed } from './seed';
+import { buildSeed, DEMO_PROJECT_NUMBERS } from './seed';
 import { createLocalStorageDriver } from './storage';
 import { ProfilesRepository } from './cloud/profilesRepository';
 import { RemoteRepository } from './cloud/remoteRepository';
@@ -69,8 +69,18 @@ const LEGACY_RENAMES = {
     ['emp_eduardo', 'Eduardo Tanaka', 'Jaimie'],
   ],
   users: [
-    ['u_log', 'Rafael Souza', 'Logística'],
+    ['u_log', 'Rafael Souza', 'Logistics'],
+    ['u_log', 'Logística', 'Logistics'],
     ['u_office', 'Fernanda Alves', 'Office'],
+  ],
+  phases: [
+    ['ph_1', 'Desmontagem', 'Disassembly'],
+    ['ph_2', 'Inspeção / Diagnóstico', 'Inspection / Diagnosis'],
+    ['ph_3', 'Limpeza', 'Cleaning'],
+    ['ph_4', 'Remontagem', 'Reassembly'],
+    ['ph_5', 'Balanceamento', 'Balancing'],
+    ['ph_6', 'Teste', 'Testing'],
+    ['ph_7', 'Embalagem', 'Packing'],
   ],
 } as const;
 
@@ -168,6 +178,16 @@ export const db = {
     for (const [id, from, to] of LEGACY_RENAMES.users) {
       const u = repos.users.getById(id);
       if (u?.name === from) repos.users.upsert({ ...u, name: to });
+    }
+    for (const [id, from, to] of LEGACY_RENAMES.phases) {
+      const ph = repos.workPhases.getById(id);
+      if (ph?.name === from) repos.workPhases.upsert({ ...ph, name: to });
+    }
+    // Nº de projeto antigo da demo (PRJ-AAMM-NNN) → formato 1000 + 4 letras.
+    for (const p of repos.projects.getAll()) {
+      const m = /^prj_(\d{3})$/.exec(p.id);
+      const to = m ? DEMO_PROJECT_NUMBERS[Number(m[1]) - 1] : undefined;
+      if (to && /^PRJ-\d{4}-\d{3}$/.test(p.projectNumber)) repos.projects.upsert({ ...p, projectNumber: to });
     }
   },
 

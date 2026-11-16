@@ -136,7 +136,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Datas** como string `YYYY-MM-DD` em horário local; use `src/lib/dates.ts` (nunca `new Date('YYYY-MM-DD')`, que é UTC).
 - **Horas** `HH:mm`; comparar via `timeToMinutes`.
 - **IDs**: `newId('emp' | 'prj' | 'asg' | 'abs' | 'mat' | 'po' | 'pol' | 'att' | 'sp' | 'fc')`.
-- **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `pt-BR` / `GBP` (libra esterlina)); formate com `src/lib/format.ts`.
+- **Moeda/locale**: `APP_CONFIG` em `src/lib/config.ts` (padrão `en-GB` / `GBP` (libra esterlina)); formate com `src/lib/format.ts`.
 - **Nenhum texto de UI hard-coded**: use `const { t } = useI18n()` e `t('modulo.chave', { var })`.
   Ao criar uma chave, adicione-a em `pt.ts` e o TypeScript exigirá a tradução em `en.ts` e `de.ts`.
 - **Erros de validação** no domínio retornam `TranslationKey` (não strings), e a UI traduz.
@@ -160,8 +160,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 ## Internacionalização
 
-- Idiomas: 🇧🇷 `pt-BR` (padrão), 🇺🇸 `en-US`, 🇩🇪 `de-DE`. Seletor no rodapé da sidebar; persistido em `spindleops:locale`
-  (sem preferência salva, detecta `navigator.language`).
+- Idiomas: 🇬🇧 `en-GB` (**padrão — o app é em inglês**, datas dd/mm/aaaa), 🇧🇷 `pt-BR`, 🇩🇪 `de-DE`. Seletor no rodapé da sidebar;
+  persistido em `spindleops:locale.v2` (sem escolha salva ⇒ en-GB). `pt.ts` continua sendo o dicionário-base dos tipos.
+  O texto em inglês segue a grafia britânica (cancelled, catalogue, colour, annual leave).
 - Dados digitados pelo usuário (clientes, descrições, cargos) **não** são traduzidos.
 
 ## Regras de negócio implementadas
@@ -254,6 +255,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   de componentes — sem isso, enviar um formulário aberto a partir de outro formulário enviava os dois.
 - **i18n — plural**: textos `"singular || plural"` escolhidos pela variável `count` (ou `days`/`qty`/`late`). Não use "(s)".
 
+- **Nº do projeto:** `1000` + 4 caracteres; em teste os 4 são **letras** (`1000BKXA`…). `nextProjectNumber` = maior existente + 1
+  em base 26 (`PROJECT_NUMBER_RE`). Demo: `DEMO_PROJECT_NUMBERS`; números antigos `PRJ-AAMM-NNN` da demo são migrados.
+- **Dados de demonstração em inglês (UK):** clientes PCS, Gestamp, BAE Systems, CNC Speedwell + GKN Aerospace, JCB, Rolls-Royce,
+  Renishaw (endereço "United Kingdom" — preencher os reais); fornecedores UK fictícios; fases Disassembly → … → Packing;
+  cotações `QUO-`; telefones de exemplo (07700 900xxx / 01632 960xxx).
 - **Projetos** (`domain/projects.ts`, tela `#/projects`): ficha por projeto montada só com dados derivados (`buildDossier`):
   cotação do spindle (nº, `quoteDate`, valor, status), PO do cliente, produção (fase, período, equipe pelas alocações),
   materiais (recebidos/total + pendentes com requisição → PO → previsão/atraso) e histórico em linha do tempo
@@ -313,7 +319,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 - **Exportação Excel** (`domain/dataExchange.ts`, todos os perfis): abas `Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`,
   `Itens_PO`, `Spindles`, `Forecast` + `Materiais_Projeto`, `Requisicoes`, `Extensoes`, `Fornecedores`, `Catalogo`,
-  `Ferias_Ausencias`. Abas e cabeçalhos em pt-BR (independem do idioma da tela); datas como datas do Excel (testado
+  `Ferias_Ausencias`. Abas e cabeçalhos **em inglês** (Employees, Schedule, Purchase_Orders, PO_Lines, … Workshop_Hours; independem do idioma da tela); datas como datas do Excel (testado
   em fusos BR/UK/DE); inclui derivados (totais, ponderado, dias úteis, qtd. recebida). `xlsx` é carregado sob demanda
   (import dinâmico); no build de arquivo único (`SINGLE_FILE=1`) o import é embutido.
 - **Backup/Restore JSON** (somente Master): `{ app, schemaVersion, exportedAt, data }`. `checkBackup` valida JSON, app,

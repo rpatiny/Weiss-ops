@@ -9,14 +9,16 @@ import type { Dictionary, Locale, TFunction, TranslationKey } from './types';
 export type { Locale, TFunction, TranslationKey } from './types';
 
 export const LOCALES: { value: Locale; label: string; short: string; flag: string }[] = [
+  { value: 'en-GB', label: 'English', short: 'EN', flag: '🇬🇧' },
   { value: 'pt-BR', label: 'Português', short: 'PT', flag: '🇧🇷' },
-  { value: 'en-US', label: 'English', short: 'EN', flag: '🇺🇸' },
   { value: 'de-DE', label: 'Deutsch', short: 'DE', flag: '🇩🇪' },
 ];
 
-const DICTS: Record<Locale, Dictionary> = { 'pt-BR': pt, 'en-US': en, 'de-DE': de };
-const KEY = `${APP_CONFIG.storagePrefix}:locale`;
+const DICTS: Record<Locale, Dictionary> = { 'en-GB': en, 'pt-BR': pt, 'de-DE': de };
+// v2: a base passou a ser inglês — escolhas antigas (padrão português) são ignoradas uma vez.
+const KEY = `${APP_CONFIG.storagePrefix}:locale.v2`;
 
+/** O app é em inglês (Weiss UK): sem escolha salva, abre em inglês britânico. */
 function detectLocale(): Locale {
   try {
     const saved = localStorage.getItem(KEY) as Locale | null;
@@ -24,10 +26,7 @@ function detectLocale(): Locale {
   } catch {
     /* ignore */
   }
-  const nav = (navigator.language || '').toLowerCase();
-  if (nav.startsWith('de')) return 'de-DE';
-  if (nav.startsWith('en')) return 'en-US';
-  return 'pt-BR';
+  return 'en-GB';
 }
 
 function lookup(dict: Dictionary, key: string): string | undefined {

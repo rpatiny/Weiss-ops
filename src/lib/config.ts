@@ -1,15 +1,15 @@
 /** Configuração regional da aplicação. Altere aqui para trocar moeda/locale. */
 export const APP_CONFIG = {
   appName: 'SpindleOps',
-  companyTagline: 'Reparo de Spindles & Motores',
-  locale: 'pt-BR',
+  companyTagline: 'Spindle & Motor Repair',
+  locale: 'en-GB',
   currency: 'GBP',
   storagePrefix: 'spindleops',
   schemaVersion: 5,
 } as const;
 
 /** Endereço da base/oficina (ponto de partida opcional das rotas). */
-export const BASE_ADDRESS = 'Rua Hermínio Rodrigues, 200 - Distrito Industrial, Valinhos - SP';
+export const BASE_ADDRESS = 'Weiss UK workshop';
 
 /**
  * Plantas/centros do SAP. `HOME_PLANT` é a planta que compra (os materiais precisam estar
@@ -17,7 +17,7 @@ export const BASE_ADDRESS = 'Rua Hermínio Rodrigues, 200 - Distrito Industrial,
  */
 export const HOME_PLANT = 'UK01';
 export const SAP_PLANTS = [
-  { code: 'UK01', label: 'Reino Unido' },
-  { code: 'DE01', label: 'Alemanha' },
-  { code: 'BR01', label: 'Brasil' },
+  { code: 'UK01', label: 'United Kingdom' },
+  { code: 'DE01', label: 'Germany' },
+  { code: 'BR01', label: 'Brazil' },
 ];

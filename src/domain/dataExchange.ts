@@ -12,11 +12,16 @@ import type { AppDatabase, CollectionName } from '@/types/models';
 import { billedValue, weightedValue } from './financial';
 import { lineTotal, poTotal } from './purchasing';
 import { materialStatus } from './schedule';
-import { entryMinutes } from './timeTracking';
+import { entryMinutes, localDay } from './timeTracking';
 import { reportCheck } from './hoursReport';
 
-const label = (key: string) => translate('pt-BR', key as TranslationKey);
+const label = (key: string) => translate('en-GB', key as TranslationKey);
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
+/** Hora local HH:MM de um instante ISO. */
+const hhmm = (iso: string) => {
+  const t = new Date(iso);
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+};
 
 /** Linhas de cada aba (objetos simples → colunas). */
 export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<string, unknown>[]> {
@@ -30,172 +35,173 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
   const phases = new Map(data.workPhases.map((p) => [p.id, p]));
 
   return {
-    Colaboradores: data.employees.map((e) => ({
+    Employees: data.employees.map((e) => ({
       ID: e.id,
-      Nome: e.name,
-      Cargo: e.role,
-      Telefone: e.phone,
-      'E-mail': e.email,
-      Cor: e.color,
+      Name: e.name,
+      Role: e.role,
+      Phone: e.phone,
+      Email: e.email,
+      Colour: e.color,
       Status: label(`enums.employeeStatus.${e.status}`),
     })),
-    Agenda_Rotas: data.assignments
+    Schedule: data.assignments
       .map((a) => {
         const p = prj.get(a.projectId);
         return {
-          'Nº projeto': p?.projectNumber ?? '',
-          Cliente: p?.customer ?? '',
-          Endereço: p?.address ?? '',
-          'Tipo de serviço': p ? label(`enums.serviceType.${p.serviceType}`) : '',
-          Descrição: p?.description ?? '',
-          Colaborador: emp.get(a.employeeId)?.name ?? a.employeeId,
-          Início: d(a.startDate),
-          Fim: d(a.endDate),
-          'Dias úteis': businessDaysBetween(a.startDate, a.endDate),
-          'Status do projeto': p ? label(`enums.projectStatus.${p.status}`) : '',
-          'PO do cliente': p?.poId ? (po.get(p.poId)?.poNumber ?? '') : '',
+          'Project no.': p?.projectNumber ?? '',
+          Customer: p?.customer ?? '',
+          Address: p?.address ?? '',
+          'Service type': p ? label(`enums.serviceType.${p.serviceType}`) : '',
+          Description: p?.description ?? '',
+          Employee: emp.get(a.employeeId)?.name ?? a.employeeId,
+          Start: d(a.startDate),
+          End: d(a.endDate),
+          'Working days': businessDaysBetween(a.startDate, a.endDate),
+          'Project status': p ? label(`enums.projectStatus.${p.status}`) : '',
+          'Customer PO': p?.poId ? (po.get(p.poId)?.poNumber ?? '') : '',
           'Spindle / motor': p?.spindleId ? (sp.get(p.spindleId)?.serialNumber ?? '') : '',
         };
       })
-      .sort((x, y) => String(x['Nº projeto']).localeCompare(String(y['Nº projeto']))),
-    Ordens_Compra: data.purchaseOrders.map((p) => ({
-      'Nº PO': p.poNumber,
-      Tipo: label(`enums.poKind.${p.kind}`),
-      'Cliente / fornecedor': p.customerOrVendor,
-      'Data do pedido': d(p.orderDate),
-      Solicitante: p.requester,
-      'Condição de pagamento': p.paymentTerms,
+      .sort((x, y) => String(x['Project no.']).localeCompare(String(y['Project no.']))),
+    Purchase_Orders: data.purchaseOrders.map((p) => ({
+      'PO no.': p.poNumber,
+      Type: label(`enums.poKind.${p.kind}`),
+      'Customer / supplier': p.customerOrVendor,
+      'Order date': d(p.orderDate),
+      Requester: p.requester,
+      'Payment terms': p.paymentTerms,
       Status: label(`enums.poStatus.${p.status}`),
-      'Total da PO': poTotal(p),
-      Linhas: p.lines.length,
-      Requisição: p.requisitionId ? (rc.get(p.requisitionId)?.number ?? '') : '',
-      Observações: p.notes,
-      Anexos: p.attachments.map((a) => `${a.name} <${a.url}>`).join('; '),
+      'PO total': poTotal(p),
+      Lines: p.lines.length,
+      Requisition: p.requisitionId ? (rc.get(p.requisitionId)?.number ?? '') : '',
+      Notes: p.notes,
+      Attachments: p.attachments.map((a) => `${a.name} <${a.url}>`).join('; '),
     })),
-    Itens_PO: data.purchaseOrders.flatMap((p) =>
+    PO_Lines: data.purchaseOrders.flatMap((p) =>
       p.lines.map((l) => {
         const received = (l.receipts ?? []).reduce((s, r) => s + r.quantity, 0);
         return {
-          'Nº PO': p.poNumber,
-          Linha: l.lineNumber,
+          'PO no.': p.poNumber,
+          Line: l.lineNumber,
           'Part number': l.partNumber,
-          Descrição: l.description,
-          Quantidade: l.quantity,
-          'Preço unitário': l.unitPrice,
-          'Total da linha': lineTotal(l),
-          'Entrega prevista': d(l.expectedDeliveryDate),
-          'Entrega real': d(l.actualDeliveryDate),
+          Description: l.description,
+          Quantity: l.quantity,
+          'Unit price': l.unitPrice,
+          'Line total': lineTotal(l),
+          'Expected delivery': d(l.expectedDeliveryDate),
+          'Actual delivery': d(l.actualDeliveryDate),
           Status: label(`enums.poLineStatus.${l.status}`),
-          'Qtd. recebida (GR)': received,
-          'Docs. GR (SAP)': (l.receipts ?? []).map((r) => r.grNumber).join(', '),
-          Atrasada: l.status !== 'delivered' && l.status !== 'canceled' && l.expectedDeliveryDate < todayISO() ? 'Sim' : 'Não',
+          'Qty received (GR)': received,
+          'GR docs (SAP)': (l.receipts ?? []).map((r) => r.grNumber).join(', '),
+          Late: l.status !== 'delivered' && l.status !== 'canceled' && l.expectedDeliveryDate < todayISO() ? 'Yes' : 'No',
         };
       }),
     ),
     Spindles: data.spindles.map((s) => ({
-      'Nº de série': s.serialNumber,
-      Fabricante: s.manufacturer,
-      Modelo: s.model,
-      Cliente: s.customer,
-      Recebido: d(s.receivedDate),
-      'Nº cotação': s.quoteNumber,
-      'Data cotação': d(s.quoteDate),
-      'Valor cotado': s.quotedValue,
-      'Status da cotação': label(`enums.quoteStatus.${s.quoteStatus}`),
+      'Serial no.': s.serialNumber,
+      Manufacturer: s.manufacturer,
+      Model: s.model,
+      Customer: s.customer,
+      Received: d(s.receivedDate),
+      'Quote no.': s.quoteNumber,
+      'Quote date': d(s.quoteDate),
+      'Quoted value': s.quotedValue,
+      'Quote status': label(`enums.quoteStatus.${s.quoteStatus}`),
       Status: label(`enums.spindleStatus.${s.status}`),
-      Entrega: d(s.deliveryDate),
-      'Valor faturado': s.status === 'delivered' ? billedValue(s) : undefined,
+      Delivery: d(s.deliveryDate),
+      'Invoiced value': s.status === 'delivered' ? billedValue(s) : undefined,
       PO: s.poId ? (po.get(s.poId)?.poNumber ?? '') : '',
     })),
     Forecast: data.forecast.map((f) => ({
-      Cliente: f.customer,
-      'Spindle / modelo': f.spindleModel,
-      Descrição: f.description,
-      'Valor estimado': f.estimatedValue,
-      'Data prevista': d(f.expectedDate),
-      'Probabilidade (%)': f.probability,
-      'Valor ponderado': weightedValue(f),
+      Customer: f.customer,
+      'Spindle / model': f.spindleModel,
+      Description: f.description,
+      'Estimated value': f.estimatedValue,
+      'Expected date': d(f.expectedDate),
+      'Probability (%)': f.probability,
+      'Weighted value': weightedValue(f),
     })),
-    Materiais_Projeto: data.projects.flatMap((p) =>
+    Project_Materials: data.projects.flatMap((p) =>
       p.materials.map((m) => {
         const st = materialStatus(m, po);
         return {
-          'Nº projeto': p.projectNumber,
-          Cliente: p.customer,
+          'Project no.': p.projectNumber,
+          Customer: p.customer,
           'Part number': m.partNumber,
-          Descrição: m.description,
-          Quantidade: m.quantity,
-          'Necessário em': d(m.neededBy),
+          Description: m.description,
+          Quantity: m.quantity,
+          'Needed by': d(m.neededBy),
           Status: label(`enums.materialStatus.${st.status}`),
-          Requisição: m.requisitionId ? (rc.get(m.requisitionId)?.number ?? '') : '',
+          Requisition: m.requisitionId ? (rc.get(m.requisitionId)?.number ?? '') : '',
           PO: st.po?.poNumber ?? '',
-          'Previsão de chegada': d(st.line?.expectedDeliveryDate),
+          'Expected arrival': d(st.line?.expectedDeliveryDate),
         };
       }),
     ),
-    Requisicoes: data.requisitions.flatMap((r) =>
+    Requisitions: data.requisitions.flatMap((r) =>
       r.items.map((it) => ({
-        Requisição: r.number,
-        Projeto: prj.get(r.projectId)?.projectNumber ?? '',
-        'Solicitado por': usr.get(r.requestedBy)?.name ?? '',
-        'Data': d(r.requestedAt),
-        'Necessário até': d(r.neededBy),
-        'Status (registrado)': label(`enums.requisitionStatus.${r.status}`),
+        Requisition: r.number,
+        Project: prj.get(r.projectId)?.projectNumber ?? '',
+        'Requested by': usr.get(r.requestedBy)?.name ?? '',
+        Date: d(r.requestedAt),
+        'Needed by': d(r.neededBy),
+        'Status (recorded)': label(`enums.requisitionStatus.${r.status}`),
         'Part number': it.partNumber,
-        Descrição: it.description,
-        Quantidade: it.quantity,
+        Description: it.description,
+        Quantity: it.quantity,
       })),
     ),
-    Extensoes: data.extensions.map((x) => ({
-      Pedido: x.number,
+    Extensions: data.extensions.map((x) => ({
+      Request: x.number,
       'Part number': x.partNumber,
-      Descrição: x.description,
-      De: x.fromPlant,
-      Para: x.toPlant,
-      Fornecedor: x.supplierId ? (sup.get(x.supplierId)?.name ?? '') : '',
-      Projeto: x.projectId ? (prj.get(x.projectId)?.projectNumber ?? '') : '',
-      'Solicitado por': usr.get(x.requestedBy)?.name ?? '',
-      Data: d(x.requestedAt),
-      'Necessário até': d(x.neededBy),
+      Description: x.description,
+      From: x.fromPlant,
+      To: x.toPlant,
+      Supplier: x.supplierId ? (sup.get(x.supplierId)?.name ?? '') : '',
+      Project: x.projectId ? (prj.get(x.projectId)?.projectNumber ?? '') : '',
+      'Requested by': usr.get(x.requestedBy)?.name ?? '',
+      Date: d(x.requestedAt),
+      'Needed by': d(x.neededBy),
       Status: label(`enums.extensionStatus.${x.status}`),
-      'Referência SAP': x.sapReference ?? '',
+      'SAP reference': x.sapReference ?? '',
     })),
-    Fornecedores: data.suppliers.map((s) => ({ Nome: s.name, Contato: s.contactName, 'E-mail': s.email, Telefone: s.phone, Observações: s.notes })),
-    Catalogo: data.materials.flatMap((m) =>
+    Suppliers: data.suppliers.map((s) => ({ Name: s.name, Contact: s.contactName, Email: s.email, Phone: s.phone, Notes: s.notes })),
+    Catalogue: data.materials.flatMap((m) =>
       (m.offers.length ? m.offers : [undefined]).map((o) => ({
         'Part number': m.partNumber,
-        Descrição: m.description,
-        Unidade: m.unit,
-        'Plantas SAP': (m.plants ?? []).join(', '),
-        Fornecedor: o ? (sup.get(o.supplierId)?.name ?? '') : '',
-        Cotação: o ? label(`enums.supplierQuoteStatus.${o.quoteStatus}`) : '',
-        'Preço cotado': o?.quotedPrice,
-        'Validade': d(o?.validUntil),
-        'Prazo (dias)': o?.leadTimeDays,
+        Description: m.description,
+        Unit: m.unit,
+        'SAP plants': (m.plants ?? []).join(', '),
+        Supplier: o ? (sup.get(o.supplierId)?.name ?? '') : '',
+        Quote: o ? label(`enums.supplierQuoteStatus.${o.quoteStatus}`) : '',
+        'Quoted price': o?.quotedPrice,
+        'Valid until': d(o?.validUntil),
+        'Lead time (days)': o?.leadTimeDays,
       })),
     ),
-    Ferias_Ausencias: data.absences.map((a) => ({
-      Colaborador: emp.get(a.employeeId)?.name ?? '',
-      Tipo: label(`enums.absenceType.${a.type}`),
-      Início: d(a.startDate),
-      Fim: d(a.endDate),
-      'Dias úteis': businessDaysBetween(a.startDate, a.endDate),
-      Observação: a.note,
+    Leave_Absences: data.absences.map((a) => ({
+      Employee: emp.get(a.employeeId)?.name ?? '',
+      Type: label(`enums.absenceType.${a.type}`),
+      Start: d(a.startDate),
+      End: d(a.endDate),
+      'Working days': businessDaysBetween(a.startDate, a.endDate),
+      Note: a.note,
     })),
     // Sem relatório parcial: só serviços concluídos (todas as fases) e sem apontamento aberto.
-    Horas_Oficina: [...data.timeEntries]
+    Workshop_Hours: [...data.timeEntries]
       .filter((e) => reportCheck(e.projectId, data).ok)
       .sort((a, b) => a.start.localeCompare(b.start))
       .map((e) => ({
-        Colaborador: emp.get(e.employeeId)?.name ?? '',
-        Projeto: prj.get(e.projectId)?.projectNumber ?? '',
-        Cliente: prj.get(e.projectId)?.customer ?? '',
-        Fase: phases.get(e.phaseId)?.name ?? '',
-        Início: new Date(e.start),
-        Fim: e.end ? new Date(e.end) : undefined,
-        'Horas': e.end ? Math.round(entryMinutes(e) / 6) / 10 : undefined,
-        Origem: e.source === 'qr' ? 'QR code' : 'Manual',
-        Observação: e.note,
+        Employee: emp.get(e.employeeId)?.name ?? '',
+        Project: prj.get(e.projectId)?.projectNumber ?? '',
+        Customer: prj.get(e.projectId)?.customer ?? '',
+        Phase: phases.get(e.phaseId)?.name ?? '',
+        Date: d(localDay(e.start)),
+        Start: hhmm(e.start),
+        End: e.end ? (localDay(e.end) !== localDay(e.start) ? `${localDay(e.end).split('-').reverse().join('/')} ${hhmm(e.end)}` : hhmm(e.end)) : '',
+        Hours: e.end ? Math.round(entryMinutes(e) / 6) / 10 : undefined,
+        Source: e.source === 'qr' ? 'QR code' : 'Manual',
+        Note: e.note,
       })),
   };
 }

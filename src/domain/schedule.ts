@@ -214,14 +214,27 @@ export function validateProject(d: ProjectDraft, all: readonly Project[], selfId
   return e;
 }
 
-export function nextProjectNumber(all: readonly Project[], today = todayISO()): string {
-  const prefix = `PRJ-${today.slice(2, 4)}${today.slice(5, 7)}-`;
+/**
+ * Nº do projeto: "1000" + 4 caracteres. Em teste os 4 caracteres são letras (1000AAAA, 1000AAAB, …):
+ * o próximo é o maior existente + 1 (base 26).
+ */
+export const PROJECT_NUMBER_RE = /^1000[A-Z]{4}$/;
+export function nextProjectNumber(all: readonly Project[]): string {
   const max = all
-    .map((p) => p.projectNumber)
-    .filter((n) => n.startsWith(prefix))
-    .map((n) => Number(n.slice(prefix.length)) || 0)
-    .reduce((a, b) => Math.max(a, b), 0);
-  return `${prefix}${String(max + 1).padStart(3, '0')}`;
+    .map((p) => p.projectNumber.trim().toUpperCase())
+    .filter((n) => PROJECT_NUMBER_RE.test(n))
+    .sort()
+    .pop();
+  if (!max) return '1000AAAA';
+  const chars = max.slice(4).split('');
+  for (let i = chars.length - 1; i >= 0; i--) {
+    if (chars[i] !== 'Z') {
+      chars[i] = String.fromCharCode(chars[i]!.charCodeAt(0) + 1);
+      break;
+    }
+    chars[i] = 'A';
+  }
+  return `1000${chars.join('')}`;
 }
 
 export function nextProjectColor(all: readonly Project[]): string {

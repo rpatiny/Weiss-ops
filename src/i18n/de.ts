@@ -766,7 +766,7 @@ export const de: Dictionary = {
     loggedAs: 'Angemeldet als',
     cloudNote: 'Die Daten liegen in der Cloud und werden in Echtzeit mit dem ganzen Team geteilt.',
     localNote: 'Die Daten liegen in diesem Browser. Für mehrere Personen an verschiedenen Rechnern ist eine gemeinsame Datenbank nötig.',
-    demoPins: 'Demo-PINs: Logistik 2222 · Office 3333',
+    demoPins: 'Demo-PINs: Logistics 2222 · Office 3333',
     forbidden: 'Ihr Profil darf diese Aktion nicht ausführen.',
     readOnly: 'Für Ihr Profil nur lesbar.',
   },
@@ -1106,7 +1106,7 @@ export const de: Dictionary = {
   dataio: {
     title: 'Export und Backup',
     excel: 'Nach Excel exportieren',
-    excelHint: 'Arbeitsmappe mit den Blättern Colaboradores, Agenda_Rotas, Ordens_Compra, Itens_PO, Spindles, Forecast sowie Material, Anforderungen, Erweiterungen, Lieferanten, Katalog und Urlaub.',
+    excelHint: 'Arbeitsmappe (Blätter auf Englisch): Employees, Schedule, Purchase_Orders, PO_Lines, Spindles, Forecast, Project_Materials, Requisitions, Extensions, Suppliers, Catalogue, Leave_Absences und Workshop_Hours (nur abgeschlossene Aufträge).',
     excelDone: 'Arbeitsmappe erstellt: {file}',
     backup: 'Backup herunterladen (JSON)',
     backupHint: 'Vollständige Kopie aller Daten einschließlich Benutzer. Sicher aufbewahren.',
