@@ -44,7 +44,9 @@ export function TvBoard() {
   }, []);
 
   const today = todayISO();
-  const days = useMemo(() => getVisibleDays(view, today).days.filter((d) => !isWeekend(d)), [view, today]);
+  // Fim de semana aparece (mais estreito e acinzentado) para a equipe não se confundir com as datas.
+  const days = useMemo(() => getVisibleDays(view, today).days, [view, today]);
+  const cols = days.map((d) => (isWeekend(d) ? 'minmax(0, 0.45fr)' : 'minmax(0, 1fr)')).join(' ');
   const first = days[0]!;
   const last = days[days.length - 1]!;
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -69,6 +71,7 @@ export function TvBoard() {
     const dt = new Date(`${d}T12:00:00`);
     return {
       wd: cap(dt.toLocaleDateString(getFormatLocale(), { weekday: view === 'week' ? 'long' : 'short' })),
+      wdShort: cap(dt.toLocaleDateString(getFormatLocale(), { weekday: 'short' })),
       dm: dt.toLocaleDateString(getFormatLocale(), { day: '2-digit', month: '2-digit' }),
     };
   };
@@ -101,15 +104,16 @@ export function TvBoard() {
 
       {/* Grade */}
       <main className="min-h-0 flex-1 px-[2vw]">
-        <div className="grid h-full" style={{ gridTemplateColumns: `minmax(12rem, 16vw) repeat(${days.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
+        <div className="grid h-full" style={{ gridTemplateColumns: `minmax(12rem, 16vw) ${cols}`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
           <div />
           {days.map((d) => {
             const h = dayHead(d);
             const isToday = d === today;
+            const we = isWeekend(d);
             return (
-              <div key={d} className={cn('border-b border-slate-800 px-2 pb-[0.8vh] text-center', isToday && 'rounded-t-lg bg-brand-500 text-slate-950')}>
-                <p className={cn('text-[1.7vh] font-semibold', !isToday && 'text-slate-400')}>{isToday ? t('tv.today') : h.wd}</p>
-                <p className="text-[2.2vh] font-bold tabular-nums">{h.dm}</p>
+              <div key={d} className={cn('min-w-0 border-b border-slate-800 px-1 pb-[0.8vh] text-center', isToday && 'rounded-t-lg bg-brand-500 text-slate-950', we && !isToday && 'bg-slate-800/60 text-slate-500')}>
+                <p className={cn('truncate text-[1.7vh] font-semibold', !isToday && !we && 'text-slate-400')}>{isToday ? t('tv.today') : we ? h.wdShort : h.wd}</p>
+                <p className={cn('font-bold tabular-nums', we ? 'text-[1.7vh]' : 'text-[2.2vh]')}>{h.dm}</p>
               </div>
             );
           })}
@@ -131,12 +135,12 @@ export function TvBoard() {
               </div>
               {/* Dias + barras (posicionadas sobre a linha) */}
               <div className="relative border-b border-slate-800" style={{ gridColumn: `span ${days.length}` }}>
-                <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}>
+                <div className="absolute inset-0 grid" style={{ gridTemplateColumns: cols }}>
                   {days.map((d) => (
-                    <div key={d} className={cn('border-l border-slate-800/70', d === today && 'bg-brand-500/10')} />
+                    <div key={d} className={cn('border-l border-slate-800/70', d === today && 'bg-brand-500/10', isWeekend(d) && 'bg-slate-800/60')} style={isWeekend(d) ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(148,163,184,.08) 0 6px, transparent 6px 12px)' } : undefined} />
                   ))}
                 </div>
-                <div className="absolute inset-[0.5vh] grid gap-[0.5vh]" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${lanes.count}, minmax(0, 1fr))` }}>
+                <div className="absolute inset-x-0 inset-y-[0.5vh] grid gap-y-[0.5vh]" style={{ gridTemplateColumns: cols, gridTemplateRows: `repeat(${lanes.count}, minmax(0, 1fr))` }}>
                   {abs.map((a) => (
                     <AbsenceBar key={a.id} a={a} pos={colOf(a.startDate, a.endDate)} rows={lanes.count} label={enumLabel(t, 'absenceType', a.type)} />
                   ))}
@@ -199,7 +203,7 @@ function ProjectBar({ a, pos, lane, project, liveNow }: { a: ProjectAssignment; 
   if (!pos || !project) return null;
   return (
     <div
-      className={cn('flex min-w-0 flex-col justify-center overflow-hidden rounded-lg px-[0.6vw] shadow-lg', project.status === 'completed' && 'opacity-60', liveNow && 'ring-4 ring-green-400')}
+      className={cn('mx-[0.25vw] flex min-w-0 flex-col justify-center overflow-hidden rounded-lg px-[0.6vw] shadow-lg', project.status === 'completed' && 'opacity-60', liveNow && 'ring-4 ring-green-400')}
       style={{ gridColumn: `${pos.s + 1} / ${pos.e + 2}`, gridRow: lane + 1, backgroundColor: project.color }}
       data-assignment={a.id}
     >
@@ -216,7 +220,7 @@ function AbsenceBar({ a, pos, rows, label }: { a: Absence; pos: { s: number; e: 
   if (!pos) return null;
   return (
     <div
-      className="flex items-center justify-center rounded-lg border-2 border-dashed border-cyan-400/70 text-[1.8vh] font-semibold text-cyan-200"
+      className="mx-[0.25vw] flex items-center justify-center rounded-lg border-2 border-dashed border-cyan-400/70 text-[1.8vh] font-semibold text-cyan-200"
       style={{
         gridColumn: `${pos.s + 1} / ${pos.e + 2}`,
         gridRow: `1 / ${rows + 1}`,
