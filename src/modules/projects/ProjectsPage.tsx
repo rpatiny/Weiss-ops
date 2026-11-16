@@ -29,6 +29,7 @@ import { usePersistentState } from '@/lib/usePersistentState';
 import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
 import type { ProjectAssignment } from '@/types/models';
 import { formatHoursDecimal, formatMinutes, jobProgress, type JobProgress } from '@/domain/timeTracking';
+import { HoursReportButton } from '@/modules/timesheet/HoursReportButton';
 
 type Filter = 'active' | 'finished' | 'all';
 const FILTERS: Filter[] = ['active', 'finished', 'all'];
@@ -213,6 +214,7 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge tone={job.complete ? 'green' : 'blue'}>{t('projects.phasesProgress', { done: job.done, total: job.total })}</Badge>
                   <span className="font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal(job.phases.reduce((a, r) => a + r.minutes, 0)) })}</span>
+                  {job.complete && <HoursReportButton projectId={d.project.id} />}
                   <LinkBtn className="ml-auto font-sans text-xs" onClick={() => navigate('/timesheet')}>
                     {t('timesheet.title')} →
                   </LinkBtn>

@@ -268,6 +268,9 @@ export const de: Dictionary = {
   },
 
   timesheet: {
+    report: 'Stundenbericht exportieren',
+    reportHint: 'Der Stundenbericht ist verfügbar, sobald alle Phasen abgeschlossen sind. Bis dahin die Stunden hier am Bildschirm prüfen.',
+    reportDone: 'Bericht exportiert: {file}',
     jobsTab: 'Aufträge',
     jobsHint: 'Fortschritt jedes Auftrags durch die Werkstattphasen. Jeder Techniker startet einen neuen Auftrag erst nach Abschluss aller Phasen des aktuellen, in Reihenfolge.',
     jobsEmpty: 'Gerade läuft kein Auftrag durch die Werkstatt.',
@@ -369,6 +372,8 @@ export const de: Dictionary = {
     hoursByPhase: 'Stunden pro Phase',
     readOnly: 'Nur Lesen: Nur Master und Office korrigieren Buchungen.',
     errors: {
+      notComplete: 'Der Auftrag hat noch nicht alle Phasen durchlaufen. Es gibt keinen Teilbericht: Stunden bitte am Bildschirm prüfen.',
+      openEntries: 'In diesem Auftrag ist noch eine Buchung offen. Bitte vor dem Export beenden oder korrigieren.',
       employee: 'Bitte Mitarbeiter wählen.',
       project: 'Bitte Projekt wählen.',
       phase: 'Bitte Phase wählen.',
@@ -719,6 +724,8 @@ export const de: Dictionary = {
     readOnly: 'Für Ihr Profil nur lesbar.',
   },
   process: {
+    newPOTag: 'Bestellung erstellt',
+    newPOs: 'Für {count} Ihrer Anforderungen wurde eine Bestellung erstellt || Für {count} Ihrer Anforderungen wurden Bestellungen erstellt',
     tabs: { requisitions: 'Bedarfsanforderungen', receiving: 'Wareneingang (WE)' },
     kpi: {
       pendingRequisitions: 'Offene Anforderungen',

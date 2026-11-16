@@ -54,6 +54,9 @@ export function effectiveStatus(pr: PurchaseRequisition, views: readonly Requisi
 }
 
 /** Requisições que exigem ação da logística. */
+/** Eventos de PO registrada que quem pediu ainda não viu (número verde no menu). */
+export const unseenPOEvents = (pr: PurchaseRequisition) => pr.history.filter((h) => h.action === 'po_registered' && h.at > (pr.requesterSeenAt ?? ''));
+
 export const needsLogistics = (s: RequisitionStatus) => s === 'submitted' || s === 'quoting' || s === 'partially_ordered';
 
 export function nextRequisitionNumber(): string {
@@ -104,6 +107,13 @@ export type GRInput = {
 };
 
 export const requisitionService = {
+  /** Quem pediu abriu a requisição: as novidades (PO registrada) deixam de contar no número verde. */
+  markSeenByRequester(id: string): void {
+    const user = getCurrentUser();
+    const pr = repos.requisitions.getById(id);
+    if (!user || !pr || pr.requestedBy !== user.id || unseenPOEvents(pr).length === 0) return;
+    repos.requisitions.update(id, { requesterSeenAt: nowStamp() });
+  },
   /** Office: cria a requisição a partir de materiais "a comprar" de um projeto. */
   create(projectId: string, materialIds: string[], opts: { neededBy?: string; notes: string }): PurchaseRequisition | undefined {
     const user = assertCan('requisition.create');

@@ -271,6 +271,9 @@ export const pt = {
   },
 
   timesheet: {
+    report: 'Exportar relatório de horas',
+    reportHint: 'O relatório de horas fica disponível quando todas as fases estiverem concluídas. Até lá, confira as horas aqui na tela.',
+    reportDone: 'Relatório exportado: {file}',
     jobsTab: 'Serviços',
     jobsHint: 'Andamento de cada serviço pelas fases da oficina. Cada técnico só inicia outro serviço depois de concluir todas as fases do atual, na ordem.',
     jobsEmpty: 'Nenhum serviço passando pela oficina no momento.',
@@ -372,6 +375,8 @@ export const pt = {
     hoursByPhase: 'Horas por fase',
     readOnly: 'Somente leitura: apenas Master e Office corrigem apontamentos.',
     errors: {
+      notComplete: 'O serviço ainda não passou por todas as fases. Não existe relatório parcial: confira as horas na tela.',
+      openEntries: 'Ainda há apontamento aberto neste serviço. Encerre ou corrija antes de exportar.',
       employee: 'Escolha o colaborador.',
       project: 'Escolha o projeto.',
       phase: 'Escolha a fase.',
@@ -722,6 +727,8 @@ export const pt = {
     readOnly: 'Somente leitura para o seu perfil.',
   },
   process: {
+    newPOTag: 'PO criada',
+    newPOs: '{count} requisição sua teve PO criada || {count} requisições suas tiveram PO criada',
     tabs: { requisitions: 'Requisições', receiving: 'Recebimentos (GR)' },
     kpi: {
       pendingRequisitions: 'Requisições pendentes',

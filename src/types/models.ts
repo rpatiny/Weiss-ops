@@ -298,6 +298,8 @@ export interface PurchaseRequisition {
   notes: string;
   items: RequisitionItem[];
   history: RequisitionEvent[];
+  /** Quando quem pediu viu as novidades (PO registrada) pela última vez — apaga o número verde. */
+  requesterSeenAt?: string;
 }
 
 // ───────────────────────── Financial ─────────────────────────

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts, usePendingExtensions } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
@@ -31,7 +31,7 @@ function Brand() {
   );
 }
 
-function NavLink({ item, active, onNavigate, badge }: { item: NavItem; active: boolean; onNavigate: () => void; badge?: number }) {
+function NavLink({ item, active, onNavigate, badge, goodBadge }: { item: NavItem; active: boolean; onNavigate: () => void; badge?: number; goodBadge?: number }) {
   const { t } = useI18n();
   const Icon = item.icon;
   return (
@@ -50,8 +50,13 @@ function NavLink({ item, active, onNavigate, badge }: { item: NavItem; active: b
     >
       <Icon className={cn('size-[18px] shrink-0', active ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300')} />
       <span className="truncate">{t(item.labelKey)}</span>
-      {badge ? <span className="ml-auto rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums">{badge}</span> : null}
-      {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && 'ml-auto')} />}
+      {goodBadge ? (
+        <span className="ml-auto rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white tabular-nums" title={t('process.newPOs', { count: goodBadge })}>
+          {goodBadge}
+        </span>
+      ) : null}
+      {badge ? <span className={cn('rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums', !goodBadge && 'ml-auto')}>{badge}</span> : null}
+      {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && !goodBadge && 'ml-auto')} />}
     </a>
   );
 }
@@ -92,6 +97,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const user = useCurrentUser();
   const pending = usePendingCounts();
   const pendingExt = usePendingExtensions();
+  const myUpdates = useRequesterUpdates();
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-5">
@@ -100,7 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
         <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} />
+          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : undefined} />
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">

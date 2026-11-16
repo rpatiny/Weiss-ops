@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, FileInput, PackageCheck } from 'lucide-react';
-import { useCan } from '@/app/session';
+import { useCan, useCurrentUser } from '@/app/session';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
-import { effectiveStatus, needsLogistics, openQty, receivedQty, requisitionItemViews } from '@/domain/requisitions';
+import { effectiveStatus, needsLogistics, openQty, receivedQty, requisitionItemViews, unseenPOEvents } from '@/domain/requisitions';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
@@ -15,6 +15,7 @@ import { RequisitionDrawer } from './RequisitionDrawer';
 
 /** Fila de requisições de compra (Office cria · Logística processa). */
 export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onOpenChange: (id?: string) => void }) {
+  const me = useCurrentUser();
   const { t } = useI18n();
   const pd = usePurchasingData();
   const requisitions = useCollection('requisitions');
@@ -29,9 +30,11 @@ export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onO
           const views = requisitionItemViews(r, project, pd.poById);
           return { r, project, views, status: effectiveStatus(r, views) };
         })
-        .filter((x) => filter === 'all' || !['received', 'rejected', 'canceled'].includes(x.status))
-        .sort((a, b) => Number(needsLogistics(b.status)) - Number(needsLogistics(a.status)) || b.r.requestedAt.localeCompare(a.r.requestedAt)),
-    [requisitions, pd, filter],
+        // Novidade para quem pediu (PO criada, ainda não vista) aparece mesmo se a requisição já estiver encerrada.
+        .map((x) => ({ ...x, isNew: x.r.requestedBy === me?.id && unseenPOEvents(x.r).length > 0 }))
+        .filter((x) => filter === 'all' || x.isNew || !['received', 'rejected', 'canceled'].includes(x.status))
+        .sort((a, b) => Number(b.isNew) - Number(a.isNew) || Number(needsLogistics(b.status)) - Number(needsLogistics(a.status)) || b.r.requestedAt.localeCompare(a.r.requestedAt)),
+    [requisitions, pd, filter, me],
   );
 
   return (
@@ -64,13 +67,18 @@ export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onO
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rows.map(({ r, project, views, status }) => {
+              {rows.map(({ r, project, views, status, isNew }) => {
                 const ordered = views.filter((v) => v.status === 'ordered' || v.status === 'received').length;
                 const received = views.filter((v) => v.status === 'received').length;
                 return (
                   <tr key={r.id} onClick={() => onOpenChange(r.id)} className={cn('cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40', needsLogistics(status) && 'bg-blue-50/40 dark:bg-blue-950/10')}>
                     <td className="td">
-                      <p className="font-mono font-semibold">{r.number}</p>
+                      <p className="flex items-center gap-1.5 font-mono font-semibold">
+                        {r.number}
+                        {isNew && (
+                          <span className="rounded-full bg-green-500 px-1.5 py-0.5 font-sans text-[10px] font-bold text-white">{t('process.newPOTag')}</span>
+                        )}
+                      </p>
                       <p className="text-xs text-slate-500">{formatDate(r.requestedAt)}</p>
                     </td>
                     <td className="td">

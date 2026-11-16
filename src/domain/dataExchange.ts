@@ -13,6 +13,7 @@ import { billedValue, weightedValue } from './financial';
 import { lineTotal, poTotal } from './purchasing';
 import { materialStatus } from './schedule';
 import { entryMinutes } from './timeTracking';
+import { reportCheck } from './hoursReport';
 
 const label = (key: string) => translate('pt-BR', key as TranslationKey);
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
@@ -181,7 +182,9 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       'Dias úteis': businessDaysBetween(a.startDate, a.endDate),
       Observação: a.note,
     })),
+    // Sem relatório parcial: só serviços concluídos (todas as fases) e sem apontamento aberto.
     Horas_Oficina: [...data.timeEntries]
+      .filter((e) => reportCheck(e.projectId, data).ok)
       .sort((a, b) => a.start.localeCompare(b.start))
       .map((e) => ({
         Colaborador: emp.get(e.employeeId)?.name ?? '',

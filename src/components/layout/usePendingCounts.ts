@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
-import { effectiveStatus, needsLogistics, openQty, requisitionItemViews } from '@/domain/requisitions';
+import { effectiveStatus, needsLogistics, openQty, requisitionItemViews, unseenPOEvents } from '@/domain/requisitions';
 
 /** Pendências do perfil atual (badge no menu): logística = requisições + linhas sem GR. */
 export function usePendingCounts(): number {
@@ -27,4 +27,11 @@ export function usePendingExtensions(): number {
   const user = useCurrentUser();
   const extensions = useCollection('extensions');
   return useMemo(() => (!user || user.role === 'office' ? 0 : extensions.filter((x) => x.status === 'requested' || x.status === 'in_progress').length), [user, extensions]);
+}
+
+/** Novidades para quem pediu (número verde): requisições minhas com PO registrada que ainda não abri. */
+export function useRequesterUpdates(): number {
+  const user = useCurrentUser();
+  const requisitions = useCollection('requisitions');
+  return useMemo(() => (user ? requisitions.filter((r) => r.requestedBy === user.id && unseenPOEvents(r).length > 0).length : 0), [user, requisitions]);
 }

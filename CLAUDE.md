@@ -219,6 +219,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     parcialmente pedida → pedida → parcialmente recebida → recebida). Rejeitar/cancelar devolve materiais sem PO para "A comprar".
   - Cada passo grava `history` (quem, quando, o quê); comentários livres de office e logística.
   - Badge no menu "Ordens de Compra" = requisições pendentes + linhas de compra vencidas sem GR (perfis master/logística).
+  - **Número verde para quem pediu** (`useRequesterUpdates`): requisições do usuário com evento `po_registered` mais novo
+    que `requesterSeenAt`. Abrir a requisição (`markSeenByRequester`) apaga a novidade. Essas requisições aparecem no topo
+    da lista com a etiqueta "PO criada", mesmo se já encerradas.
 
 - **Extensão de material (SAP)** (`domain/extensions.ts`, tela `#/extensions`):
   - Material existe numa planta (ex.: `DE01`, fornecedor alemão) mas não em `HOME_PLANT` (`UK01`, em `lib/config.ts`
@@ -258,6 +261,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Supervisão `#/timesheet` (`time.manage` = Master/Office corrigem; demais só leem): Agora, Apontamentos (filtros,
     horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Serviços (fases ✓/em andamento/próxima, Liberar), Equipe & PINs, Fases (editáveis, ordem, ativa),
     QR code (imprimir cartaz / baixar PNG; URL = origem do site + `#/clock`). Card do projeto mostra horas por fase.
+  - **Relatório de horas por projeto** (`domain/hoursReport.ts`, botão `HoursReportButton`, `time.manage`): Excel com abas
+    Resumo, Por_Fase, Por_Colaborador (colaborador × fase) e Apontamentos. **Só existe com o serviço concluído**
+    (`reportCheck`: todas as fases ativas concluídas e nenhum apontamento aberto) — aparece em Serviços → Concluídos e no
+    card do projeto. Não há relatório parcial: em andamento, conferir na tela. A aba `Horas_Oficina` da exportação geral
+    também só traz serviços concluídos (o backup JSON continua completo).
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
     Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
 - **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.

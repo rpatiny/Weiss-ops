@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import { ArrowDown, ArrowUp, CheckCheck, Clock3, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCheck, Clock3, FileSpreadsheet, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
 import { useCan } from '@/app/session';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +18,7 @@ import { addDays, startOfWeek, todayISO } from '@/lib/dates';
 import { formatDate, getFormatLocale } from '@/lib/format';
 import { newId } from '@/lib/id';
 import { usePersistentState } from '@/lib/usePersistentState';
+import { HoursReportButton } from './HoursReportButton';
 import type { TimeEntry, WorkPhase } from '@/types/models';
 
 type Tab = 'now' | 'jobs' | 'entries' | 'team' | 'phases' | 'qr';
@@ -437,7 +438,10 @@ function JobsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-3xl text-sm text-slate-500">{t('timesheet.jobsHint')}</p>
+        <div className="max-w-3xl space-y-1 text-sm text-slate-500">
+          <p>{t('timesheet.jobsHint')}</p>
+          {filter === 'open' && <p className="flex items-center gap-1.5 text-xs"><FileSpreadsheet className="size-3.5 shrink-0" /> {t('timesheet.reportHint')}</p>}
+        </div>
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
           {(['open', 'complete'] as const).map((f) => (
             <button
@@ -473,6 +477,11 @@ function JobsTab() {
                   </li>
                 ))}
               </ol>
+              {prog.complete && (
+                <div className="mt-3">
+                  <HoursReportButton projectId={p.id} />
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-slate-500">{t('timesheet.holders')}:</span>
                 {holders.length === 0 && <span className="text-slate-400">{t('timesheet.noHolder')}</span>}

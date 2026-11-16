@@ -268,6 +268,9 @@ export const en: Dictionary = {
   },
 
   timesheet: {
+    report: 'Export hours report',
+    reportHint: 'The hours report becomes available when every phase is completed. Until then, check the hours here on screen.',
+    reportDone: 'Report exported: {file}',
     jobsTab: 'Jobs',
     jobsHint: 'Progress of each job through the workshop phases. Each technician only starts another job after completing every phase of the current one, in order.',
     jobsEmpty: 'No jobs going through the workshop right now.',
@@ -369,6 +372,8 @@ export const en: Dictionary = {
     hoursByPhase: 'Hours per phase',
     readOnly: 'Read-only: only Master and Office can correct entries.',
     errors: {
+      notComplete: 'This job has not gone through every phase yet. There is no partial report: check the hours on screen.',
+      openEntries: 'There is still an open entry on this job. End or fix it before exporting.',
       employee: 'Choose the employee.',
       project: 'Choose the project.',
       phase: 'Choose the phase.',
@@ -719,6 +724,8 @@ export const en: Dictionary = {
     readOnly: 'View only for your profile.',
   },
   process: {
+    newPOTag: 'PO created',
+    newPOs: '{count} of your requisitions has a new PO || {count} of your requisitions have a new PO',
     tabs: { requisitions: 'Purchase requisitions', receiving: 'Goods receipts (GR)' },
     kpi: {
       pendingRequisitions: 'Open requisitions',

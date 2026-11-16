@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Ban, ExternalLink, FileCheck2, MessageSquare, Search, Send, XCircle } from 'lucide-react';
 import { navigate } from '@/app/router';
 import { useCan } from '@/app/session';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { bestOffer, lastPurchase, normPN, offerViews, quoteState } from '@/domain/purchasing';
-import { effectiveStatus, receivedQty, requisitionItemViews, requisitionService } from '@/domain/requisitions';
+import { effectiveStatus, receivedQty, requisitionItemViews, requisitionService, unseenPOEvents } from '@/domain/requisitions';
 import { useI18n } from '@/i18n';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { usePurchasingData } from '../usePurchasingData';
@@ -39,6 +39,11 @@ export function RequisitionDrawer({ open, requisitionId, onClose }: Props) {
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState(false);
   const [registering, setRegistering] = useState(false);
+  // Quem pediu abriu a requisição: apaga o número verde (PO registrada).
+  const unseen = pr ? unseenPOEvents(pr).length : 0;
+  useEffect(() => {
+    if (open && pr && unseen > 0) requisitionService.markSeenByRequester(pr.id);
+  }, [open, pr, unseen]);
 
   if (!pr) return null;
   const closed = status === 'rejected' || status === 'canceled' || status === 'received';
