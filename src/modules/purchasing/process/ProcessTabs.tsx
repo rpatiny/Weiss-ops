@@ -5,7 +5,7 @@ import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
-import { effectiveStatus, needsLogistics, openQty, receivedQty, requisitionItemViews, unseenPOEvents } from '@/domain/requisitions';
+import { effectiveStatus, needsLogistics, openQty, receivedQty, requisitionItemViews, unseenPOEvents, unseenRejection } from '@/domain/requisitions';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
@@ -31,9 +31,9 @@ export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onO
           return { r, project, views, status: effectiveStatus(r, views) };
         })
         // Novidade para quem pediu (PO criada, ainda não vista) aparece mesmo se a requisição já estiver encerrada.
-        .map((x) => ({ ...x, isNew: x.r.requestedBy === me?.id && unseenPOEvents(x.r).length > 0 }))
-        .filter((x) => filter === 'all' || x.isNew || !['received', 'rejected', 'canceled'].includes(x.status))
-        .sort((a, b) => Number(b.isNew) - Number(a.isNew) || Number(needsLogistics(b.status)) - Number(needsLogistics(a.status)) || b.r.requestedAt.localeCompare(a.r.requestedAt)),
+        .map((x) => ({ ...x, isNew: x.r.requestedBy === me?.id && unseenPOEvents(x.r).length > 0, isRejected: x.r.requestedBy === me?.id && unseenRejection(x.r) }))
+        .filter((x) => filter === 'all' || x.isNew || x.isRejected || !['received', 'rejected', 'canceled'].includes(x.status))
+        .sort((a, b) => Number(b.isNew || b.isRejected) - Number(a.isNew || a.isRejected) || Number(needsLogistics(b.status)) - Number(needsLogistics(a.status)) || b.r.requestedAt.localeCompare(a.r.requestedAt)),
     [requisitions, pd, filter, me],
   );
 
@@ -67,7 +67,7 @@ export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onO
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {rows.map(({ r, project, views, status, isNew }) => {
+              {rows.map(({ r, project, views, status, isNew, isRejected }) => {
                 const ordered = views.filter((v) => v.status === 'ordered' || v.status === 'received').length;
                 const received = views.filter((v) => v.status === 'received').length;
                 return (
@@ -75,6 +75,7 @@ export function RequisitionsTab({ openId, onOpenChange }: { openId?: string; onO
                     <td className="td">
                       <p className="flex items-center gap-1.5 font-mono font-semibold">
                         {r.number}
+                        {isRejected && <span className="rounded-full bg-yellow-300 px-1.5 py-0.5 font-sans text-[10px] font-bold text-yellow-950">{t('process.rejectedTag')}</span>}
                         {isNew && (
                           <span className="rounded-full bg-green-500 px-1.5 py-0.5 font-sans text-[10px] font-bold text-white">{t('process.newPOTag')}</span>
                         )}

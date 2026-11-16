@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterUpdates } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
@@ -31,7 +31,7 @@ function Brand() {
   );
 }
 
-function NavLink({ item, active, onNavigate, badge, goodBadge }: { item: NavItem; active: boolean; onNavigate: () => void; badge?: number; goodBadge?: number }) {
+function NavLink({ item, active, onNavigate, badge, goodBadge, warnBadge }: { item: NavItem; active: boolean; onNavigate: () => void; badge?: number; goodBadge?: number; warnBadge?: number }) {
   const { t } = useI18n();
   const Icon = item.icon;
   return (
@@ -55,8 +55,16 @@ function NavLink({ item, active, onNavigate, badge, goodBadge }: { item: NavItem
           {goodBadge}
         </span>
       ) : null}
-      {badge ? <span className={cn('rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums', !goodBadge && 'ml-auto')}>{badge}</span> : null}
-      {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && !goodBadge && 'ml-auto')} />}
+      {warnBadge ? (
+        <span
+          className={cn('rounded-full bg-yellow-300 px-1.5 text-[11px] font-bold text-yellow-950 tabular-nums', !goodBadge && 'ml-auto')}
+          title={item.path === '/extensions' ? t('extensions.newRejected', { count: warnBadge }) : t('process.newRejected', { count: warnBadge })}
+        >
+          {warnBadge}
+        </span>
+      ) : null}
+      {badge ? <span className={cn('rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums', !goodBadge && !warnBadge && 'ml-auto')}>{badge}</span> : null}
+      {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && !goodBadge && !warnBadge && 'ml-auto')} />}
     </a>
   );
 }
@@ -99,6 +107,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const pendingExt = usePendingExtensions();
   const myUpdates = useRequesterUpdates();
   const myExtUpdates = useRequesterExtensionUpdates();
+  const myRejections = useRequesterRejections();
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-5">
@@ -107,7 +116,9 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
         <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined} />
+          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined}
+            warnBadge={item.path === '/purchase-orders' ? myRejections.requisitions : item.path === '/extensions' ? myRejections.extensions : undefined}
+          />
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">

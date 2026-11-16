@@ -222,6 +222,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - **Número verde para quem pediu** (`useRequesterUpdates`): requisições do usuário com evento `po_registered` mais novo
     que `requesterSeenAt`. Abrir a requisição (`markSeenByRequester`) apaga a novidade. Essas requisições aparecem no topo
     da lista com a etiqueta "PO criada", mesmo se já encerradas.
+  - **Número amarelo para quem pediu** quando a requisição é **recusada** (`unseenRejection`), etiqueta "Recusada"; idem nas
+    extensões (`unseenExtensionRejected`). Abrir o pedido apaga a novidade (mesmo `requesterSeenAt`).
 
 - **Extensão de material (SAP)** (`domain/extensions.ts`, tela `#/extensions`):
   - Material existe numa planta (ex.: `DE01`, fornecedor alemão) mas não em `HOME_PLANT` (`UK01`, em `lib/config.ts`
@@ -268,6 +270,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     (`reportCheck`: todas as fases ativas concluídas e nenhum apontamento aberto) — aparece em Serviços → Concluídos e no
     card do projeto. Não há relatório parcial: em andamento, conferir na tela. A aba `Horas_Oficina` da exportação geral
     também só traz serviços concluídos (o backup JSON continua completo).
+  - **Aba Relatório** (`modules/timesheet/ReportTab.tsx`): projeto expansível → fases (duração, início, conclusão, técnicos) →
+    cada entrada/saída. Filtros Concluídos / Em andamento / Todos; em andamento só confere na tela (sem exportação).
+  - **Topo de Horas da oficina** (`ExportHoursActions`): "Exportar todos (por projeto)" = `exportAllProjectsReport`
+    (Resumo projeto × fase + Apontamentos agrupados por projeto) e "Exportar horas por funcionário" (um ou todos,
+    `exportEmployeeHoursReport`: Resumo, Por_Projeto, Apontamentos). Todos só com projetos concluídos.
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
     Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
 - **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.

@@ -18,11 +18,12 @@ import { addDays, startOfWeek, todayISO } from '@/lib/dates';
 import { formatDate, getFormatLocale } from '@/lib/format';
 import { newId } from '@/lib/id';
 import { usePersistentState } from '@/lib/usePersistentState';
-import { HoursReportButton } from './HoursReportButton';
+import { ExportHoursActions, HoursReportButton } from './HoursReportButton';
+import { ReportTab } from './ReportTab';
 import type { TimeEntry, WorkPhase } from '@/types/models';
 
-type Tab = 'now' | 'jobs' | 'entries' | 'team' | 'phases' | 'qr';
-const TABS: Tab[] = ['now', 'jobs', 'entries', 'team', 'phases', 'qr'];
+type Tab = 'now' | 'jobs' | 'report' | 'entries' | 'team' | 'phases' | 'qr';
+const TABS: Tab[] = ['now', 'jobs', 'report', 'entries', 'team', 'phases', 'qr'];
 const isTab = (v: unknown): v is Tab => TABS.includes(v as Tab);
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(getFormatLocale(), { hour: '2-digit', minute: '2-digit' });
@@ -54,7 +55,7 @@ export function TimesheetPage() {
 
   return (
     <>
-      <PageHeader icon={Timer} title={t('timesheet.title')} description={t('timesheet.description')} />
+      <PageHeader icon={Timer} title={t('timesheet.title')} description={t('timesheet.description')} actions={<ExportHoursActions />} />
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard icon={Users} tone="info" label={t('timesheet.kpis.working')} value={open.length - review.length} onClick={() => setTab('now')} />
         <StatCard icon={Clock3} label={t('timesheet.kpis.today')} value={formatHoursDecimal(sumMin(today))} />
@@ -74,13 +75,14 @@ export function TimesheetPage() {
               tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
             )}
           >
-            {x === 'jobs' ? t('timesheet.jobsTab') : t(`timesheet.tabs.${x}`)}
+            {x === 'jobs' ? t('timesheet.jobsTab') : x === 'report' ? t('timesheet.reportTab') : t(`timesheet.tabs.${x}`)}
           </button>
         ))}
       </div>
 
       {tab === 'now' && <NowTab />}
       {tab === 'jobs' && <JobsTab />}
+      {tab === 'report' && <ReportTab />}
       {tab === 'entries' && <EntriesTab />}
       {tab === 'team' && <TeamTab />}
       {tab === 'phases' && <PhasesTab />}

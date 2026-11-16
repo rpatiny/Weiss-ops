@@ -10,7 +10,7 @@ import { EmptyState, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { repos } from '@/data/db';
 import { useCollection } from '@/data/hooks';
-import { extensionService, isExtensionOpen, plantState, unseenExtensionDone } from '@/domain/extensions';
+import { extensionService, isExtensionOpen, plantState, unseenExtensionDone, unseenExtensionRejected } from '@/domain/extensions';
 import { useI18n } from '@/i18n';
 import { HOME_PLANT } from '@/lib/config';
 import { cn } from '@/lib/cn';
@@ -58,9 +58,10 @@ export function ExtensionsPage() {
 
   // Concluídas que eu pedi e ainda não vi: no topo e visíveis mesmo no filtro "em aberto".
   const isNew = (x: (typeof extensions)[number]) => x.requestedBy === me?.id && unseenExtensionDone(x);
+  const isRejected = (x: (typeof extensions)[number]) => x.requestedBy === me?.id && unseenExtensionRejected(x);
   const rows = extensions
-    .filter((x) => filter === 'all' || isExtensionOpen(x) || isNew(x))
-    .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || Number(isExtensionOpen(b)) - Number(isExtensionOpen(a)) || b.requestedAt.localeCompare(a.requestedAt));
+    .filter((x) => filter === 'all' || isExtensionOpen(x) || isNew(x) || isRejected(x))
+    .sort((a, b) => Number(isNew(b) || isRejected(b)) - Number(isNew(a) || isRejected(a)) || Number(isExtensionOpen(b)) - Number(isExtensionOpen(a)) || b.requestedAt.localeCompare(a.requestedAt));
   const since = addDays(pd.today, -30);
   const done30 = extensions.filter((x) => x.status === 'extended' && x.history.some((h) => h.action === 'extended' && h.at.slice(0, 10) >= since)).length;
 
@@ -161,6 +162,7 @@ export function ExtensionsPage() {
                       <td className="td">
                         <p className="flex items-center gap-1.5 font-mono font-semibold">
                           {x.number}
+                          {isRejected(x) && <span className="rounded-full bg-yellow-300 px-1.5 py-0.5 font-sans text-[10px] font-bold text-yellow-950">{t('extensions.rejectedTag')}</span>}
                           {isNew(x) && <span className="rounded-full bg-green-500 px-1.5 py-0.5 font-sans text-[10px] font-bold text-white">{t('extensions.doneTag')}</span>}
                         </p>
                         <p className="text-xs text-slate-500">{formatDate(x.requestedAt)}</p>
@@ -213,7 +215,7 @@ function ExtensionDetailDrawer({ id, onClose }: { id?: string; onClose: () => vo
   const [reasonError, setReasonError] = useState(false);
   const [comment, setComment] = useState('');
   // Quem pediu abriu o pedido concluído: apaga o número verde.
-  const unseen = !!x && unseenExtensionDone(x);
+  const unseen = !!x && (unseenExtensionDone(x) || unseenExtensionRejected(x));
   useEffect(() => {
     if (id && unseen) extensionService.markSeenByRequester(id);
   }, [id, unseen]);

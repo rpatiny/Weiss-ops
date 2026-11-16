@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
-import { unseenExtensionDone } from '@/domain/extensions';
-import { effectiveStatus, needsLogistics, openQty, requisitionItemViews, unseenPOEvents } from '@/domain/requisitions';
+import { unseenExtensionDone, unseenExtensionRejected } from '@/domain/extensions';
+import { effectiveStatus, needsLogistics, openQty, requisitionItemViews, unseenPOEvents, unseenRejection } from '@/domain/requisitions';
 
 /** Pendências do perfil atual (badge no menu): logística = requisições + linhas sem GR. */
 export function usePendingCounts(): number {
@@ -42,4 +42,21 @@ export function useRequesterExtensionUpdates(): number {
   const user = useCurrentUser();
   const extensions = useCollection('extensions');
   return useMemo(() => (user ? extensions.filter((x) => x.requestedBy === user.id && unseenExtensionDone(x)).length : 0), [user, extensions]);
+}
+
+/** Pedidos meus recusados e ainda não vistos (número amarelo): requisições e extensões. */
+export function useRequesterRejections(): { requisitions: number; extensions: number } {
+  const user = useCurrentUser();
+  const requisitions = useCollection('requisitions');
+  const extensions = useCollection('extensions');
+  return useMemo(
+    () =>
+      user
+        ? {
+            requisitions: requisitions.filter((r) => r.requestedBy === user.id && unseenRejection(r)).length,
+            extensions: extensions.filter((x) => x.requestedBy === user.id && unseenExtensionRejected(x)).length,
+          }
+        : { requisitions: 0, extensions: 0 },
+    [user, requisitions, extensions],
+  );
 }

@@ -57,6 +57,10 @@ export function effectiveStatus(pr: PurchaseRequisition, views: readonly Requisi
 /** Eventos de PO registrada que quem pediu ainda não viu (número verde no menu). */
 export const unseenPOEvents = (pr: PurchaseRequisition) => pr.history.filter((h) => h.action === 'po_registered' && h.at > (pr.requesterSeenAt ?? ''));
 
+/** Recusa que quem pediu ainda não viu (número amarelo no menu). */
+export const unseenRejection = (pr: PurchaseRequisition) =>
+  pr.status === 'rejected' && pr.history.some((h) => h.action === 'rejected' && h.at > (pr.requesterSeenAt ?? ''));
+
 export const needsLogistics = (s: RequisitionStatus) => s === 'submitted' || s === 'quoting' || s === 'partially_ordered';
 
 export function nextRequisitionNumber(): string {
@@ -111,7 +115,7 @@ export const requisitionService = {
   markSeenByRequester(id: string): void {
     const user = getCurrentUser();
     const pr = repos.requisitions.getById(id);
-    if (!user || !pr || pr.requestedBy !== user.id || unseenPOEvents(pr).length === 0) return;
+    if (!user || !pr || pr.requestedBy !== user.id || (unseenPOEvents(pr).length === 0 && !unseenRejection(pr))) return;
     repos.requisitions.update(id, { requesterSeenAt: nowStamp() });
   },
   /** Office: cria a requisição a partir de materiais "a comprar" de um projeto. */

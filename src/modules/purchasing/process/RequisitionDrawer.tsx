@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { bestOffer, lastPurchase, normPN, offerViews, quoteState } from '@/domain/purchasing';
-import { effectiveStatus, receivedQty, requisitionItemViews, requisitionService, unseenPOEvents } from '@/domain/requisitions';
+import { effectiveStatus, receivedQty, requisitionItemViews, requisitionService, unseenPOEvents, unseenRejection } from '@/domain/requisitions';
 import { useI18n } from '@/i18n';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { usePurchasingData } from '../usePurchasingData';
@@ -40,7 +40,7 @@ export function RequisitionDrawer({ open, requisitionId, onClose }: Props) {
   const [reasonError, setReasonError] = useState(false);
   const [registering, setRegistering] = useState(false);
   // Quem pediu abriu a requisição: apaga o número verde (PO registrada).
-  const unseen = pr ? unseenPOEvents(pr).length : 0;
+  const unseen = pr ? unseenPOEvents(pr).length + Number(unseenRejection(pr)) : 0;
   useEffect(() => {
     if (open && pr && unseen > 0) requisitionService.markSeenByRequester(pr.id);
   }, [open, pr, unseen]);

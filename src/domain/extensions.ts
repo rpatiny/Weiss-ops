@@ -66,12 +66,16 @@ function addEvent(id: string, userId: string, action: ExtensionEvent['action'], 
 export const unseenExtensionDone = (x: MaterialExtensionRequest) =>
   x.status === 'extended' && x.history.some((h) => h.action === 'extended' && h.at > (x.requesterSeenAt ?? ''));
 
+/** Recusa que quem pediu ainda não viu — número amarelo no menu. */
+export const unseenExtensionRejected = (x: MaterialExtensionRequest) =>
+  x.status === 'rejected' && x.history.some((h) => h.action === 'rejected' && h.at > (x.requesterSeenAt ?? ''));
+
 export const extensionService = {
-  /** Quem pediu abriu o pedido concluído: a novidade deixa de contar no número verde. */
+  /** Quem pediu abriu o pedido concluído/recusado: a novidade deixa de contar no número verde/amarelo. */
   markSeenByRequester(id: string): void {
     const user = getCurrentUser();
     const x = repos.extensions.getById(id);
-    if (!user || !x || x.requestedBy !== user.id || !unseenExtensionDone(x)) return;
+    if (!user || !x || x.requestedBy !== user.id || (!unseenExtensionDone(x) && !unseenExtensionRejected(x))) return;
     repos.extensions.update(id, { requesterSeenAt: nowStamp() });
   },
   create(d: ExtensionDraft): MaterialExtensionRequest {
