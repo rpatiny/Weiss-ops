@@ -337,6 +337,9 @@ export interface SpindleUnit {
   quoteStatus: QuoteStatus;
   status: SpindleStatus;
   deliveryDate?: ISODate;
+  /** Nº da PO do cliente — texto livre (fonte da verdade). */
+  poRef?: string;
+  /** Vínculo DERIVADO do texto: PO cadastrada com o mesmo número (se houver). */
   poId?: ID;
   invoicedValue?: number;
 }

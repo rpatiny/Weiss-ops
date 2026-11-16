@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
+import { spindlePoRef } from '@/domain/financial';
 import { enumOptions } from '@/domain/labels';
 import {
   checkPlacement,
@@ -115,8 +116,8 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     if (k === 'customer' && !draft.address.trim()) next.address = knownCustomers.get(String(v)) ?? '';
     if (k === 'spindleRef') {
       const sp = findSpindleByRef(String(v ?? ''), spindles);
-      const spPo = sp?.poId ? purchaseOrders.find((p) => p.id === sp.poId) : undefined;
-      if (spPo && !draft.customerPoRef?.trim()) next.customerPoRef = spPo.poNumber;
+      const spPo = sp ? spindlePoRef(sp, new Map(purchaseOrders.map((p) => [p.id, p]))) : '';
+      if (spPo && !draft.customerPoRef?.trim()) next.customerPoRef = spPo;
       if (sp && !draft.customer.trim()) {
         next.customer = sp.customer;
         next.address = draft.address || (knownCustomers.get(sp.customer) ?? '');

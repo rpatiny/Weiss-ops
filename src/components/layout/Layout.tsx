@@ -8,7 +8,7 @@ import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
 import { EmptyCloudBanner } from './EmptyCloudBanner';
 import { LocalModeBanner } from './LocalModeBanner';
-import { DisclaimerStrip } from './Disclaimer';
+import { BuildInfo, DisclaimerStrip } from './Disclaimer';
 import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
@@ -217,6 +217,7 @@ export function Layout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+      <BuildInfo />
     </div>
   );
 }

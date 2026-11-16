@@ -7,7 +7,8 @@ import { repos } from '@/data/db';
 import type { TranslationKey } from '@/i18n/types';
 import { addMonths, monthKey, startOfMonth, todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
-import type { ForecastItem, SpindleUnit } from '@/types/models';
+import type { ForecastItem, PurchaseOrder, SpindleUnit } from '@/types/models';
+import { findPOByRef } from './schedule';
 
 /** Valor ponderado do forecast = valor estimado × probabilidade. */
 export const weightedValue = (f: Pick<ForecastItem, 'estimatedValue' | 'probability'>) => (f.estimatedValue || 0) * ((f.probability || 0) / 100);
@@ -145,6 +146,10 @@ export function validateForecast(d: ForecastDraft): Errors<ForecastDraft> {
   return e;
 }
 
+/** Texto exibido da PO do spindle (bases antigas só têm o vínculo `poId`). */
+export const spindlePoRef = (s: Pick<SpindleUnit, 'poRef' | 'poId'>, poById: ReadonlyMap<string, PurchaseOrder>) =>
+  s.poRef?.trim() || (s.poId ? (poById.get(s.poId)?.poNumber ?? '') : '');
+
 export const spindleService = {
   save(d: SpindleDraft, id?: string): SpindleUnit {
     assertCan('financial.edit');
@@ -158,7 +163,8 @@ export const spindleService = {
       quotedValue: Number(d.quotedValue) || 0,
       invoicedValue: d.invoicedValue === undefined || Number.isNaN(d.invoicedValue) ? undefined : Number(d.invoicedValue),
       deliveryDate: d.deliveryDate || undefined,
-      poId: d.poId || undefined,
+      poRef: d.poRef?.trim() || undefined,
+      poId: findPOByRef(d.poRef, repos.purchaseOrders.getAll())?.id,
     };
     return id ? repos.spindles.update(id, clean) : repos.spindles.create({ id: newId('sp'), ...clean });
   },

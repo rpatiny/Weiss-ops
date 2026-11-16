@@ -267,11 +267,13 @@ function SpindlesTab({ onOpen }: { onOpen: (id: string) => void }) {
                     </td>
                     <td className="td">
                       <StatusBadge kind="spindleStatus" value={s.status} />
-                      {po && (
+                      {po ? (
                         <button type="button" onClick={(e) => { e.stopPropagation(); navigate('/purchase-orders', { open: po.id }); }} className="mt-1 block font-mono text-[11px] text-brand-700 hover:underline dark:text-brand-400">
                           PO {po.poNumber}
                         </button>
-                      )}
+                      ) : s.poRef ? (
+                        <span className="mt-1 block font-mono text-[11px] text-slate-500">PO {s.poRef}</span>
+                      ) : null}
                     </td>
                     <td className="td text-sm">{formatDate(s.deliveryDate)}</td>
                     <td className="td text-right text-sm font-medium tabular-nums">{s.status === 'delivered' ? formatCurrency(billedValue(s)) : '—'}</td>

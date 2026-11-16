@@ -176,7 +176,7 @@ function Shell({ children }: { children: ReactNode }) {
             </button>
           ))}
         </div>
-        <BuildInfo className="mt-3" />
+        <BuildInfo />
       </div>
       </div>
     </div>

@@ -9,7 +9,7 @@ import type { TranslationKey } from '@/i18n/types';
 import { APP_CONFIG } from '@/lib/config';
 import { businessDaysBetween, parseISODate, todayISO } from '@/lib/dates';
 import type { AppDatabase, CollectionName } from '@/types/models';
-import { billedValue, weightedValue } from './financial';
+import { billedValue, spindlePoRef, weightedValue } from './financial';
 import { lineTotal, poTotal } from './purchasing';
 import { materialStatus, projectPoRef, projectSpindleRef } from './schedule';
 import { entryMinutes, localDay } from './timeTracking';
@@ -110,7 +110,7 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       Status: label(`enums.spindleStatus.${s.status}`),
       Delivery: d(s.deliveryDate),
       'Invoiced value': s.status === 'delivered' ? billedValue(s) : undefined,
-      PO: s.poId ? (po.get(s.poId)?.poNumber ?? '') : '',
+      PO: spindlePoRef(s, po),
     })),
     Forecast: data.forecast.map((f) => ({
       Customer: f.customer,

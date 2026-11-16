@@ -145,7 +145,7 @@ export function LoginScreen({ revealMaster = false }: { revealMaster?: boolean }
             </button>
           ))}
         </div>
-        <BuildInfo className="mt-3" />
+        <BuildInfo />
       </div>
       </div>
     </div>

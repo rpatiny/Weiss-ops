@@ -4,6 +4,9 @@ SPA React para uma empresa de reparo de spindles e motores industriais: equipe, 
 ordens de compra (POs) e hub financeiro (spindles, cotações, forecast). Dados persistidos localmente
 (`localStorage`) através de uma camada de repositório desacoplada.
 
+- **Versão na tela** (`BuildInfo` em `Disclaimer.tsx`): etiqueta fixa no canto inferior direito (login, CloudGate e todo o Layout;
+  celular e desktop) com `v<package.json>` · commit (`__APP_VERSION__`, `VERCEL_GIT_COMMIT_SHA` ou `git rev-parse`) · data/hora do build
+  (`__APP_BUILD_TIME__`) · modo. Serve para conferir se o deploy é o do último commit.
 - Aviso de plataforma de teste: `StartupDisclaimer` (ao abrir, 1x por sessão) e `DisclaimerStrip` (faixa fixa no topo e no login), em `components/layout/Disclaimer.tsx`.
 
 ## Comandos
@@ -118,7 +121,7 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 | `CatalogMaterial`   | partNumber (chave), description, unit, offers[] (`SupplierOffer`: supplierId, quoteStatus, quotedPrice, validUntil, leadTimeDays) | liga-se a materiais de projeto e linhas de PO **pelo part number** |
 | `PurchaseOrder`     | poNumber, **kind `sales\|purchase`**, supplierId?, customerOrVendor, orderDate, requester, paymentTerms, status, notes, attachments[], lines[] | 1—N Project (cliente), 1—N Material (compra) |
 | `POLineItem`        | lineNumber, partNumber, description, quantity, unitPrice, expected/actualDeliveryDate, status, receipts[] (GR: grNumber SAP, data, qtd, usuário) | embutido na PO |
-| `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue         | opc. N—1 PO; 1—N Project                   |
+| `SpindleUnit`       | serialNumber, model, manufacturer, customer, quote*, status, deliveryDate, invoicedValue, **poRef (texto livre)** | `poId` derivado de `poRef` (`spindlePoRef` p/ exibir); 1—N Project |
 | `ForecastItem`      | customer, spindleModel, estimatedValue, expectedDate, probability (0–100)                       | —                                          |
 
 > `APP_CONFIG.schemaVersion = 5` (v5: extensões de material e `CatalogMaterial.plants`). Antes: v4 (v3: fornecedores, catálogo, `PurchaseOrder.kind`; v4: usuários, requisições, GR, material `requested`).

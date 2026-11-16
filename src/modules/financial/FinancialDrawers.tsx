@@ -9,8 +9,9 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
-import { forecastService, spindleService, validateForecast, validateSpindle, weightedValue, type ForecastDraft, type SpindleDraft } from '@/domain/financial';
+import { forecastService, spindlePoRef, spindleService, validateForecast, validateSpindle, weightedValue, type ForecastDraft, type SpindleDraft } from '@/domain/financial';
 import { enumOptions } from '@/domain/labels';
+import { findPOByRef } from '@/domain/schedule';
 import { useI18n } from '@/i18n';
 import { addMonths, todayISO } from '@/lib/dates';
 import { formatCurrency } from '@/lib/format';
@@ -45,12 +46,14 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
     setErrors({});
     if (existing) {
       const { id: _id, ...rest } = existing;
-      setD(rest);
+      setD({ ...rest, poRef: spindlePoRef(existing, new Map(pos.map((p) => [p.id, p]))) });
     } else setD(emptySpindle());
   }, [open, spindleId]);
 
   const customers = useMemo(() => [...new Set([...spindles.map((s) => s.customer), ...pos.filter((p) => p.kind === 'sales').map((p) => p.customerOrVendor)])].sort(), [spindles, pos]);
   const manufacturers = useMemo(() => [...new Set(spindles.map((s) => s.manufacturer).filter(Boolean))].sort(), [spindles]);
+
+  const linkedPO = findPOByRef(d.poRef, pos);
 
   const set = <K extends keyof SpindleDraft>(k: K, v: SpindleDraft[K]) =>
     setD((x) => {
@@ -175,13 +178,13 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
             <Field label={t('financial.spindleForm.po')}>
               {(id) => (
                 <div className="flex gap-2">
-                  <Select
-                    id={id}
-                    value={d.poId ?? ''}
-                    onChange={(v) => set('poId', v || undefined)}
-                    options={[{ value: '', label: t('financial.spindleForm.noPO') }, ...[...pos].sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => ({ value: p.id, label: `${p.poNumber} — ${p.customerOrVendor}` }))]}
-                  />
-                  {d.poId && <Button icon={ExternalLink} onClick={() => { onClose(); navigate('/purchase-orders', { open: d.poId }); }} aria-label="PO" />}
+                  <Input id={id} name="spindlePoRef" value={d.poRef ?? ''} onChange={(e) => set('poRef', e.target.value)} list="spindle-po-refs" className="font-mono" autoComplete="off" />
+                  {linkedPO && <Button icon={ExternalLink} onClick={() => { onClose(); navigate('/purchase-orders', { open: linkedPO.id }); }} aria-label="PO" />}
+                  <datalist id="spindle-po-refs">
+                    {[...pos].filter((p) => p.kind === 'sales').sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => (
+                      <option key={p.id} value={p.poNumber}>{p.customerOrVendor}</option>
+                    ))}
+                  </datalist>
                 </div>
               )}
             </Field>
