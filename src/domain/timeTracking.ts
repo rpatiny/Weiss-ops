@@ -195,3 +195,43 @@ export const timesheetService = {
     repos.workPhases.replaceAll(phases.map((p, i) => ({ ...p, order: i + 1 })));
   },
 };
+
+// ───────────── Status (flags) para a supervisão ─────────────
+
+/** Serviço: alguém na fase agora / começado mas parado esperando a próxima fase / todas as fases prontas. */
+export type JobFlag = 'working' | 'waiting' | 'ready' | 'not_started';
+
+export function jobFlag(projectId: string, phases: readonly WorkPhase[], entries: readonly TimeEntry[]): { flag: JobFlag; progress: JobProgress } {
+  const progress = jobProgress(projectId, phases, entries);
+  if (progress.complete) return { flag: 'ready', progress };
+  if (entries.some((e) => e.projectId === projectId && !e.end)) return { flag: 'working', progress };
+  return { flag: progress.started ? 'waiting' : 'not_started', progress };
+}
+
+/** Técnico: trabalhando / com serviço aguardando a próxima fase / último serviço pronto / sem serviço. */
+export type WorkerFlag = 'working' | 'waiting' | 'ready' | 'idle';
+
+export interface WorkerStatus {
+  flag: WorkerFlag;
+  projectId?: string;
+  open?: TimeEntry;
+  progress?: JobProgress;
+  /** Quando o último serviço ficou pronto (flag `ready`). */
+  readyAt?: string;
+}
+
+export function workerStatus(employeeId: string, entries: readonly TimeEntry[], phases: readonly WorkPhase[], projectsById: ReadonlyMap<string, Project>): WorkerStatus {
+  const open = openEntryOf(employeeId, entries);
+  if (open) return { flag: 'working', projectId: open.projectId, open, progress: jobProgress(open.projectId, phases, entries) };
+  const job = currentJobOf(employeeId, entries, phases, projectsById);
+  if (job) return { flag: 'waiting', projectId: job, progress: jobProgress(job, phases, entries) };
+  const latest = entries.filter((e) => e.employeeId === employeeId).sort((a, b) => b.start.localeCompare(a.start))[0];
+  if (latest && !latest.released) {
+    const progress = jobProgress(latest.projectId, phases, entries);
+    if (progress.complete) {
+      const readyAt = progress.phases.reduce<string | undefined>((m, r) => (r.doneAt && (!m || r.doneAt > m) ? r.doneAt : m), undefined);
+      return { flag: 'ready', projectId: latest.projectId, progress, readyAt };
+    }
+  }
+  return { flag: 'idle' };
+}

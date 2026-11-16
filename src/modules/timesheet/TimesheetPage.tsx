@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import { ArrowDown, ArrowUp, CheckCheck, Clock3, FileSpreadsheet, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCheck, Clock3, FileSpreadsheet, Hourglass, Download, ExternalLink, KeyRound, Pencil, Plus, Printer, QrCode, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
 import { useCan } from '@/app/session';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,7 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { canClock, currentJobOf, entryMinutes, jobProgress, type PhaseState, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
+import { canClock, currentJobOf, entryMinutes, jobFlag, workerStatus, type PhaseState, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { addDays, startOfWeek, todayISO } from '@/lib/dates';
@@ -20,11 +20,15 @@ import { newId } from '@/lib/id';
 import { usePersistentState } from '@/lib/usePersistentState';
 import { ExportHoursActions, HoursReportButton } from './HoursReportButton';
 import { ReportTab } from './ReportTab';
+import { FlowFlag } from './Flags';
 import type { TimeEntry, WorkPhase } from '@/types/models';
 
 type Tab = 'now' | 'jobs' | 'report' | 'entries' | 'team' | 'phases' | 'qr';
 const TABS: Tab[] = ['now', 'jobs', 'report', 'entries', 'team', 'phases', 'qr'];
 const isTab = (v: unknown): v is Tab => TABS.includes(v as Tab);
+type JobsFilter = 'all' | 'working' | 'waiting' | 'complete';
+const JOBS_FILTERS: JobsFilter[] = ['all', 'working', 'waiting', 'complete'];
+const isJobsFilter = (v: unknown): v is JobsFilter => JOBS_FILTERS.includes(v as JobsFilter);
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(getFormatLocale(), { hour: '2-digit', minute: '2-digit' });
 /** ISO ↔ valor de `<input type="datetime-local">` (horário local). */
@@ -40,7 +44,11 @@ const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : '');
 export function TimesheetPage() {
   const { t } = useI18n();
   const [tab, setTab] = usePersistentState<Tab>('timesheet.tab', 'now', isTab);
+  const [jobsFilter, setJobsFilter] = usePersistentState<JobsFilter>('timesheet.jobsFilter', 'all', isJobsFilter);
   const entries = useCollection('timeEntries');
+  const projects = useCollection('projects');
+  const workPhases = useCollection('workPhases');
+  const waitingJobs = projects.filter((p) => isProjectActive(p) && jobFlag(p.id, workPhases, entries).flag === 'waiting').length;
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick((n) => n + 1), 60_000);
@@ -56,8 +64,18 @@ export function TimesheetPage() {
   return (
     <>
       <PageHeader icon={Timer} title={t('timesheet.title')} description={t('timesheet.description')} actions={<ExportHoursActions />} />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard icon={Users} tone="info" label={t('timesheet.kpis.working')} value={open.length - review.length} onClick={() => setTab('now')} />
+        <StatCard
+          icon={Hourglass}
+          tone={waitingJobs ? 'warning' : 'default'}
+          label={t('timesheet.flow.kpiWaiting')}
+          value={waitingJobs}
+          onClick={() => {
+            setJobsFilter('waiting');
+            setTab('jobs');
+          }}
+        />
         <StatCard icon={Clock3} label={t('timesheet.kpis.today')} value={formatHoursDecimal(sumMin(today))} />
         <StatCard icon={Timer} label={t('timesheet.kpis.week')} value={formatHoursDecimal(sumMin(weekStart))} />
         <StatCard icon={TriangleAlert} tone={review.length ? 'warning' : 'default'} label={t('timesheet.kpis.review')} value={review.length} onClick={() => setTab('now')} />
@@ -81,7 +99,7 @@ export function TimesheetPage() {
       </div>
 
       {tab === 'now' && <NowTab />}
-      {tab === 'jobs' && <JobsTab />}
+      {tab === 'jobs' && <JobsTab filter={jobsFilter} setFilter={setJobsFilter} />}
       {tab === 'report' && <ReportTab />}
       {tab === 'entries' && <EntriesTab />}
       {tab === 'team' && <TeamTab />}
@@ -118,7 +136,14 @@ function NowTab() {
   const [editing, setEditing] = useState<TimeEntry | null>(null);
   const open = entries.filter((e) => !e.end).sort((a, b) => a.start.localeCompare(b.start));
   const review = open.filter((e) => needsReview(e));
-  const live = open.filter((e) => !needsReview(e));
+  const { employees, projects, phases } = useLookups();
+  const prjById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+  // Técnicos com PIN do ponto (ou com apontamentos): status de cada um, ordenado por em andamento → aguardando → pronto → livre.
+  const order = { working: 0, waiting: 1, ready: 2, idle: 3 } as const;
+  const team = employees
+    .filter((e) => e.status === 'active' && (e.clockPinHash || entries.some((x) => x.employeeId === e.id)))
+    .map((e) => ({ e, st: workerStatus(e.id, entries, phases, prjById) }))
+    .sort((a, b) => order[a.st.flag] - order[b.st.flag] || a.e.name.localeCompare(b.e.name));
 
   return (
     <div className="space-y-6">
@@ -149,36 +174,57 @@ function NowTab() {
         </section>
       )}
 
-      {live.length === 0 ? (
-        <EmptyState icon={Users} title={t('timesheet.nowEmpty')} />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {live.map((e) => {
-            const p = prj.get(e.projectId);
-            const who = emp.get(e.employeeId);
+      <section>
+        <h2 className="font-semibold text-slate-900 dark:text-white">{t('timesheet.flow.teamTitle')}</h2>
+        <p className="mb-3 text-sm text-slate-500">{t('timesheet.flow.teamHint')}</p>
+        <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+          {team.map(({ e, st }) => {
+            const p = st.projectId ? prj.get(st.projectId) : undefined;
+            const last = st.progress?.phases[st.progress.phases.length - 1];
             return (
-              <div key={e.id} className="card border-l-4 p-4" style={{ borderLeftColor: p?.color }}>
-                <div className="flex items-center gap-3">
-                  <span className="relative">
-                    <Avatar name={who?.name ?? '?'} color={who?.color ?? '#64748b'} />
-                    <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-slate-900" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-900 dark:text-white">{who?.name}</p>
-                    <p className="truncate text-sm text-slate-600 dark:text-slate-300">{ph.get(e.phaseId)?.name}</p>
-                  </div>
+              <div
+                key={e.id}
+                className={cn(
+                  'flex flex-wrap items-center gap-3 px-4 py-3',
+                  st.flag === 'ready' && 'bg-green-50 dark:bg-green-500/10',
+                  st.flag === 'waiting' && 'bg-amber-50/70 dark:bg-amber-500/10',
+                )}
+              >
+                <span className="relative">
+                  <Avatar name={e.name} color={e.color} />
+                  {st.flag === 'working' && <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-blue-600 ring-2 ring-white dark:ring-slate-900" />}
+                  {st.flag === 'ready' && <CheckCheck className="absolute -right-1 -bottom-1 size-4 rounded-full bg-green-600 p-0.5 text-white ring-2 ring-white dark:ring-slate-900" />}
+                </span>
+                <div className="min-w-[10rem] flex-1">
+                  <p className="font-semibold text-slate-900 dark:text-white">{e.name}</p>
+                  {p ? (
+                    <p className="truncate text-sm text-slate-500">
+                      <span className="font-mono">{p.projectNumber}</span> · {p.customer}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-slate-400">{e.role}</p>
+                  )}
                 </div>
-                <p className="mt-2 truncate text-sm text-slate-500">
-                  <span className="font-mono">{p?.projectNumber}</span> · {p?.customer}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 tabular-nums">
-                  {timeOf(e.start)} · {formatMinutes(entryMinutes(e))}
-                </p>
+                <div className="min-w-[12rem] text-sm text-slate-600 dark:text-slate-300">
+                  {st.flag === 'working' && st.open && (
+                    <>
+                      <p className="font-medium text-slate-900 dark:text-white">
+                        {last && last.phase.id === st.open.phaseId ? t('timesheet.flow.lastPhase', { phase: last.phase.name }) : ph.get(st.open.phaseId)?.name}
+                      </p>
+                      <p className="text-xs tabular-nums">{t('clock.since', { time: timeOf(st.open.start), duration: formatMinutes(entryMinutes(st.open)) })}</p>
+                    </>
+                  )}
+                  {st.flag === 'waiting' && st.progress?.next && <p className="font-medium">{t('timesheet.flow.nextPhase', { phase: st.progress.next.name })}</p>}
+                  {st.flag === 'ready' && st.readyAt && p && <p className="font-medium text-green-800 dark:text-green-300">{t('timesheet.flow.readyDetail', { project: p.projectNumber, date: formatDate(localDay(st.readyAt)) })}</p>}
+                  {st.progress && st.flag !== 'ready' && <p className="text-xs text-slate-500">{t('projects.phasesProgress', { done: st.progress.done, total: st.progress.total })}</p>}
+                </div>
+                <FlowFlag flag={st.flag} next={st.flag === 'waiting' ? st.progress?.next?.name : undefined} />
               </div>
             );
           })}
+          {team.length === 0 && <EmptyState icon={Users} title={t('timesheet.nowEmpty')} />}
         </div>
-      )}
+      </section>
       <EntryDrawer entry={editing} onClose={() => setEditing(null)} />
     </div>
   );
@@ -420,39 +466,42 @@ const STATE_STYLE: Record<PhaseState, string> = {
   pending: 'border-slate-300 text-slate-400 dark:border-slate-600',
 };
 
-function JobsTab() {
+function JobsTab({ filter, setFilter }: { filter: JobsFilter; setFilter: (f: JobsFilter) => void }) {
   const { t } = useI18n();
   const toast = useToast();
   const entries = useCollection('timeEntries');
   const { employees, projects, phases, emp } = useLookups();
   const allowed = useCan()('time.manage');
-  const [filter, setFilter] = useState<'open' | 'complete'>('open');
   const [releasing, setReleasing] = useState<{ employeeId: string; projectId: string } | null>(null);
   const [note, setNote] = useState('');
   const prjById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
   const jobs = projects
     .filter((p) => entries.some((e) => e.projectId === p.id))
-    .map((p) => ({ p, prog: jobProgress(p.id, phases, entries), holders: employees.filter((e) => currentJobOf(e.id, entries, phases, prjById) === p.id) }))
-    .filter(({ prog, p }) => (filter === 'complete' ? prog.complete : !prog.complete && isProjectActive(p)))
-    .sort((a, b) => a.p.projectNumber.localeCompare(b.p.projectNumber));
+    .map((p) => {
+      const { flag, progress: prog } = jobFlag(p.id, phases, entries);
+      return { p, prog, flag, holders: employees.filter((e) => currentJobOf(e.id, entries, phases, prjById) === p.id) };
+    })
+    .filter(({ flag, p }) => (filter === 'all' ? flag !== 'ready' && isProjectActive(p) : filter === 'complete' ? flag === 'ready' : flag === filter && isProjectActive(p)))
+    // Aguardando primeiro (é o que precisa de ação), depois em andamento.
+    .sort((a, b) => Number(b.flag === 'waiting') - Number(a.flag === 'waiting') || a.p.projectNumber.localeCompare(b.p.projectNumber));
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-3xl space-y-1 text-sm text-slate-500">
           <p>{t('timesheet.jobsHint')}</p>
-          {filter === 'open' && <p className="flex items-center gap-1.5 text-xs"><FileSpreadsheet className="size-3.5 shrink-0" /> {t('timesheet.reportHint')}</p>}
+          {filter !== 'complete' && <p className="flex items-center gap-1.5 text-xs"><FileSpreadsheet className="size-3.5 shrink-0" /> {t('timesheet.reportHint')}</p>}
         </div>
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {(['open', 'complete'] as const).map((f) => (
+          {JOBS_FILTERS.map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               aria-pressed={filter === f}
               className={cn('rounded-md px-3 py-1.5 text-sm font-medium', filter === f ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500')}
             >
-              {t(`timesheet.jobsFilter.${f}`)}
+              {f === 'all' ? t('timesheet.flow.filterAll') : f === 'working' ? t('timesheet.flow.filterWorking') : f === 'waiting' ? t('timesheet.flow.filterWaiting') : t('timesheet.jobsFilter.complete')}
             </button>
           ))}
         </div>
@@ -461,14 +510,17 @@ function JobsTab() {
         <EmptyState icon={Timer} title={t('timesheet.jobsEmpty')} />
       ) : (
         <div className="grid gap-3 xl:grid-cols-2">
-          {jobs.map(({ p, prog, holders }) => (
+          {jobs.map(({ p, prog, holders, flag }) => (
             <div key={p.id} className="card border-l-4 p-4" style={{ borderLeftColor: p.color }}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-mono text-xs text-slate-500">{p.projectNumber}</p>
                   <p className="truncate font-semibold text-slate-900 dark:text-white">{p.customer}</p>
                 </div>
-                <Badge tone={prog.complete ? 'green' : 'blue'}>{t('projects.phasesProgress', { done: prog.done, total: prog.total })}</Badge>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <FlowFlag flag={flag} next={flag === 'waiting' ? prog.next?.name : undefined} />
+                  <Badge tone={prog.complete ? 'green' : 'slate'}>{t('projects.phasesProgress', { done: prog.done, total: prog.total })}</Badge>
+                </div>
               </div>
               <ol className="mt-3 flex flex-wrap gap-1.5">
                 {prog.phases.map(({ phase, state, minutes }, i) => (

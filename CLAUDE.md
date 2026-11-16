@@ -270,6 +270,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     (`reportCheck`: todas as fases ativas concluídas e nenhum apontamento aberto) — aparece em Serviços → Concluídos e no
     card do projeto. Não há relatório parcial: em andamento, conferir na tela. A aba `Horas_Oficina` da exportação geral
     também só traz serviços concluídos (o backup JSON continua completo).
+  - **Status (flags)** (`jobFlag`/`workerStatus`, componente `FlowFlag`): serviço = Em andamento (alguém numa fase agora) /
+    Aguardando próxima fase (iniciado, ninguém nele — mostra qual fase) / Pronto (todas as fases) / Não iniciado; técnico =
+    Em andamento / Aguardando / Pronto (último serviço concluído — linha verde) / Sem serviço. Aba Agora lista a equipe
+    com o flag na linha do nome; KPI "Aguardando próximo passo" abre Serviços filtrado; Serviços filtra por status.
   - **Aba Relatório** (`modules/timesheet/ReportTab.tsx`): projeto expansível → fases (duração, início, conclusão, técnicos) →
     cada entrada/saída. Filtros Concluídos / Em andamento / Todos; em andamento só confere na tela (sem exportação).
   - **Topo de Horas da oficina** (`ExportHoursActions`): "Exportar todos (por projeto)" = `exportAllProjectsReport`
