@@ -90,3 +90,32 @@
 fieldset {
   min-width: 0;
 }
+
+/* "Ver deitado" com o celular em pé (iPhone/sem trava de orientação): gira o app 90°.
+   O body vira a "tela" girada; o #root rola; portais (painéis, modais, toasts) ficam presos ao body girado. */
+@media (orientation: portrait) {
+  html.force-landscape,
+  html.force-landscape body {
+    height: 100%;
+    overflow: hidden;
+  }
+  html.force-landscape body {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vh;
+    width: 100dvh;
+    height: 100vw;
+    transform-origin: top left;
+    transform: translateX(100vw) rotate(90deg);
+  }
+  html.force-landscape #root {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  html.force-landscape .min-h-screen {
+    min-height: 100%;
+  }
+}

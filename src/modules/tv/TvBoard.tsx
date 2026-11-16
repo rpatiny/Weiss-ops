@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Hourglass, Wrench } from 'lucide-react';
+import { Hourglass, Maximize, Wrench } from 'lucide-react';
 import { useRoute } from '@/app/router';
+import { useKioskMode } from './useKioskMode';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 import { useCollection } from '@/data/hooks';
@@ -33,6 +34,7 @@ export function TvBoard() {
   const entries = useCollection('timeEntries');
   const phases = useCollection('workPhases');
   const [now, setNow] = useState(() => new Date());
+  const kiosk = useKioskMode();
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 20_000);
     // Recarrega de madrugada/a cada 6 h: TV ligada dias seguidos sem acumular estado.
@@ -79,7 +81,16 @@ export function TvBoard() {
   const phaseName = (id?: string) => phases.find((p) => p.id === id)?.name ?? '';
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-slate-950 text-white">
+    <div className={cn('relative flex h-dvh flex-col overflow-hidden bg-slate-950 text-white', kiosk.idle && 'cursor-none')}>
+      {/* Aviso para entrar em tela cheia (o navegador exige um clique ou tecla). Some sozinho em tela cheia. */}
+      {!kiosk.fullscreen && (
+        <button
+          onClick={kiosk.enter}
+          className="absolute top-[12vh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-white/95 px-[2vw] py-[1.6vh] text-[2.2vh] font-bold text-slate-900 shadow-2xl"
+        >
+          <Maximize className="size-[3vh]" /> {t('tv.fullscreen')}
+        </button>
+      )}
       <DisclaimerStrip className="py-1 text-[11px]" />
       {/* Cabeçalho */}
       <header className="flex items-center justify-between gap-6 px-[2vw] py-[1.2vh]">

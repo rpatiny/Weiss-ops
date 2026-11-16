@@ -21,6 +21,10 @@ export const en: Dictionary = {
     closeMenu: 'Close menu',
   },
   app: {
+    landscapeView: 'Landscape view',
+    portraitView: 'Portrait view',
+    landscapeShort: 'Landscape',
+    portraitShort: 'Portrait',
     disclaimerTitle: 'Test platform',
     disclaimerText: 'All data shown here (customers, projects, amounts, orders and people) is fictitious and in no case represents real figures or information of the company. This is a test platform only, with no legal or institutional value.',
     disclaimerShort: 'Test platform: fictitious data, no legal or institutional value.',
@@ -416,6 +420,7 @@ export const en: Dictionary = {
   },
 
   tv: {
+    fullscreen: 'Click or press any key for full screen',
     title: 'Team schedule',
     week: 'Week',
     biweekly: 'Two weeks',

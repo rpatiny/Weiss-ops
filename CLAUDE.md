@@ -157,6 +157,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   (`GEOMETRY_MOBILE`), **sem arraste** (o toque abre o projeto e o dedo rola a grade; `touch-action: auto`);
   `fieldset { min-width: 0 }` global (tabelas largas em formulários não esticam a tela); grids com filhos `min-w-0`.
   Conferido sem rolagem lateral em iPhone SE (375 px) e iPhone 13 (390 px) em todas as telas.
+- **Ver deitado com o celular em pé** (`app/landscape.ts`, botão no topo do celular, lembrado em `ui:landscape`): tenta
+  tela cheia + `screen.orientation.lock('landscape')` (Android/Chrome — layout de tela larga de verdade); sem suporte
+  (iPhone) a classe `html.force-landscape` gira o app 90° por CSS (`index.css`: body fixo girado = "tela", `#root` rola,
+  portais acompanham). Só dentro do Layout (login, ponto e TV não giram).
 
 ## Internacionalização
 
@@ -303,6 +307,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   sem login, sem aviso modal; dias (fim de semana estreito e acinzentado) × colaboradores ativos, hoje destacado, férias hachuradas, barra com anel verde
   + "● fase" quando o técnico está marcando horas naquele projeto; rodapé "Agora na oficina" (flags). Tudo em vh/vw
   (cabe numa TV 1080p sem rolagem); relógio a cada 20 s; recarrega sozinha a cada 6 h. Botão "Tela da TV" em Agenda & Rotas.
+  **Modo quiosque** (`modules/tv/useKioskMode.ts`): 1º clique/tecla entra em tela cheia (navegadores exigem um gesto; aviso
+  na tela até entrar), F alterna, cursor some após 3 s parado, Wake Lock mantém a tela acesa. `index.html` injeta
+  `public/tv.webmanifest` (display fullscreen, landscape) em `#/tv` — instalar a página como app abre sem barra; demais
+  rotas usam `public/app.webmanifest` (standalone).
 - **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.
 
 - **Hub Financeiro** (`domain/financial.ts`, permissão `financial.edit` = Master e Office; Logística só lê):

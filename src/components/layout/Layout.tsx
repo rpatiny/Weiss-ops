@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Languages, LogOut, Menu, Moon, Sun, X, RotateCw, Smartphone } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
 import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
@@ -15,6 +15,8 @@ import { LOCALES, useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { NAV_FOOTER, NAV_ITEMS, type NavItem } from './nav';
 import { BrandLogo } from './BrandLogo';
+import { enterLandscape, exitLandscape } from '@/app/landscape';
+import { usePersistentState } from '@/lib/usePersistentState';
 
 function Brand() {
   const { t } = useI18n();
@@ -162,6 +164,13 @@ export function Layout({ children }: { children: ReactNode }) {
     announcePresence(me ? { userId: me.id, name: me.name, role: me.role, page: path } : null);
   }, [me, path]);
   useEffect(() => () => announcePresence(null), []);
+  // Celular: "ver deitado" (lembrado neste aparelho). Só dentro do app — login e ponto da oficina ficam em pé.
+  const [landscape, setLandscape] = usePersistentState<boolean>('landscape', false, (v): v is boolean => typeof v === 'boolean');
+  useEffect(() => {
+    if (landscape) void enterLandscape();
+    else exitLandscape();
+    return () => exitLandscape();
+  }, [landscape]);
 
   return (
     <div className="min-h-screen">
@@ -171,9 +180,21 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 lg:hidden">
         <BrandLogo className="h-8 w-auto" />
-        <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={t('common.openMenu')}>
-          <Menu className="size-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setLandscape((v) => !v)}
+            aria-pressed={landscape}
+            className={cn('flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800', landscape && 'bg-slate-800 text-white')}
+            aria-label={landscape ? t('app.portraitView') : t('app.landscapeView')}
+            title={landscape ? t('app.portraitView') : t('app.landscapeView')}
+          >
+            {landscape ? <Smartphone className="size-5" /> : <RotateCw className="size-5" />}
+            <span className="hidden min-[360px]:inline">{landscape ? t('app.portraitShort') : t('app.landscapeShort')}</span>
+          </button>
+          <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={t('common.openMenu')}>
+            <Menu className="size-5" />
+          </button>
+        </div>
       </header>
 
       {mobileOpen && (

@@ -24,6 +24,10 @@ export const pt = {
     closeMenu: 'Fechar menu',
   },
   app: {
+    landscapeView: 'Ver deitado (horizontal)',
+    portraitView: 'Ver em pé (vertical)',
+    landscapeShort: 'Deitar',
+    portraitShort: 'Em pé',
     disclaimerTitle: 'Plataforma de teste',
     disclaimerText: 'Todos os dados exibidos aqui (clientes, projetos, valores, pedidos e pessoas) são fictícios e em nenhum caso representam valores ou informações reais da empresa. Esta é apenas uma plataforma de teste, sem valor legal ou institucional.',
     disclaimerShort: 'Plataforma de teste: dados fictícios, sem valor legal ou institucional.',
@@ -419,6 +423,7 @@ export const pt = {
   },
 
   tv: {
+    fullscreen: 'Clique ou aperte qualquer tecla para tela cheia',
     title: 'Rota da equipe',
     week: 'Semana',
     biweekly: 'Quinzena',

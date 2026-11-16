@@ -21,6 +21,10 @@ export const de: Dictionary = {
     closeMenu: 'Menü schließen',
   },
   app: {
+    landscapeView: 'Querformat',
+    portraitView: 'Hochformat',
+    landscapeShort: 'Quer',
+    portraitShort: 'Hoch',
     disclaimerTitle: 'Testplattform',
     disclaimerText: 'Alle hier angezeigten Daten (Kunden, Projekte, Beträge, Bestellungen und Personen) sind fiktiv und stellen in keinem Fall reale Werte oder Informationen des Unternehmens dar. Dies ist ausschließlich eine Testplattform ohne rechtliche oder institutionelle Gültigkeit.',
     disclaimerShort: 'Testplattform: fiktive Daten, ohne rechtliche oder institutionelle Gültigkeit.',
@@ -416,6 +420,7 @@ export const de: Dictionary = {
   },
 
   tv: {
+    fullscreen: 'Klicken oder beliebige Taste für Vollbild',
     title: 'Team-Einsatzplan',
     week: 'Woche',
     biweekly: 'Zwei Wochen',
