@@ -84,3 +84,9 @@
   to { transform: translateX(0); }
 }
 .animate-slide-in-left { animation: slide-in-left 0.22s ease-out; }
+
+/* Fieldsets têm min-inline-size: min-content por padrão: uma tabela larga (ex.: itens da PO) esticava o formulário
+   inteiro além da tela no celular. */
+fieldset {
+  min-width: 0;
+}

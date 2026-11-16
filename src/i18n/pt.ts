@@ -455,6 +455,7 @@ export const pt = {
     businessDays: '{count} dia útil || {count} dias úteis',
     employeeColumn: 'Colaborador',
     inactive: 'Inativo',
+    mobileHint: 'Toque num projeto para abrir e editar (datas, colaborador, materiais). Arrastar para mover funciona no computador.',
     dragHint: 'Arraste o retângulo para mover o projeto (também para outro colaborador) e puxe as bordas para aumentar ou diminuir os dias. Clique em um dia vazio para criar.',
     emptyRows: 'Nenhum colaborador para exibir com os filtros atuais.',
     openPO: 'Abrir PO {number}',

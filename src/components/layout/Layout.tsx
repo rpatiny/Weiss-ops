@@ -170,7 +170,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 lg:hidden">
-        <Brand />
+        <BrandLogo className="h-8 w-auto" />
         <button onClick={() => setMobileOpen(true)} className="rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label={t('common.openMenu')}>
           <Menu className="size-5" />
         </button>

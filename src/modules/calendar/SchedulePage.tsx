@@ -22,6 +22,7 @@ import {
 } from '@/domain/schedule';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
+import { useIsMobile } from '@/lib/useMediaQuery';
 import { businessDaysBetween, rangesOverlap, todayISO } from '@/lib/dates';
 import { formatDate, formatDateRange, formatMonthYear } from '@/lib/format';
 import { usePersistentState } from '@/lib/usePersistentState';
@@ -35,6 +36,7 @@ const isView = (v: unknown): v is ScheduleView => typeof v === 'string' && (VIEW
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
 
 export function SchedulePage() {
+  const mobile = useIsMobile();
   const { t } = useI18n();
   const toast = useToast();
   const canEdit = useCan()('schedule.edit');
@@ -301,7 +303,7 @@ export function SchedulePage() {
         </div>
       </div>
 
-      <p className="mb-2 text-xs text-slate-500">{canEdit ? t('calendar.dragHint') : t('auth.readOnly')}</p>
+      <p className="mb-2 text-xs text-slate-500">{canEdit ? (mobile ? t('calendar.mobileHint') : t('calendar.dragHint')) : t('auth.readOnly')}</p>
 
       {rows.length === 0 ? (
         <div className="card p-10 text-center text-sm text-slate-500">{t('calendar.emptyRows')}</div>

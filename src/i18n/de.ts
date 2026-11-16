@@ -452,6 +452,7 @@ export const de: Dictionary = {
     businessDays: '{count} Arbeitstag || {count} Arbeitstage',
     employeeColumn: 'Mitarbeiter',
     inactive: 'Inaktiv',
+    mobileHint: 'Auf ein Projekt tippen, um es zu öffnen und zu bearbeiten (Termine, Mitarbeiter, Material). Verschieben per Ziehen funktioniert am Computer.',
     dragHint: 'Balken ziehen, um das Projekt zu verschieben (auch zu einem anderen Mitarbeiter), Ränder ziehen, um Tage hinzuzufügen oder zu entfernen. Auf einen leeren Tag klicken, um ein Projekt anzulegen.',
     emptyRows: 'Keine Mitarbeiter mit den aktuellen Filtern.',
     openPO: 'Bestellung {number} öffnen',

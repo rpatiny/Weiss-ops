@@ -69,7 +69,7 @@ export function SettingsPage() {
     <>
       <PageHeader icon={Database} title={t('settings.title')} description={CLOUD ? t('cloud.mode') : t('settings.description')} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <section className="card p-5">
           <h2 className="mb-1 font-semibold text-slate-900 dark:text-white">{t('settings.storedTitle')}</h2>
           <p className="mb-4 text-sm text-slate-500">

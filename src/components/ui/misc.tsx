@@ -47,14 +47,14 @@ const statTones: Record<StatTone, string> = {
 export function StatCard({ label, value, hint, icon: Icon, tone = 'default', onClick }: { label: string; value: ReactNode; hint?: ReactNode; icon: LucideIcon; tone?: StatTone; onClick?: () => void }) {
   const Comp = onClick ? 'button' : 'div';
   return (
-    <Comp onClick={onClick} className={cn('card flex items-start gap-4 p-4 text-left', onClick && 'transition hover:border-brand-500/60 hover:shadow-md')}>
-      <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', statTones[tone])}>
-        <Icon className="size-5" />
+    <Comp onClick={onClick} className={cn('card flex flex-col items-start gap-2 p-3 text-left sm:flex-row sm:gap-4 sm:p-4', onClick && 'transition hover:border-brand-500/60 hover:shadow-md')}>
+      <div className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10', statTones[tone])}>
+        <Icon className="size-4 sm:size-5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">{label}</p>
-        <p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums dark:text-white">{value}</p>
-        {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+        <p className="text-[11px] leading-tight font-medium text-slate-500 uppercase sm:text-xs sm:tracking-wide dark:text-slate-400">{label}</p>
+        <p className="mt-1 text-xl font-bold text-slate-900 tabular-nums sm:text-2xl dark:text-white">{value}</p>
+        {hint && <p className="mt-0.5 text-[11px] leading-snug text-slate-500 sm:text-xs">{hint}</p>}
       </div>
     </Comp>
   );

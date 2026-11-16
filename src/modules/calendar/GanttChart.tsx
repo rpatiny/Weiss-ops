@@ -12,6 +12,7 @@ import {
 } from '@/domain/schedule';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
+import { useIsMobile } from '@/lib/useMediaQuery';
 import { businessDaysBetween, isWeekend, parseISODate } from '@/lib/dates';
 import { formatDate, formatWeekday } from '@/lib/format';
 import type { Absence, Employee, Project, ProjectAssignment } from '@/types/models';
@@ -22,7 +23,15 @@ const GEOMETRY: Record<ScheduleView, { day: number; weekend: number }> = {
   biweekly: { day: 78, weekend: 26 },
   month: { day: 46, weekend: 16 },
 };
-const NAME_W = 210;
+/** Celular: dias mais estreitos para caber mais dias na tela (rolagem lateral para o resto). */
+const GEOMETRY_MOBILE: Record<ScheduleView, { day: number; weekend: number }> = {
+  week: { day: 88, weekend: 24 },
+  biweekly: { day: 60, weekend: 20 },
+  month: { day: 40, weekend: 14 },
+};
+const NAME_W_DESKTOP = 210;
+/** No celular a coluna de nomes encolhe (só avatar + nome) para sobrar espaço para os dias. */
+const NAME_W_MOBILE = 108;
 const LANE_H = 44;
 const ROW_PAD = 6;
 
@@ -62,9 +71,11 @@ interface DragState {
 }
 
 export function GanttChart(props: Props) {
+  const mobile = useIsMobile();
+  const NAME_W = mobile ? NAME_W_MOBILE : NAME_W_DESKTOP;
   const { view, days, today, employees, assignments, projectsById, absences, conflicts, materials, utilization } = props;
   const { t } = useI18n();
-  const geo = GEOMETRY[view];
+  const geo = (mobile ? GEOMETRY_MOBILE : GEOMETRY)[view];
   const timelineRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -220,12 +231,12 @@ export function GanttChart(props: Props) {
 
           return (
             <div key={emp.id} className="flex border-b border-slate-200 last:border-b-0 dark:border-slate-800">
-              <div className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-slate-900" style={{ width: NAME_W, minHeight: height }}>
+              <div className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white px-2 sm:px-3 dark:border-slate-800 dark:bg-slate-900" style={{ width: NAME_W, minHeight: height }}>
                 <Avatar name={emp.name} color={emp.color} size="sm" muted={inactive} />
                 <div className="min-w-0 flex-1">
                   <p className={cn('truncate text-sm font-medium', inactive ? 'text-slate-400' : 'text-slate-900 dark:text-white')}>{emp.name}</p>
-                  <p className="truncate text-[11px] text-slate-500">{inactive ? t('calendar.inactive') : emp.role}</p>
-                  {util && util.total > 0 && !inactive && (
+                  <p className="hidden truncate text-[11px] text-slate-500 sm:block">{inactive ? t('calendar.inactive') : emp.role}</p>
+                  {util && util.total > 0 && !inactive && !mobile && (
                     <div className="mt-1 flex items-center gap-1.5" title={`${util.used}/${util.total}`}>
                       <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                         <div className={cn('h-full rounded-full', util.used > util.total ? 'bg-red-500' : 'bg-brand-500')} style={{ width: `${Math.min(100, (util.used / util.total) * 100)}%` }} />
@@ -299,17 +310,17 @@ export function GanttChart(props: Props) {
                   return (
                     <div
                       key={a.id}
-                      onPointerDown={(e) => !locked && !props.readOnly && startDrag(e, a, 'move')}
+                      onPointerDown={(e) => !locked && !props.readOnly && !mobile && startDrag(e, a, 'move')}
                       onClick={(e) => {
-                        // Projetos travados não iniciam arraste: o clique abre direto.
-                        if (locked || props.readOnly) {
+                        // Projetos travados (e qualquer projeto no celular, onde não há arraste) abrem com o toque.
+                        if (locked || props.readOnly || mobile) {
                           e.stopPropagation();
                           props.onOpenProject(p.id);
                         }
                       }}
                       className={cn(
                         'group absolute z-[2] flex items-center overflow-hidden rounded-md text-white shadow-sm transition-[box-shadow] select-none',
-                        locked ? 'cursor-pointer opacity-70 saturate-50' : props.readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+                        locked ? 'cursor-pointer opacity-70 saturate-50' : props.readOnly || mobile ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                         isDragging && 'pointer-events-none z-30 shadow-2xl ring-2 ring-offset-1 dark:ring-offset-slate-900',
                         isDragging && (previewInvalid ? 'opacity-60 ring-red-500 ring-dashed' : 'ring-brand-400'),
                         hasConflict && 'ring-2 ring-red-500 ring-offset-1 dark:ring-offset-slate-900',
@@ -321,7 +332,8 @@ export function GanttChart(props: Props) {
                         top: ROW_PAD + (lane.get(a.id) ?? 0) * LANE_H,
                         height: LANE_H - 6,
                         backgroundColor: p.color,
-                        touchAction: 'none',
+                        // Celular: o dedo rola a grade (sem arraste); computador: arraste por pointer events.
+                        touchAction: mobile ? 'auto' : 'none',
                         borderTopLeftRadius: r.clipStart ? 0 : undefined,
                         borderBottomLeftRadius: r.clipStart ? 0 : undefined,
                         borderTopRightRadius: r.clipEnd ? 0 : undefined,
@@ -334,7 +346,7 @@ export function GanttChart(props: Props) {
                         <span key={d} className="pointer-events-none absolute top-0 h-full bg-white/35 dark:bg-slate-950/40" style={{ left: offsets[i]! - r.left - 1, width: widths[i] }} />
                       ))}
 
-                      {!locked && !props.readOnly && !r.clipStart && (
+                      {!locked && !props.readOnly && !mobile && !r.clipStart && (
                         <span onPointerDown={(e) => startDrag(e, a, 'resize-start')} className="absolute top-0 left-0 z-10 h-full w-2 cursor-ew-resize bg-black/0 hover:bg-black/25" />
                       )}
 
@@ -353,7 +365,7 @@ export function GanttChart(props: Props) {
                         )}
                       </div>
 
-                      {!locked && !props.readOnly && !r.clipEnd && (
+                      {!locked && !props.readOnly && !mobile && !r.clipEnd && (
                         <span onPointerDown={(e) => startDrag(e, a, 'resize-end')} className="absolute top-0 right-0 z-10 h-full w-2 cursor-ew-resize bg-black/0 hover:bg-black/25" />
                       )}
                     </div>

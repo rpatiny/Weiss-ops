@@ -452,6 +452,7 @@ export const en: Dictionary = {
     businessDays: '{count} working day || {count} working days',
     employeeColumn: 'Employee',
     inactive: 'Inactive',
+    mobileHint: 'Tap a project to open and edit it (dates, employee, materials). Dragging to move works on a computer.',
     dragHint: 'Drag a bar to move a project, including to another employee. Drag its edges to add or remove days. Click an empty day to create a project.',
     emptyRows: 'No employees to show with the current filters.',
     openPO: 'Open PO {number}',

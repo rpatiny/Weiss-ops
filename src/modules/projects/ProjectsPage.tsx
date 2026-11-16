@@ -316,7 +316,7 @@ function PendingMaterial({ m }: { m: MaterialTrail }) {
   const { material, requisition, po, expectedDate, late } = m;
   return (
     <li className="px-3 py-2 text-sm">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:gap-2">
         <p className="min-w-0">
           <span className="font-mono text-xs text-slate-500">{material.partNumber}</span>{' '}
           <span className="text-slate-800 dark:text-slate-100">{material.description}</span> <span className="text-slate-500 tabular-nums">× {material.quantity}</span>

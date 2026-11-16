@@ -152,6 +152,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   Weiss (#E40E0E) para destaques (menu ativo, hoje, abas, links, foco); **botão principal = preto do logo** (branco no tema
   escuro), para não confundir com botões de excluir (vermelho). Cores de status (verde/amarelo/vermelho) não mudam.
 - Tailwind: sempre prever variantes `dark:`.
+- **Celular** (`lib/useMediaQuery.ts` → `useIsMobile()` = abaixo de `sm`): topo só com a logo; `StatCard` compacto
+  (ícone em cima, textos menores); cronograma com coluna de nomes de 108 px (avatar + nome) e dias mais estreitos
+  (`GEOMETRY_MOBILE`), **sem arraste** (o toque abre o projeto e o dedo rola a grade; `touch-action: auto`);
+  `fieldset { min-width: 0 }` global (tabelas largas em formulários não esticam a tela); grids com filhos `min-w-0`.
+  Conferido sem rolagem lateral em iPhone SE (375 px) e iPhone 13 (390 px) em todas as telas.
 
 ## Internacionalização
 
