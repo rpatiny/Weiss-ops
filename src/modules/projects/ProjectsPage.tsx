@@ -180,6 +180,8 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
                 <LinkBtn onClick={() => navigate('/purchase-orders', { open: customerPO.id })}>{customerPO.poNumber}</LinkBtn> · {formatDate(customerPO.orderDate)}
                 {d.customerPOTotal ? <> · <span className="font-semibold tabular-nums">{formatCurrency(d.customerPOTotal)}</span></> : null}
               </>
+            ) : project.customerPoRef ? (
+              <span className="font-mono">{project.customerPoRef}</span>
             ) : (
               <Muted>{t('projects.noCustomerPO')}</Muted>
             )}

@@ -31,6 +31,7 @@ import type {
   ProjectAssignment,
   ProjectMaterial,
   PurchaseOrder,
+  SpindleUnit,
 } from '@/types/models';
 
 export type ScheduleView = 'week' | 'biweekly' | 'month';
@@ -214,6 +215,40 @@ export function validateProject(d: ProjectDraft, all: readonly Project[], selfId
   return e;
 }
 
+// ── PO do cliente / Spindle: texto livre com vínculo automático ──
+const norm = (v: string | undefined) => (v ?? '').trim().toLowerCase();
+
+/** PO cadastrada cujo número é igual ao texto (sem diferenciar maiúsculas). */
+export const findPOByRef = (ref: string | undefined, pos: readonly PurchaseOrder[]) =>
+  norm(ref) ? pos.find((p) => norm(p.poNumber) === norm(ref)) : undefined;
+
+/** Spindle cadastrado cujo nº de série é igual ao texto. */
+export const findSpindleByRef = (ref: string | undefined, spindles: readonly SpindleUnit[]) =>
+  norm(ref) ? spindles.find((s) => norm(s.serialNumber) === norm(ref)) : undefined;
+
+/** Texto exibido da PO do cliente (bases antigas só têm o vínculo `poId`). */
+export const projectPoRef = (p: Pick<Project, 'customerPoRef' | 'poId'>, poById: ReadonlyMap<string, PurchaseOrder>) =>
+  p.customerPoRef?.trim() || (p.poId ? (poById.get(p.poId)?.poNumber ?? '') : '');
+
+/** Texto exibido do spindle/motor (bases antigas só têm o vínculo `spindleId`). */
+export const projectSpindleRef = (p: Pick<Project, 'spindleRef' | 'spindleId'>, spindlesById: ReadonlyMap<string, SpindleUnit>) =>
+  p.spindleRef?.trim() || (p.spindleId ? (spindlesById.get(p.spindleId)?.serialNumber ?? '') : '');
+
+/** Limpa os textos e recalcula os vínculos a partir deles (o texto é a fonte da verdade). */
+function normalizeProjectDraft(d: ProjectDraft): ProjectDraft {
+  const customerPoRef = d.customerPoRef?.trim() || undefined;
+  const spindleRef = d.spindleRef?.trim() || undefined;
+  return {
+    ...d,
+    projectNumber: d.projectNumber.trim(),
+    customer: d.customer.trim(),
+    customerPoRef,
+    spindleRef,
+    poId: findPOByRef(customerPoRef, repos.purchaseOrders.getAll())?.id,
+    spindleId: findSpindleByRef(spindleRef, repos.spindles.getAll())?.id,
+  };
+}
+
 /**
  * Nº do projeto: "1000" + 4 caracteres. Em teste os 4 caracteres são letras (1000AAAA, 1000AAAB, …):
  * o próximo é o maior existente + 1 (base 26).
@@ -248,13 +283,13 @@ export function nextProjectColor(all: readonly Project[]): string {
 export const scheduleService = {
   createProject(draft: ProjectDraft, firstAssignment?: AssignmentDraft): Project {
     assertCan('schedule.edit');
-    const project = repos.projects.create({ id: newId('prj'), ...draft, projectNumber: draft.projectNumber.trim(), customer: draft.customer.trim(), materials: [] });
+    const project = repos.projects.create({ id: newId('prj'), ...normalizeProjectDraft(draft), materials: [] });
     if (firstAssignment) scheduleService.addAssignment(project.id, firstAssignment);
     return project;
   },
   updateProject(id: string, draft: ProjectDraft): Project {
     assertCan('schedule.edit');
-    return repos.projects.update(id, { ...draft, projectNumber: draft.projectNumber.trim(), customer: draft.customer.trim() });
+    return repos.projects.update(id, normalizeProjectDraft(draft));
   },
   removeProject(id: string): void {
     assertCan('schedule.edit');

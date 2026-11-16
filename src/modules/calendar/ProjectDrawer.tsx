@@ -13,9 +13,13 @@ import { enumOptions } from '@/domain/labels';
 import {
   checkPlacement,
   findConflicts,
+  findPOByRef,
+  findSpindleByRef,
   nextProjectColor,
   nextProjectNumber,
   PROJECT_COLORS,
+  projectPoRef,
+  projectSpindleRef,
   scheduleService,
   validateProject,
   type Errors,
@@ -79,7 +83,11 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     const p = projects.find((x) => x.id === initialId);
     if (p) {
       const { id: _id, materials: _m, ...rest } = p;
-      setDraft(rest);
+      setDraft({
+        ...rest,
+        customerPoRef: projectPoRef(p, new Map(purchaseOrders.map((x) => [x.id, x]))),
+        spindleRef: projectSpindleRef(p, new Map(spindles.map((x) => [x.id, x]))),
+      });
     } else {
       setDraft({ ...emptyDraft(), projectNumber: nextProjectNumber(projects), color: nextProjectColor(projects) });
       const start = snapForward(defaults?.date ?? todayISO());
@@ -105,9 +113,10 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
   const set = <K extends keyof ProjectDraft>(k: K, v: ProjectDraft[K]) => {
     const next = { ...draft, [k]: v };
     if (k === 'customer' && !draft.address.trim()) next.address = knownCustomers.get(String(v)) ?? '';
-    if (k === 'spindleId' && v) {
-      const sp = spindles.find((s) => s.id === v);
-      if (sp?.poId && !draft.poId) next.poId = sp.poId;
+    if (k === 'spindleRef') {
+      const sp = findSpindleByRef(String(v ?? ''), spindles);
+      const spPo = sp?.poId ? purchaseOrders.find((p) => p.id === sp.poId) : undefined;
+      if (spPo && !draft.customerPoRef?.trim()) next.customerPoRef = spPo.poNumber;
       if (sp && !draft.customer.trim()) {
         next.customer = sp.customer;
         next.address = draft.address || (knownCustomers.get(sp.customer) ?? '');
@@ -115,6 +124,9 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     }
     setDraft(next);
   };
+
+  const linkedPO = findPOByRef(draft.customerPoRef, purchaseOrders);
+  const linkedSpindle = findSpindleByRef(draft.spindleRef, spindles);
 
   const activeEmployees = employees.filter((e) => e.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
   const empOptions = [{ value: '', label: t('calendar.project.selectEmployee') }, ...activeEmployees.map((e) => ({ value: e.id, label: e.name }))];
@@ -282,19 +294,29 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
               <Field label={t('calendar.project.linkPO')}>
                 {(id) => (
                   <div className="flex gap-2">
-                    <Select id={id} value={draft.poId ?? ''} onChange={(v) => set('poId', v || undefined)} options={[{ value: '', label: t('calendar.project.noLink') }, ...[...purchaseOrders].sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => ({ value: p.id, label: `${p.poNumber} — ${p.customerOrVendor}` }))]} />
-                    {draft.poId && <Button icon={ExternalLink} onClick={() => navigate('/purchase-orders', { open: draft.poId })} aria-label="PO" />}
+                    <Input id={id} name="customerPoRef" value={draft.customerPoRef ?? ''} onChange={(e) => set('customerPoRef', e.target.value)} list="project-po-refs" className="font-mono" autoComplete="off" />
+                    {linkedPO && <Button icon={ExternalLink} onClick={() => navigate('/purchase-orders', { open: linkedPO.id })} aria-label="PO" />}
                   </div>
                 )}
               </Field>
               <Field label={t('calendar.project.linkSpindle')}>
                 {(id) => (
                   <div className="flex gap-2">
-                    <Select id={id} value={draft.spindleId ?? ''} onChange={(v) => set('spindleId', v || undefined)} options={[{ value: '', label: t('calendar.project.noLink') }, ...spindles.map((s) => ({ value: s.id, label: `${s.serialNumber} — ${s.manufacturer} ${s.model}` }))]} />
-                    {draft.spindleId && <Button icon={ExternalLink} onClick={() => navigate('/financial', { open: draft.spindleId })} aria-label="Spindle" />}
+                    <Input id={id} name="spindleRef" value={draft.spindleRef ?? ''} onChange={(e) => set('spindleRef', e.target.value)} list="project-spindle-refs" autoComplete="off" />
+                    {linkedSpindle && <Button icon={ExternalLink} onClick={() => navigate('/financial', { open: linkedSpindle.id })} aria-label="Spindle" />}
                   </div>
                 )}
               </Field>
+              <datalist id="project-po-refs">
+                {[...purchaseOrders].filter((p) => p.kind === 'sales').sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => (
+                  <option key={p.id} value={p.poNumber}>{p.customerOrVendor}</option>
+                ))}
+              </datalist>
+              <datalist id="project-spindle-refs">
+                {spindles.map((s) => (
+                  <option key={s.id} value={s.serialNumber}>{`${s.manufacturer} ${s.model} — ${s.customer}`}</option>
+                ))}
+              </datalist>
             </div>
 
             {!project && (

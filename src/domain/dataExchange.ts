@@ -11,7 +11,7 @@ import { businessDaysBetween, parseISODate, todayISO } from '@/lib/dates';
 import type { AppDatabase, CollectionName } from '@/types/models';
 import { billedValue, weightedValue } from './financial';
 import { lineTotal, poTotal } from './purchasing';
-import { materialStatus } from './schedule';
+import { materialStatus, projectPoRef, projectSpindleRef } from './schedule';
 import { entryMinutes, localDay } from './timeTracking';
 import { reportCheck } from './hoursReport';
 
@@ -58,8 +58,8 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
           End: d(a.endDate),
           'Working days': businessDaysBetween(a.startDate, a.endDate),
           'Project status': p ? label(`enums.projectStatus.${p.status}`) : '',
-          'Customer PO': p?.poId ? (po.get(p.poId)?.poNumber ?? '') : '',
-          'Spindle / motor': p?.spindleId ? (sp.get(p.spindleId)?.serialNumber ?? '') : '',
+          'Customer PO': p ? projectPoRef(p, po) : '',
+          'Spindle / motor': p ? projectSpindleRef(p, sp) : '',
         };
       })
       .sort((x, y) => String(x['Project no.']).localeCompare(String(y['Project no.']))),

@@ -92,8 +92,13 @@ export interface Project {
   status: ProjectStatus;
   /** Cor do retângulo no cronograma (identifica o projeto em várias linhas). */
   color: string;
-  /** PO do cliente que originou o projeto. */
+  /** Nº da PO do cliente — texto livre (fonte da verdade). */
+  customerPoRef?: string;
+  /** Spindle / motor — texto livre (fonte da verdade). */
+  spindleRef?: string;
+  /** Vínculo DERIVADO do texto: PO cadastrada com o mesmo número (se houver). */
   poId?: ID;
+  /** Vínculo DERIVADO do texto: spindle cadastrado com o mesmo nº de série (se houver). */
   spindleId?: ID;
   materials: ProjectMaterial[];
 }

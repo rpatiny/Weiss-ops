@@ -110,7 +110,7 @@ UI (modules/*) ──useCollection()──► Repository<T> ──► StorageDri
 | `User`              | name, email, role `master\|logistics\|office`, pinHash, active                                   | autor de requisições, eventos e GRs        |
 | `PurchaseRequisition` | number (RC-xxxxx), projectId, requestedBy, neededBy, status, items[] (materialId, PN, qtd), history[] | 1 Projeto; N POs via materiais       |
 | `Employee`          | name, role, phone, email, color (hex), status `active\|inactive`                                | 1—N Assignment, 1—N Absence                |
-| `Project`           | projectNumber, customer, address, serviceType, description, status, color, materials[]         | opc. PO do cliente e Spindle; 1—N Assignment |
+| `Project`           | projectNumber, customer, address, serviceType, description, status, color, **customerPoRef, spindleRef (texto livre)**, materials[] | `poId`/`spindleId` derivados do texto (nº igual a PO/nº de série cadastrado); 1—N Assignment |
 | `ProjectMaterial`   | partNumber, description, quantity, status `to_buy\|ordered\|received`, neededBy                 | opc. `poId` + `poLineId` (PO de compra)    |
 | `ProjectAssignment` | projectId, employeeId, startDate, endDate (sempre dias úteis) — a "barra" do cronograma          | N—1 Project, N—1 Employee                  |
 | `Absence`           | employeeId, type `vacation\|leave\|training`, startDate, endDate, note — bloqueia a linha       | N—1 Employee                               |
@@ -194,6 +194,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - **Gerar pedido de compra**: cria uma PO de fornecedor (`PC-xxxxx`) com os materiais selecionados (preço sugerido =
     última compra do mesmo part number) e vincula cada material à sua linha. "Confirmar recebimento" marca a LINHA da PO
     como entregue (data real = hoje) e recalcula o status da PO.
+  - **PO do cliente e Spindle/Motor são texto livre** (`customerPoRef`/`spindleRef`, com sugestões por datalist). Ao salvar,
+    `normalizeProjectDraft` liga `poId`/`spindleId` se o texto for igual a um nº de PO / nº de série cadastrado (botão de link
+    aparece); senão fica só o texto. Exibição via `projectPoRef`/`projectSpindleRef` (bases antigas só têm o vínculo).
   - Deep-link: `#/calendar?open=<projectId>`. Links para `#/purchase-orders?open=<poId>` e `#/financial?open=<spindleId>`
     (telas de destino nas Fases 3/4). Google Maps: link de busca pelo endereço do projeto.
 

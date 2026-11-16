@@ -152,6 +152,8 @@ export function dossierSearchText(d: ProjectDossier): string {
     d.spindle?.model,
     d.spindle?.quoteNumber,
     d.customerPO?.poNumber,
+    d.project.customerPoRef,
+    d.project.spindleRef,
     ...d.purchasePOs.map((p) => p.poNumber),
     ...d.requisitions.map((r) => r.req.number),
     ...d.team.map((e) => e.name),
