@@ -252,6 +252,8 @@ export interface MaterialExtensionRequest {
   /** Referência no SAP ao concluir (ex.: nº do material/solicitação MDG). */
   sapReference?: string;
   history: ExtensionEvent[];
+  /** Quando quem pediu viu a conclusão pela última vez — apaga o número verde. */
+  requesterSeenAt?: string;
 }
 
 // ───────────────────────── Requisição de compra ─────────────────────────

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
+import { unseenExtensionDone } from '@/domain/extensions';
 import { effectiveStatus, needsLogistics, openQty, requisitionItemViews, unseenPOEvents } from '@/domain/requisitions';
 
 /** Pendências do perfil atual (badge no menu): logística = requisições + linhas sem GR. */
@@ -34,4 +35,11 @@ export function useRequesterUpdates(): number {
   const user = useCurrentUser();
   const requisitions = useCollection('requisitions');
   return useMemo(() => (user ? requisitions.filter((r) => r.requestedBy === user.id && unseenPOEvents(r).length > 0).length : 0), [user, requisitions]);
+}
+
+/** Extensões que eu pedi e foram concluídas, ainda não vistas (número verde em Extensões). */
+export function useRequesterExtensionUpdates(): number {
+  const user = useCurrentUser();
+  const extensions = useCollection('extensions');
+  return useMemo(() => (user ? extensions.filter((x) => x.requestedBy === user.id && unseenExtensionDone(x)).length : 0), [user, extensions]);
 }

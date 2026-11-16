@@ -861,6 +861,8 @@ export const de: Dictionary = {
     lastMaster: 'Mindestens ein aktiver Master ist erforderlich.',
   },
   extensions: {
+    doneTag: 'Erledigt',
+    newDone: '{count} Ihrer Erweiterungsanfragen wurde erledigt || {count} Ihrer Erweiterungsanfragen wurden erledigt',
     title: 'Materialerweiterungen',
     description: 'Anträge, Materialien, die bereits in einem anderen Werk (z. B. Deutschland) existieren, in SAP auf das Werk {plant} zu erweitern.',
     banner: 'Ohne Erweiterung auf {plant} kann die Logistik keine Bestellung in SAP anlegen. Beantragen Sie die Erweiterung, sobald das Material feststeht.',

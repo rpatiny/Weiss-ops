@@ -230,6 +230,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     `missing` / `unknown` (sem dados → sem alerta).
   - Fluxo: qualquer perfil com `extension.request` pede (EXT-xxxxx) → logística/master (`extension.process`) inicia e conclui
     com referência SAP → a planta destino é adicionada ao catálogo (cria o material se não existir). Histórico e comentários.
+  - **Número verde para quem pediu** (`useRequesterExtensionUpdates`): pedidos do usuário concluídos (`extended`) com evento
+    mais novo que `requesterSeenAt`; abrir o pedido apaga a novidade. Aparecem no topo da lista com a etiqueta "Concluída".
   - `PlantBadge` mostra "Não estendido para UK01" + "Pedir extensão" (ou "EXT-… em andamento") em materiais do projeto,
     itens de requisição, catálogo e no assistente. No "Registrar PO do SAP" itens sem extensão vêm desmarcados com aviso.
 - **Nova requisição pela tela de Compras** (`RequisitionWizardDrawer`): projeto → materiais "A comprar" (ou adicionar novos,

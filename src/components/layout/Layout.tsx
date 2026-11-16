@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Cog, Languages, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts, usePendingExtensions, useRequesterUpdates } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
@@ -51,7 +51,7 @@ function NavLink({ item, active, onNavigate, badge, goodBadge }: { item: NavItem
       <Icon className={cn('size-[18px] shrink-0', active ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300')} />
       <span className="truncate">{t(item.labelKey)}</span>
       {goodBadge ? (
-        <span className="ml-auto rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white tabular-nums" title={t('process.newPOs', { count: goodBadge })}>
+        <span className="ml-auto rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white tabular-nums" title={item.path === '/extensions' ? t('extensions.newDone', { count: goodBadge }) : t('process.newPOs', { count: goodBadge })}>
           {goodBadge}
         </span>
       ) : null}
@@ -98,6 +98,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const pending = usePendingCounts();
   const pendingExt = usePendingExtensions();
   const myUpdates = useRequesterUpdates();
+  const myExtUpdates = useRequesterExtensionUpdates();
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 py-5">
@@ -106,7 +107,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
         <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : undefined} />
+          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined} />
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">

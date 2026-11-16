@@ -864,6 +864,8 @@ export const pt = {
     lastMaster: 'É preciso manter ao menos um Master ativo.',
   },
   extensions: {
+    doneTag: 'Concluída',
+    newDone: '{count} extensão sua foi concluída || {count} extensões suas foram concluídas',
     title: 'Extensões de material',
     description: 'Pedidos para estender no SAP materiais que já existem em outra planta (ex.: Alemanha) para a planta {plant}.',
     banner: 'Sem a extensão para {plant}, a logística não consegue criar a PO no SAP. Peça a extensão assim que identificar o material.',

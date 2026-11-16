@@ -861,6 +861,8 @@ export const en: Dictionary = {
     lastMaster: 'At least one active Master is required.',
   },
   extensions: {
+    doneTag: 'Completed',
+    newDone: '{count} of your extension requests was completed || {count} of your extension requests were completed',
     title: 'Material extensions',
     description: 'Requests to extend in SAP materials that already exist in another plant (e.g. Germany) to plant {plant}.',
     banner: 'Without the extension to {plant}, logistics cannot create the PO in SAP. Request the extension as soon as you identify the material.',

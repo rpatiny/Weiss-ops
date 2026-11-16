@@ -62,7 +62,18 @@ function addEvent(id: string, userId: string, action: ExtensionEvent['action'], 
   if (x) repos.extensions.update(id, { history: [...x.history, { at: nowStamp(), userId, action, note }] });
 }
 
+/** Conclusão (extensão feita no SAP) que quem pediu ainda não viu — número verde no menu. */
+export const unseenExtensionDone = (x: MaterialExtensionRequest) =>
+  x.status === 'extended' && x.history.some((h) => h.action === 'extended' && h.at > (x.requesterSeenAt ?? ''));
+
 export const extensionService = {
+  /** Quem pediu abriu o pedido concluído: a novidade deixa de contar no número verde. */
+  markSeenByRequester(id: string): void {
+    const user = getCurrentUser();
+    const x = repos.extensions.getById(id);
+    if (!user || !x || x.requestedBy !== user.id || !unseenExtensionDone(x)) return;
+    repos.extensions.update(id, { requesterSeenAt: nowStamp() });
+  },
   create(d: ExtensionDraft): MaterialExtensionRequest {
     const user = assertCan('extension.request');
     const x: MaterialExtensionRequest = {

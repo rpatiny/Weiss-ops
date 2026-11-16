@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Ban, CheckCircle2, Globe2, Loader, MessageSquare, PackageX, Play, Send, Inbox } from 'lucide-react';
 import { clearParams, navigate, useRoute } from '@/app/router';
-import { useCan } from '@/app/session';
+import { useCan, useCurrentUser } from '@/app/session';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
@@ -10,7 +10,7 @@ import { EmptyState, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { repos } from '@/data/db';
 import { useCollection } from '@/data/hooks';
-import { extensionService, isExtensionOpen, plantState } from '@/domain/extensions';
+import { extensionService, isExtensionOpen, plantState, unseenExtensionDone } from '@/domain/extensions';
 import { useI18n } from '@/i18n';
 import { HOME_PLANT } from '@/lib/config';
 import { cn } from '@/lib/cn';
@@ -27,6 +27,7 @@ export function ExtensionsPage() {
   const pd = usePurchasingData();
   const extensions = useCollection('extensions');
   const users = useCollection('users');
+  const me = useCurrentUser();
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const [creating, setCreating] = useState<ExtensionPrefill | null>(null);
   const [detail, setDetail] = useState<string>();
@@ -55,9 +56,11 @@ export function ExtensionsPage() {
     return out;
   }, [pd, extensions]);
 
+  // Concluídas que eu pedi e ainda não vi: no topo e visíveis mesmo no filtro "em aberto".
+  const isNew = (x: (typeof extensions)[number]) => x.requestedBy === me?.id && unseenExtensionDone(x);
   const rows = extensions
-    .filter((x) => filter === 'all' || isExtensionOpen(x))
-    .sort((a, b) => Number(isExtensionOpen(b)) - Number(isExtensionOpen(a)) || b.requestedAt.localeCompare(a.requestedAt));
+    .filter((x) => filter === 'all' || isExtensionOpen(x) || isNew(x))
+    .sort((a, b) => Number(isNew(b)) - Number(isNew(a)) || Number(isExtensionOpen(b)) - Number(isExtensionOpen(a)) || b.requestedAt.localeCompare(a.requestedAt));
   const since = addDays(pd.today, -30);
   const done30 = extensions.filter((x) => x.status === 'extended' && x.history.some((h) => h.action === 'extended' && h.at.slice(0, 10) >= since)).length;
 
@@ -156,7 +159,10 @@ export function ExtensionsPage() {
                   return (
                     <tr key={x.id} onClick={() => setDetail(x.id)} className={cn('cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40', isExtensionOpen(x) && 'bg-indigo-50/40 dark:bg-indigo-950/10')}>
                       <td className="td">
-                        <p className="font-mono font-semibold">{x.number}</p>
+                        <p className="flex items-center gap-1.5 font-mono font-semibold">
+                          {x.number}
+                          {isNew(x) && <span className="rounded-full bg-green-500 px-1.5 py-0.5 font-sans text-[10px] font-bold text-white">{t('extensions.doneTag')}</span>}
+                        </p>
                         <p className="text-xs text-slate-500">{formatDate(x.requestedAt)}</p>
                       </td>
                       <td className="td">
@@ -206,6 +212,11 @@ function ExtensionDetailDrawer({ id, onClose }: { id?: string; onClose: () => vo
   const [rejecting, setRejecting] = useState(false);
   const [reasonError, setReasonError] = useState(false);
   const [comment, setComment] = useState('');
+  // Quem pediu abriu o pedido concluído: apaga o número verde.
+  const unseen = !!x && unseenExtensionDone(x);
+  useEffect(() => {
+    if (id && unseen) extensionService.markSeenByRequester(id);
+  }, [id, unseen]);
 
   if (!x) return null;
   const project = projects.find((p) => p.id === x.projectId);
