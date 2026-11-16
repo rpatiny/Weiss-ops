@@ -281,6 +281,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     `exportEmployeeHoursReport`: Resumo, Por_Projeto, Apontamentos). Todos só com projetos concluídos.
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
     Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
+- **Tela da TV** (`#/tv`, `#/tv?view=biweekly`, `modules/tv/TvBoard.tsx`): rota da equipe só leitura para a TV da oficina,
+  sem login, sem aviso modal; dias úteis × colaboradores ativos, hoje destacado, férias hachuradas, barra com anel verde
+  + "● fase" quando o técnico está marcando horas naquele projeto; rodapé "Agora na oficina" (flags). Tudo em vh/vw
+  (cabe numa TV 1080p sem rolagem); relógio a cada 20 s; recarrega sozinha a cada 6 h. Botão "Tela da TV" em Agenda & Rotas.
 - **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.
 
 - **Hub Financeiro** (`domain/financial.ts`, permissão `financial.edit` = Master e Office; Logística só lê):

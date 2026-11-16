@@ -415,6 +415,19 @@ export const de: Dictionary = {
     },
   },
 
+  tv: {
+    title: 'Team-Einsatzplan',
+    week: 'Woche',
+    biweekly: 'Zwei Wochen',
+    today: 'Heute',
+    now: 'Jetzt in der Werkstatt',
+    nobody: 'Gerade ist niemand in der Werkstatt eingestempelt.',
+    open: 'TV-Ansicht',
+    openHint: 'Öffnet den Team-Einsatzplan im Vollbild für den Werkstatt-Fernseher (ohne Anmeldung). Am TV F11 drücken.',
+    week1: 'Woche',
+    week2: 'Zwei Wochen',
+  },
+
   calendar: {
     title: 'Touren & Kalender',
     description: 'Projektplan je Mitarbeiter. Wochenenden zählen nicht als Arbeitstage.',

@@ -418,6 +418,19 @@ export const pt = {
     },
   },
 
+  tv: {
+    title: 'Rota da equipe',
+    week: 'Semana',
+    biweekly: 'Quinzena',
+    today: 'Hoje',
+    now: 'Agora na oficina',
+    nobody: 'Ninguém marcando horas na oficina agora.',
+    open: 'Tela da TV',
+    openHint: 'Abre a rota da equipe em tela cheia para a TV da oficina (sem login). Pressione F11 na TV.',
+    week1: 'Semana',
+    week2: 'Quinzena',
+  },
+
   calendar: {
     title: 'Agenda & Rotas',
     description: 'Cronograma de projetos por colaborador. Fins de semana não contam como dias de trabalho.',

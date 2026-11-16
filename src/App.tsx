@@ -8,6 +8,7 @@ import { PurchaseOrdersPage } from '@/modules/purchasing/PurchaseOrdersPage';
 import { ExtensionsPage } from '@/modules/extensions/ExtensionsPage';
 import { ProjectsPage } from '@/modules/projects/ProjectsPage';
 import { ClockPage } from '@/modules/clock/ClockPage';
+import { TvBoard } from '@/modules/tv/TvBoard';
 import { TimesheetPage } from '@/modules/timesheet/TimesheetPage';
 import { lazy, Suspense } from 'react';
 
@@ -30,6 +31,7 @@ function Page({ path }: { path: RoutePath }) {
     case '/timesheet':
       return <TimesheetPage />;
     case '/clock':
+    case '/tv':
       return null;
     case '/extensions':
       return <ExtensionsPage />;
@@ -47,6 +49,8 @@ export default function App() {
   const user = useCurrentUser();
   // Ponto da oficina (QR code): tela própria, sem login no app.
   if (path === '/clock') return <ClockPage />;
+  // Tela da TV da oficina: só leitura, sem login.
+  if (path === '/tv') return <TvBoard />;
   if (!user) return <LoginScreen />;
   return (
     <Layout>

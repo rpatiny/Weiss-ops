@@ -415,6 +415,19 @@ export const en: Dictionary = {
     },
   },
 
+  tv: {
+    title: 'Team schedule',
+    week: 'Week',
+    biweekly: 'Two weeks',
+    today: 'Today',
+    now: 'In the workshop now',
+    nobody: 'Nobody clocked in at the workshop right now.',
+    open: 'TV screen',
+    openHint: 'Opens the team schedule full screen for the workshop TV (no login). Press F11 on the TV.',
+    week1: 'Week',
+    week2: 'Two weeks',
+  },
+
   calendar: {
     title: 'Schedule & Routes',
     description: 'Project schedule per employee. Weekends do not count as working days.',

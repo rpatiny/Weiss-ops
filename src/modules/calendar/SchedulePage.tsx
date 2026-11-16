@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, FolderKanban, Package, Palmtree, Plus, Users, X } from 'lucide-react';
+import { AlertTriangle, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, FolderKanban, Package, Palmtree, Plus, Users, X, Tv } from 'lucide-react';
 import { clearParams, useRoute } from '@/app/router';
 import { useCan } from '@/app/session';
 import { Button } from '@/components/ui/Button';
@@ -168,6 +168,11 @@ export function SchedulePage() {
         description={t('calendar.description')}
         actions={
           <>
+            <a href={`#/tv${view === 'biweekly' ? '?view=biweekly' : ''}`} target="_blank" rel="noreferrer" title={t('tv.openHint')}>
+              <Button icon={Tv} tabIndex={-1}>
+                {t('tv.open')}
+              </Button>
+            </a>
             <Button icon={Palmtree} onClick={() => setAbsenceDrawer({})}>
               {t('calendar.absences')}
             </Button>
