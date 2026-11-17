@@ -283,12 +283,26 @@ export interface MaterialExtensionRequest {
 export type RequisitionStatus =
   | 'submitted'
   | 'quoting'
+  /** Todos os itens com fornecedor escolhido e preço — pronto para a Logística registrar a PO. */
+  | 'quoted'
   | 'partially_ordered'
   | 'ordered'
   | 'partially_received'
   | 'received'
   | 'rejected'
   | 'canceled';
+
+/** Fornecedor de um item do pedido: RFQ enviado e cotação recebida (a cotação também vai para o catálogo). */
+export interface RequisitionSupplier {
+  supplierId: ID;
+  rfqSentAt?: string;
+  price?: number;
+  leadTimeDays?: number;
+  validUntil?: ISODate;
+  quoteRef?: string;
+  quotedAt?: string;
+  quotedBy?: ID;
+}
 
 export interface RequisitionItem {
   id: ID;
@@ -297,12 +311,16 @@ export interface RequisitionItem {
   partNumber: string;
   description: string;
   quantity: number;
+  /** Fornecedores do item (o Office informa pelo menos um). Pedidos antigos podem não ter. */
+  suppliers?: RequisitionSupplier[];
+  /** Fornecedor escolhido (cotação vencedora) — vai para a PO. */
+  chosenSupplierId?: ID;
 }
 
 export interface RequisitionEvent {
   at: string;
   userId: ID;
-  action: 'submitted' | 'quoting' | 'po_registered' | 'gr_registered' | 'rejected' | 'canceled' | 'comment';
+  action: 'submitted' | 'quoting' | 'rfq_sent' | 'quote_received' | 'supplier_chosen' | 'po_registered' | 'gr_registered' | 'rejected' | 'canceled' | 'comment';
   note: string;
 }
 

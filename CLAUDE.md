@@ -278,6 +278,20 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     mais novo que `requesterSeenAt`; abrir o pedido apaga a novidade. Aparecem no topo da lista com a etiqueta "Concluída".
   - `PlantBadge` mostra "Não estendido para UK01" + "Pedir extensão" (ou "EXT-… em andamento") em materiais do projeto,
     itens de requisição, catálogo e no assistente. No "Registrar PO do SAP" itens sem extensão vêm desmarcados com aviso.
+- **Pedido de compra redesenhado (17/11/2026)** — etapas ① Pedido → ② Cotação → ③ Fornecedor escolhido → ④ PO no SAP → ⑤ GR
+  (`STAGES`/`stageOf` em `domain/requisitions.ts`; status `quoted` = todos os itens com fornecedor escolhido e preço):
+  - **Formulário único** (`RequisitionWizardDrawer`, também aberto pela aba Materiais via `NewRequisitionDrawer`): projeto → itens →
+    **fornecedor obrigatório por item** (`ItemSuppliersPicker`: busca no cadastro ou fornecedor novo com nome + e-mail → `ensureSupplier`;
+    sugestão = ofertas do catálogo) e opção **"Já tenho cotação"** (Office informa preço/prazo/ref. ⇒ vira o escolhido; a Logística só faz a PO).
+  - **Tela inteira do pedido** (`process/RequisitionPage.tsx`, `#/purchase-orders?req=<id>`, botão "All requests"): etapas, "Próximo passo",
+    **Fornecedores & RFQ** (um `mailto:` por fornecedor com todos os itens — `rfqMailto`; clicar grava `rfqSentAt`), **cotações por item**
+    (status RFQ, preço/un., total, prazo, validade, ref.; "Melhor preço"; "Escolher"; lançar/editar cotação; adicionar fornecedor), botões
+    **"Registrar PO do SAP — <fornecedor>"** (abre `RegisterPODrawer` já com fornecedor escolhido e preços cotados), Entregas (GR), recusar/
+    cancelar, histórico + comentários. Cotações vão também para o catálogo (`mirrorQuote`/`mirrorRequested`). Logística edita; Office só lê.
+  - **Lista** (`RequisitionsTab` em `ProcessTabs.tsx`): por **data do pedido** (mais novos/mais antigos, `ui:purchasing.reqSort`), chips por
+    etapa com contagem, filtros solicitante/projeto/fornecedor/período + busca; mini-barra de etapas por linha.
+  - Página de Compras: só **3 KPIs** (Aguardando cotação · Aguardando PO · Aguardando entrega); "Purchase requisitions" é a aba principal e as
+    demais ficam menores após "More". Migração `migrateRequisitionSuppliers` preenche fornecedores de pedidos antigos pelo catálogo/PO.
 - **Nova requisição pela tela de Compras** (`RequisitionWizardDrawer`): projeto → materiais "A comprar" (ou adicionar novos,
   com descrição sugerida pelo catálogo) → necessário até/observações → enviar.
 - **Drawer/Modal isolam eventos** (`submit`, `click`, `pointerdown`) do portal: no React, eventos de portais sobem pela árvore

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ClipboardCheck, ClipboardList, FileInput, PackageCheck, Plus, Search, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, ClipboardList, FileCheck2, FileInput, PackageCheck, Plus, Search } from 'lucide-react';
 import { useCan, useCurrentUser } from '@/app/session';
 import { useCollection } from '@/data/hooks';
-import { effectiveStatus, needsLogistics, openQty, requisitionItemViews } from '@/domain/requisitions';
+import { effectiveStatus, openQty, requisitionItemViews } from '@/domain/requisitions';
 import { GRDrawer } from './process/GRDrawer';
 import { RequisitionWizardDrawer } from './process/RequisitionWizardDrawer';
 import { ExtensionFormDrawer } from '@/modules/extensions/ExtensionFormDrawer';
 import { FilePlus2, Globe2 } from 'lucide-react';
-import { ReceivingTab, RequisitionsTab } from './process/ProcessTabs';
+import { ReceivingTab, RequisitionsTab, type StageFilter } from './process/ProcessTabs';
+import { RequisitionPage } from './process/RequisitionPage';
 import { clearParams, useRoute } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -15,11 +16,10 @@ import { Select } from '@/components/ui/Field';
 import { EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { repos } from '@/data/db';
 import { enumOptions } from '@/domain/labels';
-import { isLineLate, isPOActive, isProjectActive, normPN, poTotal, quoteState } from '@/domain/purchasing';
+import { isLineLate, poTotal } from '@/domain/purchasing';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
-import { addDays } from '@/lib/dates';
-import { formatCurrency, formatCurrencyCompact, formatDate } from '@/lib/format';
+import { formatCurrency, formatDate } from '@/lib/format';
 import { usePersistentState } from '@/lib/usePersistentState';
 import type { POKind, POStatus } from '@/types/models';
 import { CatalogTab } from './CatalogTab';
@@ -41,11 +41,16 @@ export function PurchaseOrdersPage() {
   const requisitions = useCollection('requisitions');
   // Office só cria/acompanha requisições e vê a prontidão; o resto das abas é trabalho da Logística.
   const visibleTabs: Tab[] = user?.role === 'office' ? ['requisitions', 'readiness'] : TABS;
-  const [savedTab, setSavedTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, user?.role === 'master' ? 'orders' : 'requisitions', isTab);
+  const [savedTab, setSavedTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, 'requisitions', isTab);
   const tab: Tab = visibleTabs.includes(savedTab) ? savedTab : visibleTabs[0]!;
   const setTab = (x: Tab) => visibleTabs.includes(x) && setSavedTab(x);
   const [drawer, setDrawer] = useState<{ id?: string } | null>(null);
-  const [reqOpen, setReqOpen] = useState<string>();
+  const [reqOpen, setReqOpenState] = useState<string>();
+  const [stage, setStage] = usePersistentState<StageFilter>('purchasing.reqStage', 'open');
+  const setReqOpen = (id?: string) => {
+    setReqOpenState(id);
+    window.scrollTo({ top: 0 });
+  };
   const [grPo, setGrPo] = useState<string>();
   const [wizard, setWizard] = useState(false);
   const [extForm, setExtForm] = useState(false);
@@ -76,31 +81,29 @@ export function PurchaseOrdersPage() {
     clearParams('open');
   }, [openParam]);
 
-  // ───── KPIs ─────
-  const in7 = addDays(pd.today, 7);
+  // ───── KPIs: as 3 perguntas da Logística ─────
   const kpi = useMemo(() => {
-    const active = pd.purchaseOrders.filter(isPOActive);
-    const openLines = pd.purchaseOrders.filter((p) => p.status !== 'canceled').flatMap((p) => p.lines.filter((l) => l.status !== 'delivered' && l.status !== 'canceled'));
-    const toBuyItems = [...pd.demand.values()].flat().filter((d) => d.view.status === 'to_buy');
-    const notQuoted = new Set(toBuyItems.filter((d) => quoteState(pd.catalogByPN.get(normPN(d.material.partNumber)), pd.today) === 'not_quoted').map((d) => d.material.partNumber)).size;
-    const horizon = addDays(pd.today, 14);
-    const notReady = pd.projects.filter((p) => {
-      if (!isProjectActive(p)) return false;
-      const start = pd.starts.get(p.id);
-      return !!start && start <= horizon && pd.readinessOf(p).status !== 'ready';
-    }).length;
+    const statuses = requisitions.map((r) => effectiveStatus(r, requisitionItemViews(r, pd.projects.find((p) => p.id === r.projectId), pd.poById)));
+    const pendingGR = pd.purchaseOrders.filter((p) => p.kind === 'purchase' && p.status !== 'canceled').flatMap((p) => p.lines).filter((l) => l.status !== 'canceled' && openQty(l) > 0);
     return {
-      open: active.length,
-      openValue: active.reduce((s, p) => s + poTotal(p), 0),
-      due7: openLines.filter((l) => l.expectedDeliveryDate >= pd.today && l.expectedDeliveryDate <= in7).length,
-      late: openLines.filter((l) => isLineLate(l, pd.today)).length,
-      toBuy: toBuyItems.length,
-      notQuoted,
-      notReady,
-      pendingReq: requisitions.filter((r) => needsLogistics(effectiveStatus(r, requisitionItemViews(r, pd.projects.find((p) => p.id === r.projectId), pd.poById)))).length,
-      pendingGR: pd.purchaseOrders.filter((p) => p.kind === 'purchase' && p.status !== 'canceled').flatMap((p) => p.lines).filter((l) => l.status !== 'canceled' && openQty(l) > 0),
+      awaitingQuote: statuses.filter((s) => s === 'submitted' || s === 'quoting').length,
+      awaitingPO: statuses.filter((s) => s === 'quoted' || s === 'partially_ordered').length,
+      pendingGR: pendingGR.length,
+      lateGR: pendingGR.filter((l) => l.expectedDeliveryDate < pd.today).length,
     };
-  }, [pd, in7, requisitions]);
+  }, [pd, requisitions]);
+  const goStage = (s: StageFilter) => {
+    setReqOpen(undefined);
+    setTab('requisitions');
+    setStage(s);
+  };
+
+  if (reqOpen && tab === 'requisitions')
+    return (
+      <>
+        <RequisitionPage requisitionId={reqOpen} onBack={() => setReqOpen(undefined)} />
+      </>
+    );
 
   return (
     <>
@@ -129,33 +132,33 @@ export function PurchaseOrdersPage() {
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-        <StatCard label={t('process.kpi.pendingRequisitions')} value={kpi.pendingReq} icon={FileInput} tone={kpi.pendingReq ? 'info' : 'default'} hint={t('process.kpi.pendingRequisitionsHint')} onClick={() => setTab('requisitions')} />
-        <StatCard label={t('process.kpi.pendingGR')} value={kpi.pendingGR.length} icon={PackageCheck} tone={kpi.pendingGR.some((l) => l.expectedDeliveryDate < pd.today) ? 'danger' : 'default'} hint={t('process.kpi.pendingGRHint', { late: kpi.pendingGR.filter((l) => l.expectedDeliveryDate < pd.today).length })} onClick={() => setTab('receiving')} />
-        <StatCard label={t('purchasing.kpi.open')} value={kpi.open} icon={ClipboardList} tone="info" hint={t('purchasing.kpi.openHint', { value: formatCurrencyCompact(kpi.openValue) })} onClick={() => setTab('orders')} />
-        <StatCard label={t('purchasing.kpi.late')} value={kpi.late} icon={AlertTriangle} tone={kpi.late ? 'danger' : 'default'} hint={t('purchasing.kpi.lateHint')} onClick={() => setTab('orders')} />
-        <StatCard label={t('purchasing.kpi.toBuy')} value={kpi.toBuy} icon={ShoppingCart} tone={kpi.toBuy ? 'warning' : 'default'} hint={t('purchasing.kpi.notQuoted', { count: kpi.notQuoted })} onClick={() => setTab('materials')} />
-        <StatCard label={t('purchasing.kpi.notReady')} value={kpi.notReady} icon={ClipboardCheck} tone={kpi.notReady ? 'danger' : 'success'} hint={t('purchasing.kpi.notReadyHint')} onClick={() => setTab('readiness')} />
+      <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+        <StatCard label={t('process.kpi.awaitingQuote')} value={kpi.awaitingQuote} icon={FileInput} tone={kpi.awaitingQuote ? 'info' : 'default'} hint={t('process.kpi.awaitingQuoteHint')} onClick={() => goStage('quoting')} />
+        <StatCard label={t('process.kpi.awaitingPO')} value={kpi.awaitingPO} icon={FileCheck2} tone={kpi.awaitingPO ? 'warning' : 'default'} hint={t('process.kpi.awaitingPOHint')} onClick={() => goStage('quoted')} />
+        <StatCard label={t('process.kpi.awaitingGR')} value={kpi.pendingGR} icon={PackageCheck} tone={kpi.lateGR ? 'danger' : 'default'} hint={t('process.kpi.awaitingGRHint', { late: kpi.lateGR })} onClick={() => setTab('receiving')} />
       </div>
 
       <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800" role="tablist">
-        {visibleTabs.map((x) => (
-          <button
-            key={x}
-            role="tab"
-            aria-selected={tab === x}
-            onClick={() => setTab(x)}
-            className={cn(
-              '-mb-px border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors',
-              tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
-            )}
-          >
-            {x === 'requisitions' || x === 'receiving' ? t(`process.tabs.${x}`) : t(`purchasing.tabs.${x}`)}
-          </button>
+        {visibleTabs.map((x, i) => (
+          <div key={x} className="flex items-center">
+            {i === 1 && <span className="mx-2 hidden text-[10px] font-semibold tracking-wider text-slate-400 uppercase sm:inline">{t('process.more')}</span>}
+            <button
+              role="tab"
+              aria-selected={tab === x}
+              onClick={() => setTab(x)}
+              className={cn(
+                '-mb-px border-b-2 py-2 whitespace-nowrap transition-colors',
+                i === 0 ? 'px-4 text-sm font-semibold' : 'px-3 text-xs font-medium',
+                tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+              )}
+            >
+              {x === 'requisitions' || x === 'receiving' ? t(`process.tabs.${x}`) : t(`purchasing.tabs.${x}`)}
+            </button>
+          </div>
         ))}
       </div>
 
-      {tab === 'requisitions' && <RequisitionsTab openId={reqOpen} onOpenChange={setReqOpen} />}
+      {tab === 'requisitions' && <RequisitionsTab stage={stage} onStage={setStage} onOpen={setReqOpen} />}
       {tab === 'orders' && <OrdersTab onOpen={(id) => setDrawer({ id })} />}
       {tab === 'receiving' && <ReceivingTab />}
       {tab === 'materials' && <CatalogTab />}

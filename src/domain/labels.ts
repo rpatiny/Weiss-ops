@@ -48,7 +48,7 @@ export const ENUM_TONES: { [K in EnumKind]: Record<EnumValues[K], Tone> } = {
   serviceType: { site_visit: 'blue', pickup: 'amber', delivery: 'green', bench_repair: 'violet', installation: 'cyan' },
   projectStatus: { planned: 'slate', in_progress: 'blue', completed: 'green', canceled: 'red' },
   materialStatus: { to_buy: 'red', requested: 'violet', ordered: 'amber', received: 'green' },
-  requisitionStatus: { submitted: 'blue', quoting: 'amber', partially_ordered: 'orange', ordered: 'cyan', partially_received: 'violet', received: 'green', rejected: 'red', canceled: 'slate' },
+  requisitionStatus: { submitted: 'blue', quoting: 'amber', quoted: 'cyan', partially_ordered: 'orange', ordered: 'cyan', partially_received: 'violet', received: 'green', rejected: 'red', canceled: 'slate' },
   extensionStatus: { requested: 'blue', in_progress: 'violet', extended: 'green', rejected: 'red' },
   userRole: { master: 'violet', logistics: 'cyan', office: 'amber' },
   absenceType: { vacation: 'cyan', leave: 'slate', training: 'violet' },

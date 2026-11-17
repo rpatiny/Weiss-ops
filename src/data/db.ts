@@ -208,6 +208,30 @@ function migrateClientsAndCustomerPOs(): void {
   }
 }
 
+function migrateRequisitionSuppliers(): void {
+  const pn = (x: string) => x.trim().toUpperCase().replace(/\s+/g, '');
+  const today = new Date().toISOString().slice(0, 10);
+  const catalog = repos.materials.getAll();
+  for (const pr of repos.requisitions.getAll()) {
+    if (pr.items.every((it) => it.suppliers !== undefined)) continue;
+    const project = repos.projects.getById(pr.projectId);
+    const items = pr.items.map((it) => {
+      if (it.suppliers !== undefined) return it;
+      const cm = catalog.find((m) => it.partNumber && pn(m.partNumber) === pn(it.partNumber));
+      const suppliers = (cm?.offers ?? []).map((o) =>
+        o.quoteStatus === 'received' && o.quotedPrice !== undefined && (!o.validUntil || o.validUntil >= today)
+          ? { supplierId: o.supplierId, price: o.quotedPrice, leadTimeDays: o.leadTimeDays, validUntil: o.validUntil, quotedAt: o.quoteDate }
+          : { supplierId: o.supplierId, ...(o.quoteStatus === 'requested' ? { rfqSentAt: o.quoteDate ?? pr.requestedAt } : {}) },
+      );
+      const mat = project?.materials.find((m) => m.id === it.materialId);
+      const po = mat?.poId ? repos.purchaseOrders.getById(mat.poId) : undefined;
+      if (po?.supplierId && !suppliers.some((s) => s.supplierId === po.supplierId)) suppliers.push({ supplierId: po.supplierId });
+      return { ...it, suppliers, chosenSupplierId: po?.supplierId ?? it.chosenSupplierId };
+    });
+    repos.requisitions.update(pr.id, { items });
+  }
+}
+
 export const db = {
   /**
    * Popula com dados de demonstração no primeiro acesso. Se a base local tiver um
@@ -334,6 +358,8 @@ export const db = {
       }
       // Projetos já concluídos vão para o arquivo (uma vez; recuperados têm archived=false e ficam).
       for (const p of repos.projects.getAll()) if (p.status === 'completed' && p.archived === undefined) repos.projects.update(p.id, { archived: true, archivedAt: new Date().toISOString() });
+      // Pedidos de compra antigos: fornecedores por item vêm do catálogo (cotação válida vira preço) e da PO já registrada.
+      migrateRequisitionSuppliers();
       // Cadastro único de clientes + PO do cliente dentro do projeto (bases criadas antes destas mudanças).
       migrateClientsAndCustomerPOs();
       // Textos da demonstração antiga em português → inglês (só valores ainda idênticos aos originais).

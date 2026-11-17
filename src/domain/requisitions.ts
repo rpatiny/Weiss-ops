@@ -9,7 +9,11 @@ import type { TranslationKey } from '@/i18n/types';
 import { todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
 import type {
+  CatalogMaterial,
   GoodsReceipt,
+  RequisitionItem,
+  RequisitionSupplier,
+  SupplierOffer,
   POLineItem,
   Project,
   PurchaseOrder,
@@ -17,7 +21,7 @@ import type {
   RequisitionEvent,
   RequisitionStatus,
 } from '@/types/models';
-import { derivePOStatus } from './purchasing';
+import { derivePOStatus, normPN } from './purchasing';
 import { materialStatus } from './schedule';
 
 const nowStamp = () => new Date().toISOString().slice(0, 19);
@@ -50,7 +54,54 @@ export function effectiveStatus(pr: PurchaseRequisition, views: readonly Requisi
   if (received > 0) return 'partially_received';
   if (n && ordered === n) return 'ordered';
   if (ordered > 0) return 'partially_ordered';
-  return pr.status === 'quoting' ? 'quoting' : 'submitted';
+  // Cotação: todos os itens com fornecedor escolhido e preço ⇒ pronto para a PO (o Office pode já mandar assim).
+  if (n && pr.items.every((it) => chosenQuote(it)?.price !== undefined)) return 'quoted';
+  const anyQuoteWork = pr.items.some((it) => (it.suppliers ?? []).some((s) => s.rfqSentAt || s.price !== undefined));
+  return pr.status === 'quoting' || anyQuoteWork ? 'quoting' : 'submitted';
+}
+
+/** Cotação do fornecedor escolhido de um item. */
+export const chosenQuote = (it: RequisitionItem) => (it.chosenSupplierId ? (it.suppliers ?? []).find((s) => s.supplierId === it.chosenSupplierId) : undefined);
+
+/** Melhor cotação de um item: menor preço; empate ⇒ menor prazo. */
+export function bestQuote(it: RequisitionItem): RequisitionSupplier | undefined {
+  return (it.suppliers ?? [])
+    .filter((s) => s.price !== undefined)
+    .sort((a, b) => a.price! - b.price! || (a.leadTimeDays ?? 9999) - (b.leadTimeDays ?? 9999))[0];
+}
+
+/** Ordem das etapas do pedido (barra de progresso da tela). */
+export const STAGES = ['submitted', 'quoting', 'quoted', 'ordered', 'received'] as const;
+export type Stage = (typeof STAGES)[number];
+export function stageOf(s: RequisitionStatus): Stage | 'closed' {
+  if (s === 'rejected' || s === 'canceled') return 'closed';
+  if (s === 'partially_ordered' || s === 'ordered' || s === 'partially_received') return s === 'partially_received' ? 'ordered' : 'ordered';
+  return s as Stage;
+}
+
+/** E-mail de pedido de cotação (RFQ) para um fornecedor — itens dele, quantidades e prazo. */
+export function rfqMailto(pr: PurchaseRequisition, supplierId: string): string {
+  const sup = repos.suppliers.getById(supplierId);
+  const project = repos.projects.getById(pr.projectId);
+  const items = pr.items.filter((it) => (it.suppliers ?? []).some((s) => s.supplierId === supplierId));
+  const lines = items.map((it) => `- ${it.partNumber ? `${it.partNumber} — ` : ''}${it.description} × ${it.quantity}`);
+  const subject = `RFQ ${pr.number}${project ? ` — ${project.projectNumber}` : ''}`;
+  const body = [
+    `Hello${sup?.contactName ? ` ${sup.contactName}` : ''},`,
+    '',
+    'Please send us your best price and lead time for:',
+    '',
+    ...lines,
+    '',
+    pr.neededBy ? `Needed by: ${pr.neededBy.split('-').reverse().join('/')}` : '',
+    `Our reference: ${pr.number}`,
+    '',
+    'Thank you,',
+    'Weiss UK — Logistics',
+  ]
+    .filter((l, i, a) => !(l === '' && a[i - 1] === ''))
+    .join('\n');
+  return `mailto:${encodeURIComponent(sup?.email ?? '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 /** Requisições que exigem ação da logística. */
@@ -61,7 +112,7 @@ export const unseenPOEvents = (pr: PurchaseRequisition) => pr.history.filter((h)
 export const unseenRejection = (pr: PurchaseRequisition) =>
   pr.status === 'rejected' && pr.history.some((h) => h.action === 'rejected' && h.at > (pr.requesterSeenAt ?? ''));
 
-export const needsLogistics = (s: RequisitionStatus) => s === 'submitted' || s === 'quoting' || s === 'partially_ordered';
+export const needsLogistics = (s: RequisitionStatus) => s === 'submitted' || s === 'quoting' || s === 'quoted' || s === 'partially_ordered';
 
 export function nextRequisitionNumber(): string {
   const used = new Set(repos.requisitions.getAll().map((r) => r.number));
@@ -110,6 +161,63 @@ export type GRInput = {
   lines: { lineId: string; quantity: number }[];
 };
 
+/** Fornecedores sugeridos por item (e cotação que o Office já tenha). */
+export interface ItemSupplierInput {
+  supplierIds: string[];
+  quote?: { supplierId: string; price: number; leadTimeDays?: number; validUntil?: string; quoteRef?: string };
+}
+
+/** Quem pode cotar: Office (pede e pode já cotar) e Logística. */
+function quoteActor() {
+  const user = getCurrentUser();
+  if (!user || !(can('requisition.create', user) || can('requisition.process', user))) throw new Error('auth.forbidden');
+  return user;
+}
+
+function updateItem(id: string, itemId: string, fn: (it: RequisitionItem) => RequisitionItem) {
+  const pr = repos.requisitions.getById(id);
+  if (!pr) return;
+  repos.requisitions.update(id, { items: pr.items.map((it) => (it.id === itemId ? fn(it) : it)) });
+}
+
+/** Cotação vai também para o catálogo (oferta do fornecedor para o part number). */
+function catalogFor(it: RequisitionItem): CatalogMaterial | undefined {
+  if (!it.partNumber.trim()) return undefined;
+  const pn = normPN(it.partNumber);
+  const found = repos.materials.getAll().find((m) => normPN(m.partNumber) === pn);
+  if (found) return found;
+  const created: CatalogMaterial = { id: newId('cm'), partNumber: it.partNumber.trim(), description: it.description, unit: 'pc', offers: [] };
+  repos.materials.create(created);
+  return created;
+}
+function upsertOffer(m: CatalogMaterial, supplierId: string, patch: Partial<SupplierOffer>) {
+  const has = m.offers.some((o) => o.supplierId === supplierId);
+  const offers = has ? m.offers.map((o) => (o.supplierId === supplierId ? { ...o, ...patch } : o)) : [...m.offers, { supplierId, quoteStatus: 'not_requested' as const, leadTimeDays: 0, ...patch }];
+  repos.materials.update(m.id, { offers });
+}
+function mirrorQuote(it: RequisitionItem, s: RequisitionSupplier) {
+  const m = catalogFor(it);
+  if (m) upsertOffer(m, s.supplierId, { quoteStatus: 'received', quotedPrice: s.price, quoteDate: todayISO(), validUntil: s.validUntil, leadTimeDays: s.leadTimeDays ?? 0 });
+}
+function mirrorRequested(it: RequisitionItem, supplierId: string) {
+  const m = catalogFor(it);
+  if (m && m.offers.find((o) => o.supplierId === supplierId)?.quoteStatus !== 'received') upsertOffer(m, supplierId, { quoteStatus: 'requested' });
+}
+
+/** Fornecedor pelo nome; se não existir, cria um cadastro mínimo (nome + e-mail) — o Office pode indicar fornecedor novo. */
+export function ensureSupplier(name: string, email: string): string {
+  quoteActor();
+  const n = name.trim();
+  const found = repos.suppliers.getAll().find((s) => s.name.trim().toLowerCase() === n.toLowerCase());
+  if (found) {
+    if (email.trim() && !found.email) repos.suppliers.update(found.id, { email: email.trim() });
+    return found.id;
+  }
+  const id = newId('sup');
+  repos.suppliers.create({ id, name: n, contactName: '', email: email.trim(), phone: '', notes: 'Added from a purchase request' });
+  return id;
+}
+
 export const requisitionService = {
   /** Quem pediu abriu a requisição: as novidades (PO registrada) deixam de contar no número verde. */
   markSeenByRequester(id: string): void {
@@ -119,12 +227,23 @@ export const requisitionService = {
     repos.requisitions.update(id, { requesterSeenAt: nowStamp() });
   },
   /** Office: cria a requisição a partir de materiais "a comprar" de um projeto. */
-  create(projectId: string, materialIds: string[], opts: { neededBy?: string; notes: string }): PurchaseRequisition | undefined {
+  create(projectId: string, materialIds: string[], opts: { neededBy?: string; notes: string; items?: Record<string, ItemSupplierInput> }): PurchaseRequisition | undefined {
     const user = assertCan('requisition.create');
     const p = repos.projects.getById(projectId);
     if (!p) return undefined;
     const mats = p.materials.filter((m) => materialIds.includes(m.id) && !m.poId && !m.requisitionId);
     if (!mats.length) return undefined;
+    // Fornecedor por item é obrigatório (pelo menos um).
+    if (opts.items && mats.some((m) => !(opts.items![m.id]?.supplierIds.length))) throw new Error('process.validation.supplierPerItem');
+    const itemOf = (m: { id: string; partNumber: string; description: string; quantity: number }): RequisitionItem => {
+      const inp = opts.items?.[m.id];
+      const suppliers: RequisitionSupplier[] = (inp?.supplierIds ?? []).map((sid) =>
+        inp?.quote && inp.quote.supplierId === sid
+          ? { supplierId: sid, price: inp.quote.price, leadTimeDays: inp.quote.leadTimeDays, validUntil: inp.quote.validUntil, quoteRef: inp.quote.quoteRef, quotedAt: nowStamp(), quotedBy: user.id }
+          : { supplierId: sid },
+      );
+      return { id: newId('ri'), materialId: m.id, partNumber: m.partNumber, description: m.description, quantity: m.quantity, suppliers, chosenSupplierId: inp?.quote?.supplierId };
+    };
     const pr: PurchaseRequisition = {
       id: newId('rc'),
       number: nextRequisitionNumber(),
@@ -134,13 +253,65 @@ export const requisitionService = {
       neededBy: opts.neededBy || undefined,
       status: 'submitted',
       notes: opts.notes.trim(),
-      items: mats.map((m) => ({ id: newId('ri'), materialId: m.id, partNumber: m.partNumber, description: m.description, quantity: m.quantity })),
+      items: mats.map(itemOf),
       history: [{ at: nowStamp(), userId: user.id, action: 'submitted', note: '' }],
     };
     repos.requisitions.create(pr);
+    // Cotação já mandada pelo Office vai também para o catálogo.
+    for (const it of pr.items) for (const sup of it.suppliers ?? []) if (sup.price !== undefined) mirrorQuote(it, sup);
     const ids = new Set(mats.map((m) => m.id));
     repos.projects.update(p.id, { materials: p.materials.map((m) => (ids.has(m.id) ? { ...m, requisitionId: pr.id, status: 'requested' as const } : m)) });
     return pr;
+  },
+
+  /** Acrescenta um fornecedor a um item (Office ou Logística). */
+  addSupplier(id: string, itemId: string, supplierId: string): void {
+    quoteActor();
+    updateItem(id, itemId, (it) => ((it.suppliers ?? []).some((s) => s.supplierId === supplierId) ? it : { ...it, suppliers: [...(it.suppliers ?? []), { supplierId }] }));
+  },
+
+  /** RFQ enviado por e-mail a um fornecedor (todos os itens dele no pedido). */
+  markRfqSent(id: string, supplierId: string): void {
+    const user = quoteActor();
+    const pr = repos.requisitions.getById(id);
+    if (!pr) return;
+    const at = nowStamp();
+    repos.requisitions.update(id, {
+      status: pr.status === 'submitted' ? 'quoting' : pr.status,
+      items: pr.items.map((it) => ({ ...it, suppliers: (it.suppliers ?? []).map((s) => (s.supplierId === supplierId && !s.rfqSentAt ? { ...s, rfqSentAt: at } : s)) })),
+    });
+    for (const it of pr.items) if ((it.suppliers ?? []).some((s) => s.supplierId === supplierId)) mirrorRequested(it, supplierId);
+    addEvent(id, user.id, 'rfq_sent', repos.suppliers.getById(supplierId)?.name ?? '');
+  },
+
+  /** Cotação recebida de um fornecedor para um item (vai também para o catálogo). */
+  recordQuote(id: string, itemId: string, supplierId: string, q: { price: number; leadTimeDays?: number; validUntil?: string; quoteRef?: string }): void {
+    const user = quoteActor();
+    if (!(q.price >= 0)) throw new Error('process.validation.price');
+    let item: RequisitionItem | undefined;
+    updateItem(id, itemId, (it) => {
+      const suppliers = (it.suppliers ?? []).some((s) => s.supplierId === supplierId) ? it.suppliers! : [...(it.suppliers ?? []), { supplierId }];
+      item = {
+        ...it,
+        suppliers: suppliers.map((s) => (s.supplierId === supplierId ? { ...s, price: q.price, leadTimeDays: q.leadTimeDays, validUntil: q.validUntil || undefined, quoteRef: q.quoteRef?.trim() || undefined, quotedAt: nowStamp(), quotedBy: user.id } : s)),
+      };
+      // Primeira cotação do item: já fica escolhida (dá para trocar).
+      if (!item.chosenSupplierId) item.chosenSupplierId = supplierId;
+      return item;
+    });
+    const sup = item?.suppliers?.find((s) => s.supplierId === supplierId);
+    if (item && sup) mirrorQuote(item, sup);
+    const pr = repos.requisitions.getById(id);
+    const it = pr?.items.find((x) => x.id === itemId);
+    addEvent(id, user.id, 'quote_received', `${repos.suppliers.getById(supplierId)?.name ?? ''} · ${it?.partNumber || it?.description || ''} · ${q.price}`);
+  },
+
+  /** Escolhe o fornecedor do item (vai para a PO). */
+  chooseSupplier(id: string, itemId: string, supplierId: string): void {
+    const user = quoteActor();
+    updateItem(id, itemId, (it) => ({ ...it, chosenSupplierId: supplierId }));
+    const it = repos.requisitions.getById(id)?.items.find((x) => x.id === itemId);
+    addEvent(id, user.id, 'supplier_chosen', `${it?.partNumber || it?.description || ''} → ${repos.suppliers.getById(supplierId)?.name ?? ''}`);
   },
 
   /** Logística: indica que está cotando com fornecedores. */

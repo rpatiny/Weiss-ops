@@ -7,7 +7,8 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive, normPN, quoteState } from '@/domain/purchasing';
-import { requisitionService } from '@/domain/requisitions';
+import { requisitionService, type ItemSupplierInput } from '@/domain/requisitions';
+import { ItemSuppliersPicker } from './ItemSuppliersPicker';
 import { scheduleService } from '@/domain/schedule';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
@@ -19,7 +20,7 @@ import { usePurchasingData } from '../usePurchasingData';
  * Office: nova requisição a partir da tela de Compras.
  * Escolhe o projeto, marca materiais "A comprar" ou adiciona novos, e envia para a logística.
  */
-export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCreated }: { open: boolean; initialProjectId?: string; onClose: () => void; onCreated?: (id: string) => void }) {
+export function RequisitionWizardDrawer({ open, initialProjectId, initialSelected, onClose, onCreated }: { open: boolean; initialProjectId?: string; initialSelected?: string[]; onClose: () => void; onCreated?: (id: string) => void }) {
   const { t } = useI18n();
   const toast = useToast();
   const pd = usePurchasingData();
@@ -30,6 +31,12 @@ export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCre
   const [notes, setNotes] = useState('');
   const [nm, setNm] = useState({ partNumber: '', description: '', quantity: 1 });
   const [nmError, setNmError] = useState(false);
+  // Fornecedores por item (obrigatório pelo menos um) + cotação opcional do Office.
+  const [itemInputs, setItemInputs] = useState<Record<string, ItemSupplierInput>>({});
+  const [missing, setMissing] = useState<string[]>([]);
+  const inputFor = (materialId: string): ItemSupplierInput => itemInputs[materialId] ?? { supplierIds: [] };
+  /** Sugestão: fornecedores que já têm oferta no catálogo para o part number. */
+  const suggest = (pn: string): ItemSupplierInput => ({ supplierIds: (pd.catalogByPN.get(normPN(pn))?.offers ?? []).map((o) => o.supplierId) });
 
   const project = pd.projects.find((p) => p.id === projectId);
   const start = projectId ? pd.starts.get(projectId) : undefined;
@@ -38,22 +45,24 @@ export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCre
   useEffect(() => {
     if (!open) return;
     setProjectId(initialProjectId ?? '');
-    setSelected([]);
     setNotes('');
     setNm({ partNumber: '', description: '', quantity: 1 });
     setNmError(false);
   }, [open, initialProjectId]);
 
   useEffect(() => {
-    setSelected(available.map((m) => m.id));
+    setSelected(initialSelected?.length && projectId === initialProjectId ? initialSelected : available.map((m) => m.id));
+    setItemInputs(Object.fromEntries(available.map((m) => [m.id, suggest(m.partNumber)])));
+    setMissing([]);
     setNeededBy(available.map((m) => m.neededBy ?? start).filter((d): d is string => !!d).sort()[0] ?? start ?? '');
-  }, [projectId]);
+  }, [projectId, open]);
 
   const addMaterial = () => {
     if (!project || !nm.description.trim()) return setNmError(true);
     const id = newId('mat');
     scheduleService.upsertMaterial(project.id, { id, partNumber: nm.partNumber.trim(), description: nm.description.trim(), quantity: Math.max(1, nm.quantity), status: 'to_buy', neededBy: start });
     setSelected((s) => [...s, id]);
+    setItemInputs((x) => ({ ...x, [id]: suggest(nm.partNumber) }));
     setNm({ partNumber: '', description: '', quantity: 1 });
     setNmError(false);
   };
@@ -61,7 +70,16 @@ export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCre
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!project || !selected.length) return;
-    const pr = requisitionService.create(project.id, selected, { neededBy, notes });
+    const miss = selected.filter((id) => !inputFor(id).supplierIds.length);
+    setMissing(miss);
+    if (miss.length) return toast.error(t('process.form.atLeastOneEach'));
+    const items = Object.fromEntries(
+      selected.map((id) => {
+        const v = inputFor(id);
+        return [id, { ...v, quote: v.quote && v.quote.price > 0 ? v.quote : undefined }];
+      }),
+    );
+    const pr = requisitionService.create(project.id, selected, { neededBy, notes, items });
     if (pr) {
       toast.success(t('process.req.created', { number: pr.number }));
       onCreated?.(pr.id);
@@ -75,7 +93,7 @@ export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCre
     <Drawer
       open={open}
       onClose={onClose}
-      width="xl"
+      width="2xl"
       title={
         <span className="flex items-center gap-2">
           <FilePlus2 className="size-5 text-brand-600" /> {t('process.req.newTitle')}
@@ -134,6 +152,11 @@ export function RequisitionWizardDrawer({ open, initialProjectId, onClose, onCre
                           {m.partNumber && <PlantBadge partNumber={m.partNumber} prefill={{ description: m.description, projectId: project.id, neededBy: m.neededBy ?? start }} />}
                         </p>
                       </div>
+                      {selected.includes(m.id) && (
+                        <div className="basis-full pl-7">
+                          <ItemSuppliersPicker value={inputFor(m.id)} onChange={(v) => setItemInputs((x) => ({ ...x, [m.id]: v }))} error={missing.includes(m.id)} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

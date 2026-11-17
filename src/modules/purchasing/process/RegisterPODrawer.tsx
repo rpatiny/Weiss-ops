@@ -24,7 +24,7 @@ interface Row {
 }
 
 /** Logística: registra aqui a PO criada no SAP para itens da requisição. */
-export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boolean; requisitionId: string; onClose: () => void }) {
+export function RegisterPODrawer({ open, requisitionId, presetSupplierId, onClose }: { open: boolean; requisitionId: string; presetSupplierId?: string; onClose: () => void }) {
   const { t } = useI18n();
   const toast = useToast();
   const pd = usePurchasingData();
@@ -50,6 +50,11 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
   /** Fornecedores que ofertam algum item (mais itens cobertos primeiro). */
   const suggested = useMemo(() => {
     const score = new Map<string, number>();
+    // Fornecedor escolhido no pedido pesa mais; depois os cotados no pedido; depois o catálogo.
+    for (const it of pendingItems) {
+      if (it.chosenSupplierId) score.set(it.chosenSupplierId, (score.get(it.chosenSupplierId) ?? 0) + 100);
+      for (const q of it.suppliers ?? []) score.set(q.supplierId, (score.get(q.supplierId) ?? 0) + 10);
+    }
     for (const it of pendingItems) for (const o of pd.catalogByPN.get(normPN(it.partNumber))?.offers ?? []) score.set(o.supplierId, (score.get(o.supplierId) ?? 0) + 1);
     return [...score.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
   }, [pendingItems, pd.catalogByPN]);
@@ -65,11 +70,13 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
     setRows((rs) =>
       rs.map((r) => {
         const it = pendingItems.find((x) => x.id === r.itemId)!;
-        const offered = !!pd.catalogByPN.get(normPN(it.partNumber))?.offers.some((o) => o.supplierId === sup);
-        return { ...r, unitPrice: priceFor(it.partNumber, sup), include: (offered || suggested.length === 0) && !blocked(it.partNumber) };
+        const q = it.suppliers?.find((x) => x.supplierId === sup);
+        const offered = !!q || !!pd.catalogByPN.get(normPN(it.partNumber))?.offers.some((o) => o.supplierId === sup);
+        const matches = it.chosenSupplierId ? it.chosenSupplierId === sup : offered || suggested.length === 0;
+        return { ...r, unitPrice: q?.price ?? priceFor(it.partNumber, sup), include: matches && !blocked(it.partNumber) };
       }),
     );
-    const lead = Math.max(0, ...pendingItems.map((it) => pd.catalogByPN.get(normPN(it.partNumber))?.offers.find((o) => o.supplierId === sup)?.leadTimeDays ?? 0));
+    const lead = Math.max(0, ...pendingItems.map((it) => it.suppliers?.find((x) => x.supplierId === sup)?.leadTimeDays ?? pd.catalogByPN.get(normPN(it.partNumber))?.offers.find((o) => o.supplierId === sup)?.leadTimeDays ?? 0));
     setExpectedDate(addDays(orderDate, lead || 7));
   };
 
@@ -80,9 +87,9 @@ export function RegisterPODrawer({ open, requisitionId, onClose }: { open: boole
     setNotes('');
     setOrderDate(pd.today);
     setRows(pendingItems.map((it) => ({ itemId: it.id, include: !blocked(it.partNumber), quantity: it.quantity, unitPrice: 0 })));
-    const first = suggested[0];
+    const first = presetSupplierId ?? suggested[0];
     if (first) setTimeout(() => applySupplier(first));
-  }, [open, requisitionId]);
+  }, [open, requisitionId, presetSupplierId]);
 
   if (!pr) return null;
   const setRow = (id: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.itemId === id ? { ...r, ...patch } : r)));
