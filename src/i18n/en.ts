@@ -532,6 +532,7 @@ export const en: Dictionary = {
       period: 'Period',
     },
     materials: {
+      lockedByLogistics: 'In purchasing (requisition/PO): only Logistics can change it',
       add: 'Add material',
       partNumber: 'Part number',
       description: 'Description',

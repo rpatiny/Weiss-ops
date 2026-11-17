@@ -238,6 +238,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     idênticos ao original (edições do usuário ficam). Caminho: `campo`, `lista[id]` ou `lista[índice]`.
   - `office` (orçamento): cronograma/projetos, colaboradores, materiais dos projetos, criar/cancelar requisições.
   - `logistics`: processar requisições (cotação, registrar PO do SAP, rejeitar), POs, GR, catálogo/cotações, fornecedores.
+  - **Dono do dado:** material em requisição/PO (`isMaterialInPurchasing`) é da Logística — Office não edita/exclui
+    (cadeado na aba Materiais; `upsertMaterial`/`removeMaterial` lançam `auth.lockedByLogistics`); requisição com item já em PO
+    não pode ser cancelada pelo Office. Master pode tudo. Logística não tem permissão de edição sobre dados do Office.
   - A UI esconde/desabilita (fieldset `disabled`) e os **serviços de domínio chamam `assertCan`** — a regra vale mesmo se a UI falhar.
   - **Sessão com validade** (`session.ts`, chave `spindleops:session.v2` = `{ userId, startedAt, lastActive }`): expira após
     30 min sem uso (`SESSION_IDLE_MS`) ou 12 h do login (`SESSION_MAX_MS`); confere a cada 30 s, ao voltar para a aba e entre

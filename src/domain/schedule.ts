@@ -215,6 +215,12 @@ export function validateProject(d: ProjectDraft, all: readonly Project[], selfId
   return e;
 }
 
+/**
+ * Material já no processo de compras (em requisição ou com PO): passa a ser dado da Logística —
+ * o Office não edita nem exclui (Master pode). Volta a ser editável se a requisição for cancelada/recusada sem PO.
+ */
+export const isMaterialInPurchasing = (m: Pick<ProjectMaterial, 'requisitionId' | 'poId'>) => !!(m.requisitionId || m.poId);
+
 // ── PO do cliente / Spindle: texto livre com vínculo automático ──
 const norm = (v: string | undefined) => (v ?? '').trim().toLowerCase();
 
@@ -312,16 +318,20 @@ export const scheduleService = {
 
   // Materiais
   upsertMaterial(projectId: string, material: Omit<ProjectMaterial, 'id'> & { id?: string }): void {
-    assertCan('materials.edit');
+    const user = assertCan('materials.edit');
     const p = repos.projects.getById(projectId);
     if (!p) return;
+    const prev = material.id ? p.materials.find((x) => x.id === material.id) : undefined;
+    if (prev && isMaterialInPurchasing(prev) && user.role !== 'master') throw new Error('auth.lockedByLogistics');
     const m: ProjectMaterial = { ...material, id: material.id ?? newId('mat') };
     const exists = p.materials.some((x) => x.id === m.id);
     repos.projects.update(projectId, { materials: exists ? p.materials.map((x) => (x.id === m.id ? m : x)) : [...p.materials, m] });
   },
   removeMaterial(projectId: string, materialId: string): void {
-    assertCan('materials.edit');
+    const user = assertCan('materials.edit');
     const p = repos.projects.getById(projectId);
+    const m = p?.materials.find((x) => x.id === materialId);
+    if (m && isMaterialInPurchasing(m) && user.role !== 'master') throw new Error('auth.lockedByLogistics');
     if (p) repos.projects.update(projectId, { materials: p.materials.filter((m) => m.id !== materialId) });
   },
 

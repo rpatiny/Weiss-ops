@@ -532,6 +532,7 @@ export const de: Dictionary = {
       period: 'Zeitraum',
     },
     materials: {
+      lockedByLogistics: 'Im Einkauf (Bestellanforderung/Bestellung): nur die Logistik kann es ändern',
       add: 'Material hinzufügen',
       partNumber: 'Teilenummer',
       description: 'Beschreibung',

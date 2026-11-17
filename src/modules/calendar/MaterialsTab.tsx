@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Check, ClipboardCheck, ExternalLink, FileInput, Link2, PackageCheck, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
-import { useCan } from '@/app/session';
+import { AlertTriangle, Check, ClipboardCheck, ExternalLink, FileInput, Link2, Lock, PackageCheck, Pencil, Plus, Send, Trash2, X } from 'lucide-react';
+import { useCan, useCurrentUser } from '@/app/session';
 import { navigate } from '@/app/router';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import { Field, Input, Select } from '@/components/ui/Field';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { enumOptions } from '@/domain/labels';
-import { materialViews, scheduleService, summarizeMaterials } from '@/domain/schedule';
+import { isMaterialInPurchasing, materialViews, scheduleService, summarizeMaterials } from '@/domain/schedule';
 import { bestOffer, fastestOffer, normPN, offerViews } from '@/domain/purchasing';
 import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
 import { formatCurrency } from '@/lib/format';
@@ -31,6 +31,7 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
   const summary = summarizeMaterials(views);
   const pd = usePurchasingData();
   const allowed = useCan();
+  const isMaster = useCurrentUser()?.role === 'master';
   const requisitions = useCollection('requisitions');
   const readiness = pd.readinessOf(project);
   const itemById = new Map(readiness.items.map((i) => [i.view.material.id, i]));
@@ -165,12 +166,18 @@ export function MaterialsTab({ project, projectStart }: { project: Project; proj
                   {v.status === 'to_buy' && allowed('requisition.create') && (
                     <Button size="sm" icon={Send} onClick={() => { setSelected([m.id]); setBuying(true); }} title={t('process.req.createSelected', { count: 1 })} aria-label={t('process.req.createSelected', { count: 1 })} className="text-red-600" />
                   )}
-                  {allowed('materials.edit') && (
-                    <>
-                      <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { setForm({ ...m }); setFormError(false); }} aria-label={t('common.edit')} title={t('common.edit')} />
-                      <Button size="sm" variant="ghost" icon={Trash2} className="text-red-600" disabled={!!m.poId || !!m.requisitionId} onClick={() => { scheduleService.removeMaterial(project.id, m.id); toast.success(t('calendar.toast.materialDeleted')); }} aria-label={t('common.delete')} title={t('common.delete')} />
-                    </>
-                  )}
+                  {allowed('materials.edit') &&
+                    (isMaterialInPurchasing(m) && !isMaster ? (
+                      // Em requisição/PO: dado da Logística — Office só vê (cadeado com explicação).
+                      <span className="inline-flex size-8 items-center justify-center text-slate-400" title={t('calendar.materials.lockedByLogistics')} aria-label={t('calendar.materials.lockedByLogistics')}>
+                        <Lock className="size-4" />
+                      </span>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="ghost" icon={Pencil} onClick={() => { setForm({ ...m }); setFormError(false); }} aria-label={t('common.edit')} title={t('common.edit')} />
+                        <Button size="sm" variant="ghost" icon={Trash2} className="text-red-600" disabled={isMaterialInPurchasing(m)} onClick={() => { scheduleService.removeMaterial(project.id, m.id); toast.success(t('calendar.toast.materialDeleted')); }} aria-label={t('common.delete')} title={t('common.delete')} />
+                      </>
+                    ))}
                 </div>
               </li>
             );

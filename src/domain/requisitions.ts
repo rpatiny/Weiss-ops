@@ -169,6 +169,11 @@ export const requisitionService = {
     const user = assertCan('requisition.create');
     const pr = repos.requisitions.getById(id);
     if (!pr) return;
+    // Depois que a Logística registrou PO para algum item, a requisição é dela: o Office não cancela (Master pode).
+    const project = repos.projects.getById(pr.projectId);
+    const itemIds = new Set(pr.items.map((i) => i.materialId));
+    const anyOrdered = !!project?.materials.some((m) => itemIds.has(m.id) && m.poId);
+    if (anyOrdered && user.role !== 'master') throw new Error('auth.lockedByLogistics');
     repos.requisitions.update(id, { status: 'canceled' });
     addEvent(id, user.id, 'canceled', reason);
     releaseMaterials(pr);

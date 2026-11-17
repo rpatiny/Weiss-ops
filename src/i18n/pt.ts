@@ -535,6 +535,7 @@ export const pt = {
       period: 'Período',
     },
     materials: {
+      lockedByLogistics: 'Em compras (requisição/PO): só a Logística altera',
       add: 'Adicionar material',
       partNumber: 'Part number',
       description: 'Descrição',
