@@ -5,6 +5,7 @@
  */
 import { addBusinessDays, addDays, addMonths, parseISODate, startOfWeek, todayISO } from '@/lib/dates';
 import { clockPinHash } from '@/lib/sha256';
+import { DEFAULT_EMPLOYEE_ROLE } from '@/lib/config';
 import type {
   TimeEntry,
   WorkPhase,
@@ -46,12 +47,12 @@ export const DEMO_PROJECT_NUMBERS = ['1000BKXA', '1000CMRT', '1000DHWL', '1000FJ
 const SHOP_ADDRESS = 'Weiss UK workshop';
 
 const employees: Employee[] = [
-  { id: 'emp_carlos', name: 'Emma', role: 'Senior Field Engineer', phone: '07700 900101', email: 'emma@example.com', color: '#2563eb', status: 'active' },
-  { id: 'emp_juliana', name: 'Dave', role: 'Bench Technician (Balancing)', phone: '07700 900102', email: 'dave@example.com', color: '#7c3aed', status: 'active' },
-  { id: 'emp_rafael', name: 'Nigel', role: 'Driver / Logistics', phone: '07700 900103', email: 'nigel@example.com', color: '#d97706', status: 'active' },
-  { id: 'emp_marcos', name: 'Rupert', role: 'Installation Technician', phone: '07700 900104', email: 'rupert@example.com', color: '#16a34a', status: 'active' },
-  { id: 'emp_patricia', name: 'Owen', role: 'Applications Engineer', phone: '07700 900105', email: 'owen@example.com', color: '#db2777', status: 'active' },
-  { id: 'emp_eduardo', name: 'Jaimie', role: 'Field Engineer', phone: '07700 900106', email: 'jaimie@example.com', color: '#0891b2', status: 'inactive' },
+  { id: 'emp_carlos', name: 'Emma', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900101', email: 'emma@example.com', color: '#2563eb', status: 'active' },
+  { id: 'emp_juliana', name: 'Dave', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900102', email: 'dave@example.com', color: '#7c3aed', status: 'active' },
+  { id: 'emp_rafael', name: 'Nigel', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900103', email: 'nigel@example.com', color: '#d97706', status: 'active' },
+  { id: 'emp_marcos', name: 'Rupert', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900104', email: 'rupert@example.com', color: '#16a34a', status: 'active' },
+  { id: 'emp_patricia', name: 'Owen', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900105', email: 'owen@example.com', color: '#db2777', status: 'active' },
+  { id: 'emp_eduardo', name: 'Jaimie', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900106', email: 'jaimie@example.com', color: '#0891b2', status: 'inactive' },
 ];
 
 function line(

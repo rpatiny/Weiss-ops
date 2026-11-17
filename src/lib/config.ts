@@ -1,4 +1,7 @@
 /** Configuração regional da aplicação. Altere aqui para trocar moeda/locale. */
+/** Cargo padrão: todos os técnicos das rotas são engenheiros (pré-preenchido ao cadastrar; editável). */
+export const DEFAULT_EMPLOYEE_ROLE = 'Engineer';
+
 export const APP_CONFIG = {
   appName: 'SpindleOps',
   companyTagline: 'Spindle & Motor Repair',

@@ -176,7 +176,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 ## Regras de negócio implementadas
 
-- **Colaboradores**: nome e cargo obrigatórios; e-mail válido e único; telefone com DDD (máscara BR);
+- **Colaboradores**: nome e cargo obrigatórios (cargo padrão `DEFAULT_EMPLOYEE_ROLE = 'Engineer'` em `lib/config.ts` — todos os técnicos
+  das rotas são engenheiros; vem preenchido no cadastro e na demo; cargos da demo antiga viram "Engineer" se não editados); e-mail válido e único; telefone com DDD (máscara BR);
   cor `#RRGGBB`. Inativos não aparecem para novos agendamentos (`selectActiveEmployees`), mas mantêm histórico.
   Exclusão só é permitida sem atividades vinculadas — caso contrário o sistema oferece **inativar**.
   Ao inativar alguém com atividades futuras, um aviso pede reatribuição na Agenda.

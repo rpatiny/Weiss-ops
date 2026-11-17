@@ -48,6 +48,13 @@ export const LEGACY_DEMO_VALUES: Partial<Record<CollectionName, ReadonlyArray<re
     ["emp_patricia","phone","(11) 97411-9054","07700 900105"],
     ["emp_eduardo","role","Técnico de Campo","Field Engineer"],
     ["emp_eduardo","phone","(19) 99288-6610","07700 900106"],
+    // Cargo padronizado (todos os técnicos das rotas são engenheiros) — depende das linhas acima (pt → en → Engineer).
+    ["emp_carlos","role","Senior Field Engineer","Engineer"],
+    ["emp_juliana","role","Bench Technician (Balancing)","Engineer"],
+    ["emp_rafael","role","Driver / Logistics","Engineer"],
+    ["emp_marcos","role","Installation Technician","Engineer"],
+    ["emp_patricia","role","Applications Engineer","Engineer"],
+    ["emp_eduardo","role","Field Engineer","Engineer"],
   ],
   projects: [
     ["prj_001","customer","Usinagem Precisa Ltda","PCS"],

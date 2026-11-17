@@ -1,4 +1,5 @@
 import { assertCan } from '@/app/session';
+import { DEFAULT_EMPLOYEE_ROLE } from '@/lib/config';
 import { repos } from '@/data/db';
 import { todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
@@ -11,7 +12,7 @@ export type ValidationErrors<T> = Partial<Record<keyof T, TranslationKey>>;
 
 export const emptyEmployee = (color = '#2563eb'): EmployeeDraft => ({
   name: '',
-  role: '',
+  role: DEFAULT_EMPLOYEE_ROLE,
   phone: '',
   email: '',
   color,
