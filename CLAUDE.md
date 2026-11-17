@@ -309,7 +309,16 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Supervisão pode **Liberar** um técnico de um serviço parado (aba Serviços; grava `released` no último apontamento,
     encerra a fase aberta como pausa) e corrigir "Fase concluída" no apontamento.
   - Aberto desde um dia anterior ou > 12 h ⇒ **para revisar** (nunca fechado com hora inventada); fora dos totais.
-  - Supervisão `#/timesheet` (`time.manage` = Master/Office corrigem; demais só leem): Agora, Apontamentos (filtros,
+  - **Tela `#/timesheet` reorganizada POR PROJETO** (o engenheiro muda entre fases, o projeto fica): 3 abas por pergunta —
+    **By project** (padrão, `ByProjectTab.tsx`: projeto → barra de fases + flag + engenheiros com horas de cada um (azul =
+    trabalhando agora) + total; abre → fases com horas, engenheiros (horas por pessoa), início, conclusão → cada entrada/saída
+    com corrigir; no celular, fases em blocos; filtros Abertos / Em trabalho / Aguardando alguém / Concluídos / Todos; busca;
+    "Export all (by project)" e relatório por projeto quando concluído; "Liberar <técnico>" quando parado), **Live** (equipe
+    agora; esqueceu de bater a saída aparece como "Forgot to clock out" + Corrigir, nunca como "em andamento") e **Timesheet**
+    (apontamentos + exportar por funcionário). **Settings** (botão no topo, Drawer): Equipe & PINs, Fases, QR code.
+    KPIs: Working now · Waiting for someone (abre By project filtrado) · Hours this week · To fix. Apontamento "para revisar"
+    fica fora de todos os totais (`counted`). Abas antigas (Now/Jobs/Report/…) e `ReportTab.tsx` foram removidas.
+  - Detalhes (mesmas regras de antes): Agora, Apontamentos (filtros,
     horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Serviços (fases ✓/em andamento/próxima, Liberar), Equipe & PINs, Fases (editáveis, ordem, ativa; **lixeira remove de vez** com confirmação — se houver apontamentos,
     eles também são apagados e o aviso diz quantos; `savePhases` remove as fases fora da lista e seus apontamentos),
     QR code (imprimir cartaz / baixar PNG; URL = origem do site + `#/clock`). Card do projeto mostra horas por fase.

@@ -43,7 +43,7 @@ export function HoursReportButton({ projectId, size = 'sm' }: { projectId: strin
 }
 
 /** Botões do topo de "Horas da oficina": exportar todos os projetos (uma planilha por projeto) ou por funcionário. */
-export function ExportHoursActions() {
+export function ExportHoursActions({ only }: { only?: 'projects' | 'employees' }) {
   const { t } = useI18n();
   const toast = useToast();
   const allowed = useCan()('time.manage');
@@ -75,10 +75,12 @@ export function ExportHoursActions() {
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" icon={FileSpreadsheet} disabled={busy || done.length === 0} title={done.length === 0 ? t('timesheet.noCompleted') : undefined} onClick={() => run(exportAllProjectsReport)}>
-          {t('timesheet.exportAll')}
-        </Button>
-        <Button
+        {only !== 'employees' && (
+          <Button icon={FileSpreadsheet} disabled={busy || done.length === 0} title={done.length === 0 ? t('timesheet.noCompleted') : t('timesheet.onlyCompletedHint')} onClick={() => run(exportAllProjectsReport)}>
+            {t('timesheet.exportAll')}
+          </Button>
+        )}
+        {only !== 'projects' && <Button
           icon={UserRound}
           onClick={() => {
             setChoice('all');
@@ -86,7 +88,7 @@ export function ExportHoursActions() {
           }}
         >
           {t('timesheet.exportByEmployee')}
-        </Button>
+        </Button>}
       </div>
       <Modal
         open={picking}

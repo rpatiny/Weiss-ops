@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, CheckCheck, Clock3, FileSpreadsheet, Hourglass, KeyRound, Pencil, Plus, Timer, Trash2, TriangleAlert, Unlock, Users } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCheck, Clock3, Hourglass, KeyRound, Pencil, Plus, Settings2, Timer, Trash2, TriangleAlert, Users } from 'lucide-react';
 import { useCan } from '@/app/session';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -11,24 +11,27 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { canClock, currentJobOf, entryMinutes, jobFlag, workerStatus, type PhaseState, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
+import { canClock, entryMinutes, jobFlag, workerStatus, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { addDays, startOfWeek, todayISO } from '@/lib/dates';
 import { formatDate, getFormatLocale } from '@/lib/format';
 import { newId } from '@/lib/id';
 import { usePersistentState } from '@/lib/usePersistentState';
-import { ExportHoursActions, HoursReportButton } from './HoursReportButton';
-import { ReportTab } from './ReportTab';
+import { ExportHoursActions } from './HoursReportButton';
+import { ByProjectTab, isProjectFilter, type ProjectFilter } from './ByProjectTab';
 import { FlowFlag } from './Flags';
 import type { TimeEntry, WorkPhase } from '@/types/models';
 
-type Tab = 'now' | 'jobs' | 'report' | 'entries' | 'team' | 'phases' | 'qr';
-const TABS: Tab[] = ['now', 'jobs', 'report', 'entries', 'team', 'phases', 'qr'];
+/**
+ * 3 abas por pergunta: **By project** (padrão — o engenheiro muda, o projeto fica), **Live** (agora + o que corrigir),
+ * **Timesheet** (horas por pessoa). Ajustes (equipe & PINs, fases, QR code) ficam no botão Settings.
+ */
+type Tab = 'projects' | 'live' | 'entries';
+const TABS: Tab[] = ['projects', 'live', 'entries'];
 const isTab = (v: unknown): v is Tab => TABS.includes(v as Tab);
-type JobsFilter = 'all' | 'working' | 'waiting' | 'complete';
-const JOBS_FILTERS: JobsFilter[] = ['all', 'working', 'waiting', 'complete'];
-const isJobsFilter = (v: unknown): v is JobsFilter => JOBS_FILTERS.includes(v as JobsFilter);
+type SettingsTab = 'team' | 'phases' | 'qr';
+const SETTINGS_TABS: SettingsTab[] = ['team', 'phases', 'qr'];
 
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(getFormatLocale(), { hour: '2-digit', minute: '2-digit' });
 /** ISO ↔ valor de `<input type="datetime-local">` (horário local). */
@@ -40,11 +43,13 @@ const toLocalInput = (iso?: string) => {
 };
 const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : '');
 
-/** Supervisão das horas da oficina: agora, apontamentos, PINs, fases e QR code do ponto. */
+/** Horas da oficina (supervisão). */
 export function TimesheetPage() {
   const { t } = useI18n();
-  const [tab, setTab] = usePersistentState<Tab>('timesheet.tab', 'now', isTab);
-  const [jobsFilter, setJobsFilter] = usePersistentState<JobsFilter>('timesheet.jobsFilter', 'all', isJobsFilter);
+  const [tab, setTab] = usePersistentState<Tab>('timesheet.tab.v2', 'projects', isTab);
+  const [projectFilter, setProjectFilter] = usePersistentState<ProjectFilter>('timesheet.projectFilter', 'active', isProjectFilter);
+  const [settings, setSettings] = useState<SettingsTab | null>(null);
+  const [editing, setEditing] = useState<TimeEntry | null>(null);
   const entries = useCollection('timeEntries');
   const projects = useCollection('projects');
   const workPhases = useCollection('workPhases');
@@ -59,26 +64,35 @@ export function TimesheetPage() {
   const weekStart = startOfWeek(today);
   const open = entries.filter((e) => !e.end);
   const review = open.filter((e) => needsReview(e));
-  const sumMin = (from: string) => entries.filter((e) => localDay(e.start) >= from && localDay(e.start) <= today && !needsReview(e)).reduce((s, e) => s + entryMinutes(e), 0);
+  const weekMin = entries.filter((e) => localDay(e.start) >= weekStart && localDay(e.start) <= today && !needsReview(e)).reduce((s, e) => s + entryMinutes(e), 0);
 
   return (
     <>
-      <PageHeader icon={Timer} title={t('timesheet.title')} description={t('timesheet.description')} actions={<ExportHoursActions />} />
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={Users} tone="info" label={t('timesheet.kpis.working')} value={open.length - review.length} onClick={() => setTab('now')} />
+      <PageHeader
+        icon={Timer}
+        title={t('timesheet.title')}
+        description={t('timesheet.descriptionV2')}
+        actions={
+          <Button icon={Settings2} onClick={() => setSettings('team')}>
+            {t('timesheet.settings')}
+          </Button>
+        }
+      />
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard icon={Users} tone="info" label={t('timesheet.kpis.working')} value={open.length - review.length} onClick={() => setTab('live')} />
         <StatCard
           icon={Hourglass}
           tone={waitingJobs ? 'warning' : 'default'}
-          label={t('timesheet.flow.kpiWaiting')}
+          label={t('timesheet.kpis.waitingSomeone')}
           value={waitingJobs}
+          hint={t('timesheet.kpis.waitingSomeoneHint')}
           onClick={() => {
-            setJobsFilter('waiting');
-            setTab('jobs');
+            setProjectFilter('waiting');
+            setTab('projects');
           }}
         />
-        <StatCard icon={Clock3} label={t('timesheet.kpis.today')} value={formatHoursDecimal(sumMin(today))} />
-        <StatCard icon={Timer} label={t('timesheet.kpis.week')} value={formatHoursDecimal(sumMin(weekStart))} />
-        <StatCard icon={TriangleAlert} tone={review.length ? 'warning' : 'default'} label={t('timesheet.kpis.review')} value={review.length} onClick={() => setTab('now')} />
+        <StatCard icon={Clock3} label={t('timesheet.kpis.week')} value={formatHoursDecimal(weekMin)} />
+        <StatCard icon={TriangleAlert} tone={review.length ? 'warning' : 'default'} label={t('timesheet.kpis.toFix')} value={review.length} hint={t('timesheet.kpis.toFixHint')} onClick={() => setTab('live')} />
       </div>
 
       <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800" role="tablist">
@@ -89,22 +103,47 @@ export function TimesheetPage() {
             aria-selected={tab === x}
             onClick={() => setTab(x)}
             className={cn(
-              '-mb-px border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap',
+              '-mb-px flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap',
               tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
             )}
           >
-            {x === 'jobs' ? t('timesheet.jobsTab') : x === 'report' ? t('timesheet.reportTab') : t(`timesheet.tabs.${x}`)}
+            {t(`timesheet.tabsV2.${x}`)}
+            {x === 'live' && review.length > 0 && <span className="rounded-full bg-amber-400 px-1.5 text-[11px] font-bold text-amber-950 tabular-nums">{review.length}</span>}
           </button>
         ))}
       </div>
+      <p className="-mt-2 mb-4 text-sm text-slate-500">{t(`timesheet.tabsHint.${tab}`)}</p>
 
-      {tab === 'now' && <NowTab />}
-      {tab === 'jobs' && <JobsTab filter={jobsFilter} setFilter={setJobsFilter} />}
-      {tab === 'report' && <ReportTab />}
-      {tab === 'entries' && <EntriesTab />}
-      {tab === 'team' && <TeamTab />}
-      {tab === 'phases' && <PhasesTab />}
-      {tab === 'qr' && <QrTab />}
+      {tab === 'projects' && <ByProjectTab filter={projectFilter} setFilter={setProjectFilter} onEditEntry={setEditing} actions={<ExportHoursActions only="projects" />} />}
+      {tab === 'live' && <NowTab />}
+      {tab === 'entries' && (
+        <>
+          <div className="mb-3 flex justify-end">
+            <ExportHoursActions only="employees" />
+          </div>
+          <EntriesTab />
+        </>
+      )}
+      <EntryDrawer entry={editing} onClose={() => setEditing(null)} />
+
+      <Drawer open={!!settings} onClose={() => setSettings(null)} title={t('timesheet.settings')} subtitle={t('timesheet.settingsHint')} width="lg">
+        <div className="mb-4 flex gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
+          {SETTINGS_TABS.map((x) => (
+            <button
+              key={x}
+              role="tab"
+              aria-selected={settings === x}
+              onClick={() => setSettings(x)}
+              className={cn('-mb-px border-b-2 px-3 py-2 text-sm font-medium', settings === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500')}
+            >
+              {t(`timesheet.tabs.${x}`)}
+            </button>
+          ))}
+        </div>
+        {settings === 'team' && <TeamTab />}
+        {settings === 'phases' && <PhasesTab />}
+        {settings === 'qr' && <QrTab />}
+      </Drawer>
     </>
   );
 }
@@ -131,11 +170,9 @@ function useLookups() {
 function NowTab() {
   const { t } = useI18n();
   const entries = useCollection('timeEntries');
-  const { emp, prj, ph } = useLookups();
+  const { prj, ph } = useLookups();
   const allowed = useCan()('time.manage');
   const [editing, setEditing] = useState<TimeEntry | null>(null);
-  const open = entries.filter((e) => !e.end).sort((a, b) => a.start.localeCompare(b.start));
-  const review = open.filter((e) => needsReview(e));
   const { employees, projects, phases } = useLookups();
   const prjById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   // Técnicos com PIN do ponto (ou com apontamentos): status de cada um, ordenado por em andamento → aguardando → pronto → livre.
@@ -147,39 +184,14 @@ function NowTab() {
 
   return (
     <div className="space-y-6">
-      {review.length > 0 && (
-        <section className="card border-amber-400/60 p-4">
-          <h2 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
-            <TriangleAlert className="size-5 text-amber-500" /> {t('timesheet.reviewTitle')}
-          </h2>
-          <p className="mb-3 text-sm text-slate-500">{t('timesheet.reviewHint')}</p>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {review.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center gap-3 py-2.5">
-                <Avatar name={emp.get(e.employeeId)?.name ?? '?'} color={emp.get(e.employeeId)?.color ?? '#64748b'} size="sm" />
-                <div className="min-w-0 flex-1 text-sm">
-                  <p className="font-medium text-slate-900 dark:text-white">{emp.get(e.employeeId)?.name}</p>
-                  <p className="text-slate-500">
-                    {ph.get(e.phaseId)?.name} · <span className="font-mono">{prj.get(e.projectId)?.projectNumber}</span> · {formatDate(localDay(e.start))} {timeOf(e.start)}
-                  </p>
-                </div>
-                {allowed && (
-                  <Button size="sm" icon={Pencil} onClick={() => setEditing(e)}>
-                    {t('timesheet.fix')}
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <section>
         <h2 className="font-semibold text-slate-900 dark:text-white">{t('timesheet.flow.teamTitle')}</h2>
         <p className="mb-3 text-sm text-slate-500">{t('timesheet.flow.teamHint')}</p>
         <div className="card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
           {team.map(({ e, st }) => {
             const p = st.projectId ? prj.get(st.projectId) : undefined;
+            // Esqueceu de bater a saída: não é "em andamento" — é para corrigir.
+            const forgot = st.flag === 'working' && !!st.open && needsReview(st.open);
             const last = st.progress?.phases[st.progress.phases.length - 1];
             return (
               <div
@@ -187,12 +199,12 @@ function NowTab() {
                 className={cn(
                   'flex flex-wrap items-center gap-3 px-4 py-3',
                   st.flag === 'ready' && 'bg-green-50 dark:bg-green-500/10',
-                  st.flag === 'waiting' && 'bg-amber-50/70 dark:bg-amber-500/10',
+                  (st.flag === 'waiting' || forgot) && 'bg-amber-50/70 dark:bg-amber-500/10',
                 )}
               >
                 <span className="relative">
                   <Avatar name={e.name} color={e.color} />
-                  {st.flag === 'working' && <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-blue-600 ring-2 ring-white dark:ring-slate-900" />}
+                  {st.flag === 'working' && !forgot && <span className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full bg-blue-600 ring-2 ring-white dark:ring-slate-900" />}
                   {st.flag === 'ready' && <CheckCheck className="absolute -right-1 -bottom-1 size-4 rounded-full bg-green-600 p-0.5 text-white ring-2 ring-white dark:ring-slate-900" />}
                 </span>
                 <div className="min-w-[10rem] flex-1">
@@ -206,7 +218,13 @@ function NowTab() {
                   )}
                 </div>
                 <div className="min-w-[12rem] text-sm text-slate-600 dark:text-slate-300">
-                  {st.flag === 'working' && st.open && (
+                  {forgot && st.open && (
+                    <>
+                      <p className="font-medium text-amber-700 dark:text-amber-400">{t('timesheet.byProject.forgotOut')}</p>
+                      <p className="text-xs tabular-nums">{ph.get(st.open.phaseId)?.name} · {formatDate(localDay(st.open.start))} {timeOf(st.open.start)}</p>
+                    </>
+                  )}
+                  {!forgot && st.flag === 'working' && st.open && (
                     <>
                       <p className="font-medium text-slate-900 dark:text-white">
                         {last && last.phase.id === st.open.phaseId ? t('timesheet.flow.lastPhase', { phase: last.phase.name }) : ph.get(st.open.phaseId)?.name}
@@ -218,7 +236,15 @@ function NowTab() {
                   {st.flag === 'ready' && st.readyAt && p && <p className="font-medium text-green-800 dark:text-green-300">{t('timesheet.flow.readyDetail', { project: p.projectNumber, date: formatDate(localDay(st.readyAt)) })}</p>}
                   {st.progress && st.flag !== 'ready' && <p className="text-xs text-slate-500">{t('projects.phasesProgress', { done: st.progress.done, total: st.progress.total })}</p>}
                 </div>
-                <FlowFlag flag={st.flag} next={st.flag === 'waiting' ? st.progress?.next?.name : undefined} />
+                {forgot ? (
+                  allowed && (
+                    <Button size="sm" icon={Pencil} onClick={() => setEditing(st.open!)}>
+                      {t('timesheet.fix')}
+                    </Button>
+                  )
+                ) : (
+                  <FlowFlag flag={st.flag} next={st.flag === 'waiting' ? st.progress?.next?.name : undefined} />
+                )}
               </div>
             );
           })}
@@ -458,134 +484,6 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
 }
 
 // ───────────── Serviços (progresso pelas fases) ─────────────
-
-const STATE_STYLE: Record<PhaseState, string> = {
-  done: 'bg-green-500 text-white border-green-500',
-  active: 'bg-blue-600 text-white border-blue-600',
-  next: 'border-blue-600 text-blue-700 dark:text-blue-300',
-  pending: 'border-slate-300 text-slate-400 dark:border-slate-600',
-};
-
-function JobsTab({ filter, setFilter }: { filter: JobsFilter; setFilter: (f: JobsFilter) => void }) {
-  const { t } = useI18n();
-  const toast = useToast();
-  const entries = useCollection('timeEntries');
-  const { employees, projects, phases, emp } = useLookups();
-  const allowed = useCan()('time.manage');
-  const [releasing, setReleasing] = useState<{ employeeId: string; projectId: string } | null>(null);
-  const [note, setNote] = useState('');
-  const prjById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
-
-  const jobs = projects
-    .filter((p) => entries.some((e) => e.projectId === p.id))
-    .map((p) => {
-      const { flag, progress: prog } = jobFlag(p.id, phases, entries);
-      return { p, prog, flag, holders: employees.filter((e) => currentJobOf(e.id, entries, phases, prjById) === p.id) };
-    })
-    .filter(({ flag, p }) => (filter === 'all' ? flag !== 'ready' && isProjectActive(p) : filter === 'complete' ? flag === 'ready' : flag === filter && isProjectActive(p)))
-    // Aguardando primeiro (é o que precisa de ação), depois em andamento.
-    .sort((a, b) => Number(b.flag === 'waiting') - Number(a.flag === 'waiting') || a.p.projectNumber.localeCompare(b.p.projectNumber));
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="max-w-3xl space-y-1 text-sm text-slate-500">
-          <p>{t('timesheet.jobsHint')}</p>
-          {filter !== 'complete' && <p className="flex items-center gap-1.5 text-xs"><FileSpreadsheet className="size-3.5 shrink-0" /> {t('timesheet.reportHint')}</p>}
-        </div>
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-          {JOBS_FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              aria-pressed={filter === f}
-              className={cn('rounded-md px-3 py-1.5 text-sm font-medium', filter === f ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white' : 'text-slate-500')}
-            >
-              {f === 'all' ? t('timesheet.flow.filterAll') : f === 'working' ? t('timesheet.flow.filterWorking') : f === 'waiting' ? t('timesheet.flow.filterWaiting') : t('timesheet.jobsFilter.complete')}
-            </button>
-          ))}
-        </div>
-      </div>
-      {jobs.length === 0 ? (
-        <EmptyState icon={Timer} title={t('timesheet.jobsEmpty')} />
-      ) : (
-        <div className="grid gap-3 xl:grid-cols-2">
-          {jobs.map(({ p, prog, holders, flag }) => (
-            <div key={p.id} className="card border-l-4 p-4" style={{ borderLeftColor: p.color }}>
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-mono text-xs text-slate-500">{p.projectNumber}</p>
-                  <p className="truncate font-semibold text-slate-900 dark:text-white">{p.customer}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <FlowFlag flag={flag} next={flag === 'waiting' ? prog.next?.name : undefined} />
-                  <Badge tone={prog.complete ? 'green' : 'slate'}>{t('projects.phasesProgress', { done: prog.done, total: prog.total })}</Badge>
-                </div>
-              </div>
-              <ol className="mt-3 flex flex-wrap gap-1.5">
-                {prog.phases.map(({ phase, state, minutes }, i) => (
-                  <li key={phase.id} title={`${t(`timesheet.state.${state}`)} · ${formatMinutes(minutes)}`} className={cn('flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-xs font-medium', STATE_STYLE[state])}>
-                    {state === 'done' ? <CheckCheck className="size-3" /> : <span className="tabular-nums">{i + 1}</span>}
-                    {phase.name}
-                    {minutes > 0 && <span className="opacity-80 tabular-nums">· {formatMinutes(minutes)}</span>}
-                  </li>
-                ))}
-              </ol>
-              {prog.complete && (
-                <div className="mt-3">
-                  <HoursReportButton projectId={p.id} />
-                </div>
-              )}
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-slate-500">{t('timesheet.holders')}:</span>
-                {holders.length === 0 && <span className="text-slate-400">{t('timesheet.noHolder')}</span>}
-                {holders.map((h) => (
-                  <span key={h.id} className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 py-0.5 pr-1 pl-0.5 dark:bg-slate-800">
-                    <Avatar name={h.name} color={h.color} size="sm" />
-                    <span className="text-slate-700 dark:text-slate-200">{h.name}</span>
-                    {allowed && (
-                      <button
-                        onClick={() => {
-                          setReleasing({ employeeId: h.id, projectId: p.id });
-                          setNote('');
-                        }}
-                        className="rounded-full px-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-500/15"
-                      >
-                        <Unlock className="mr-0.5 inline size-3" />
-                        {t('timesheet.release')}
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <Modal
-        open={!!releasing}
-        onClose={() => setReleasing(null)}
-        title={releasing ? t('timesheet.releaseTitle', { name: emp.get(releasing.employeeId)?.name ?? '', project: prjById.get(releasing.projectId)?.projectNumber ?? '' }) : ''}
-        footer={
-          <Button
-            variant="primary"
-            icon={Unlock}
-            onClick={() => {
-              timesheetService.release(releasing!.employeeId, note.trim());
-              toast.success(t('timesheet.released'));
-              setReleasing(null);
-            }}
-          >
-            {t('timesheet.release')}
-          </Button>
-        }
-      >
-        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">{t('timesheet.releaseText', { name: releasing ? (emp.get(releasing.employeeId)?.name ?? '') : '' })}</p>
-        <Field label={t('timesheet.releaseNote')}>{(id) => <Input id={id} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
-      </Modal>
-    </div>
-  );
-}
 
 // ───────────── Equipe & PINs ─────────────
 
