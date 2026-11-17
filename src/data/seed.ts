@@ -102,7 +102,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       notes: 'Step-Tec HVC 140 spindle — test certificate attached to the invoice.',
       attachments: [
         { id: 'att_3', name: 'PO BAE-7731.pdf', url: 'https://example.com/po/BAE-7731.pdf', type: 'po_pdf' },
-        { id: 'att_4', name: 'Invoice 18842.pdf', url: 'https://example.com/nf/18842.pdf', type: 'invoice' },
+        { id: 'att_4', name: 'Invoice 18842.pdf', url: 'https://example.com/invoice/18842.pdf', type: 'invoice' },
       ],
       lines: [line('pol_6', 1, 'SRV-STT-HVC140', 'Step-Tec HVC 140 spindle repair (S/N ST-51022)', 1, 62300, d(-15), 'delivered', d(-14))],
     },
@@ -120,7 +120,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       id: 'po_skf33012', poNumber: '4500391122', kind: 'purchase', requisitionId: 'rc_1', supplierId: 'sup_rp', customerOrVendor: 'Precision Bearings UK', orderDate: d(-9),
       requester: 'Dave', paymentTerms: '30 days net', status: 'partial',
       notes: 'Precision bearings for bench stock.',
-      attachments: [{ id: 'att_5', name: 'Quote PB-1188.pdf', url: 'https://example.com/forn/RP-1188.pdf', type: 'other' }],
+      attachments: [{ id: 'att_5', name: 'Quote PB-1188.pdf', url: 'https://example.com/supplier/PB-1188.pdf', type: 'other' }],
       lines: [
         line('pol_9', 1, 'SKF-7014CD/P4A', 'SKF 7014 CD/P4A angular contact bearing (pair)', 4, 2950, d(-4), 'delivered', d(-5)),
         line('pol_10', 2, 'SKF-7012ACD/HCP4A', 'SKF 7012 ACD/HCP4A hybrid bearing (pair)', 2, 4380, d(-1), 'open'),
@@ -141,7 +141,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
       id: 'po_rp0981', poNumber: '4500388410', kind: 'purchase', supplierId: 'sup_rp', customerOrVendor: 'Precision Bearings UK', orderDate: m(-2, -10),
       requester: 'Dave', paymentTerms: '30 days net', status: 'invoiced',
       notes: 'Bench stock replenishment.',
-      attachments: [{ id: 'att_8', name: 'Invoice 55120.pdf', url: 'https://example.com/forn/nf55120.pdf', type: 'invoice' }],
+      attachments: [{ id: 'att_8', name: 'Invoice 55120.pdf', url: 'https://example.com/invoice/55120.pdf', type: 'invoice' }],
       lines: [
         line('rp_1', 1, 'SKF-7014CD/P4A', 'SKF 7014 CD/P4A angular contact bearing (pair)', 2, 2890, m(-2, -5), 'delivered', m(-2, -6)),
         line('rp_2', 2, 'KLU-ISOFLEX-NBU15', 'Klüber Isoflex NBU 15 grease (50 g)', 6, 175, m(-2, -5), 'delivered', m(-2, -5)),

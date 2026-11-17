@@ -3,6 +3,7 @@ import type { AppDatabase, CollectionName, EntityOf } from '@/types/models';
 import type { Entity } from './repository';
 import { StoredRepository, type Repository } from './repository';
 import { buildSeed, DEMO_PROJECT_NUMBERS } from './seed';
+import { LEGACY_DEMO_VALUES } from './legacyDemo';
 import { createLocalStorageDriver } from './storage';
 import { ProfilesRepository } from './cloud/profilesRepository';
 import { RemoteRepository } from './cloud/remoteRepository';
@@ -85,6 +86,58 @@ const LEGACY_RENAMES = {
     ['ph_7', 'Delivery', 'Packaging & Delivery'],
   ],
 } as const;
+
+/**
+ * Lê/troca um campo por caminho (`a.b`, `lista[id]` ou `lista[3]`) num clone do registro.
+ * Devolve true se trocou (valor atual === `from`).
+ */
+function replaceAtPath(root: Record<string, unknown>, path: string, from: string, to: string): boolean {
+  const parts = path.split('.');
+  let node: unknown = root;
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^([^[]+)(?:\[([^\]]+)\])?$/.exec(parts[i]!);
+    if (!m || !node || typeof node !== 'object') return false;
+    const [, key, sel] = m;
+    const last = i === parts.length - 1;
+    const obj = node as Record<string, unknown>;
+    if (sel === undefined) {
+      if (last) {
+        if (obj[key!] !== from) return false;
+        obj[key!] = to;
+        return true;
+      }
+      node = obj[key!];
+      continue;
+    }
+    const list = obj[key!];
+    if (!Array.isArray(list)) return false;
+    const idx = list.findIndex((x) => x && typeof x === 'object' && (x as { id?: unknown }).id === sel);
+    const at = idx >= 0 ? idx : /^\d+$/.test(sel) ? Number(sel) : -1;
+    if (at < 0 || at >= list.length) return false;
+    if (last) {
+      if (list[at] !== from) return false;
+      list[at] = to;
+      return true;
+    }
+    node = list[at];
+  }
+  return false;
+}
+
+function migrateLegacyDemoValues(): void {
+  for (const [coll, rows] of Object.entries(LEGACY_DEMO_VALUES) as [CollectionName, ReadonlyArray<readonly [string, string, string, string]>][]) {
+    if (coll === 'users' && EMAIL_AUTH) continue; // na nuvem com e-mail, contas = perfis do Supabase
+    const repo = repos[coll] as unknown as Repository<Entity>;
+    const changed = new Map<string, Record<string, unknown>>();
+    for (const [id, path, from, to] of rows) {
+      const cur = changed.get(id) ?? repo.getById(id);
+      if (!cur) continue;
+      const clone = changed.get(id) ?? (structuredClone(cur) as unknown as Record<string, unknown>);
+      if (replaceAtPath(clone, path, from, to)) changed.set(id, clone);
+    }
+    for (const rec of changed.values()) repo.upsert(rec as unknown as Entity);
+  }
+}
 
 export const db = {
   /**
@@ -195,6 +248,8 @@ export const db = {
         repos.workPhases.replaceAll(repos.workPhases.getAll().filter((p) => p.id !== bal.id).sort((x, y) => x.order - y.order).map((p, i) => ({ ...p, order: i + 1 })));
       }
     }
+    // Textos da demonstração antiga em português → inglês (só valores ainda idênticos aos originais).
+    migrateLegacyDemoValues();
     // Nº de projeto antigo da demo (PRJ-AAMM-NNN) → formato 1000 + 4 letras.
     for (const p of repos.projects.getAll()) {
       const m = /^prj_(\d{3})$/.exec(p.id);

@@ -76,7 +76,7 @@ export class RemoteRepository<T extends Entity> implements Repository<T> {
 
   update(id: string, patch: Partial<Omit<T, 'id'>>): T {
     const current = this.getById(id);
-    if (!current) throw new Error(`Registro não encontrado: ${id}`);
+    if (!current) throw new Error(`Record not found: ${id}`);
     const next = strip({ ...current, ...patch, id } as T);
     this.set(this.cache.map((x) => (x.id === id ? next : x)));
     this.queue.enqueue(this.collection, [{ id, data: next }], []);

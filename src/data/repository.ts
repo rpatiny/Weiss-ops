@@ -54,14 +54,14 @@ export class StoredRepository<T extends Entity> implements Repository<T> {
   }
 
   create(item: T): T {
-    if (this.getById(item.id)) throw new Error(`Registro duplicado: ${item.id}`);
+    if (this.getById(item.id)) throw new Error(`Duplicate record: ${item.id}`);
     this.commit([...this.load(), item]);
     return item;
   }
 
   update(id: string, patch: Partial<Omit<T, 'id'>>): T {
     const current = this.getById(id);
-    if (!current) throw new Error(`Registro não encontrado: ${id}`);
+    if (!current) throw new Error(`Record not found: ${id}`);
     const next = { ...current, ...patch, id } as T;
     this.commit(this.load().map((x) => (x.id === id ? next : x)));
     return next;

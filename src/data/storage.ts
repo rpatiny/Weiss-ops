@@ -30,7 +30,7 @@ export function createLocalStorageDriver(prefix: string): StorageDriver {
     ls.setItem(probe, '1');
     ls.removeItem(probe);
   } catch {
-    console.warn('[storage] localStorage indisponível — usando memória.');
+    console.warn('[storage] localStorage unavailable — using memory.');
     return createMemoryDriver();
   }
   const storage = ls;
@@ -49,7 +49,7 @@ export function createLocalStorageDriver(prefix: string): StorageDriver {
         storage.setItem(k(key), JSON.stringify(value));
       } catch (err) {
         console.error(`[storage] falha ao gravar "${key}"`, err);
-        throw new Error('Não foi possível salvar os dados (armazenamento cheio ou bloqueado).');
+        throw new Error('Could not save the data (storage full or blocked).');
       }
     },
     remove(key) {

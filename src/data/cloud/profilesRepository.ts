@@ -49,7 +49,7 @@ export class ProfilesRepository implements Repository<User> {
   }
   update(id: string, patch: Partial<Omit<User, 'id'>>): User {
     const cur = this.getById(id);
-    if (!cur) throw new Error(`Usuário não encontrado: ${id}`);
+    if (!cur) throw new Error(`User not found: ${id}`);
     const next = { ...cur, ...patch, pending: patch.role ? false : cur.pending };
     this.set(this.cache.map((u) => (u.id === id ? next : u)));
     void this.backend()

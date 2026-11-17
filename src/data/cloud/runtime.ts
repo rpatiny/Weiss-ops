@@ -60,7 +60,7 @@ export async function getCloudBackend(): Promise<CloudBackend> {
     backend = createDevBackend(FAKE);
   }
   if (!backend) {
-    if (!/^https?:\/\/[^/\s]+$/.test(URL_ ?? '')) throw new Error(`VITE_SUPABASE_URL inválida: "${env.VITE_SUPABASE_URL ?? ''}"`);
+    if (!/^https?:\/\/[^/\s]+$/.test(URL_ ?? '')) throw new Error(`Invalid VITE_SUPABASE_URL: "${env.VITE_SUPABASE_URL ?? ''}"`);
     const { createSupabaseBackend } = await import('./supabaseBackend');
     backend = createSupabaseBackend(URL_!, KEY!);
   }

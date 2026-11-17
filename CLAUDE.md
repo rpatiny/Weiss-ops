@@ -228,6 +228,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     selecionado; após entrar vai para a Agenda) ou com 5 cliques na logo da tela de login.
   - Contas da demonstração: "Logística" (2222) e "Office" (3333); colaboradores Emma, Dave, Nigel, Rupert, Owen, Jaimie.
     `db.ensureDefaults()` renomeia os nomes antigos da demo (`LEGACY_RENAMES`) só se ainda forem idênticos.
+  - **Demo antiga em pt-BR → inglês** (`data/legacyDemo.ts`, `LEGACY_DEMO_VALUES`, gerado comparando o seed antigo com o atual):
+    `[id, caminho, valor antigo, valor novo]` por coleção (cargos, clientes, endereços, descrições, materiais, fornecedores,
+    notas, forecast, nº de cotação COT-→QUO- etc.). `migrateLegacyDemoValues()` em `ensureDefaults` troca só valores ainda
+    idênticos ao original (edições do usuário ficam). Caminho: `campo`, `lista[id]` ou `lista[índice]`.
   - `office` (orçamento): cronograma/projetos, colaboradores, materiais dos projetos, criar/cancelar requisições.
   - `logistics`: processar requisições (cotação, registrar PO do SAP, rejeitar), POs, GR, catálogo/cotações, fornecedores.
   - A UI esconde/desabilita (fieldset `disabled`) e os **serviços de domínio chamam `assertCan`** — a regra vale mesmo se a UI falhar.
