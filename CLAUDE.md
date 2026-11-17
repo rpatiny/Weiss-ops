@@ -428,6 +428,23 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 ## Ideias para o futuro
 
+> Lista combinada com o usuário (17/11/2026), em ordem de prioridade sugerida. A nº 3 virou o **Portal do cliente** (em andamento).
+
+1. **Nuvem de verdade (Supabase)** — sem ela os dados ficam no navegador de cada aparelho (shop floor, Office × Logística,
+   horas e portal do cliente não funcionam entre pessoas). Código pronto; falta projeto Supabase + variáveis na Vercel.
+2. **Avisos automáticos** (e-mail / Teams / push): novo pedido do shop floor ou requisição → Logística; pedido "Urgent" no
+   aging → Master; PO criada/recusada → quem pediu; material que vai atrasar o projeto → Office.
+3. **Relatório de inspeção / portal do cliente** (ver seção própria quando implementado).
+4. **Custo real e margem por serviço**: horas × taxa + materiais vs faturado; horas cotadas × gastas.
+5. **Histórico por nº de série**: retornos, peças trocadas, garantia (alerta de retorno dentro da garantia).
+6. **Cotação montada no app** (catálogo + horas estimadas por fase → PDF; aprovada ⇒ projeto + requisições prontos).
+7. **Estoque de bancada** com mínimo → sugere requisição; GR alimenta entrada.
+8. **Painel "Hoje" por perfil** como tela inicial.
+9. **Histórico de alterações dos dados-chave** (quem mudou nº de série/cliente/nº do projeto, quando, valor anterior).
+10. **Fotos e documentos no projeto** (chegada, desmontagem, entrega, laudo, certificado).
+11. **Página de acompanhamento para o cliente** (fase atual do reparo) — coberta pelo portal do cliente.
+12. **Backup automático diário** + **offline-first** (abaixo).
+
 - **Servidor próprio (on-premise):** Supabase self-hosted (Docker) numa VM Linux da empresa (4 vCPU / 8 GB / 100 GB SSD),
   HTTPS com certificado interno, porta 443 + WebSocket liberados, VPN para acesso externo, backup diário fora do servidor.
   O app não muda: só `VITE_SUPABASE_URL` aponta para o endereço interno. Entregável sugerido: pacote `deploy/onprem/`
