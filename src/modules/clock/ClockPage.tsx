@@ -87,7 +87,7 @@ export function ClockPage() {
   );
 }
 
-function WhoStep({ employees, onPick }: { employees: Employee[]; onPick: (e: Employee) => void }) {
+export function WhoStep({ employees, onPick }: { employees: Employee[]; onPick: (e: Employee) => void }) {
   const { t } = useI18n();
   return (
     <>
@@ -114,7 +114,7 @@ function WhoStep({ employees, onPick }: { employees: Employee[]; onPick: (e: Emp
   );
 }
 
-function PinStep({ employee, onBack, onOk }: { employee: Employee; onBack: () => void; onOk: (pin: string) => void }) {
+export function PinStep({ employee, onBack, onOk }: { employee: Employee; onBack: () => void; onOk: (pin: string) => void }) {
   const { t } = useI18n();
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
@@ -433,7 +433,7 @@ function DoneStep({ step, onClose }: { step: Extract<Step, { kind: 'done' }>; on
   );
 }
 
-function BackBtn({ onClick }: { onClick: () => void }) {
+export function BackBtn({ onClick }: { onClick: () => void }) {
   const { t } = useI18n();
   return (
     <button onClick={onClick} className="mb-4 flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-slate-300">

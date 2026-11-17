@@ -405,6 +405,32 @@ export interface AppDatabase {
   forecast: ForecastItem[];
   workPhases: WorkPhase[];
   timeEntries: TimeEntry[];
+  shopfloorRequests: ShopfloorRequest[];
+}
+
+export type ShopfloorRequestStatus = 'new' | 'ordered' | 'rejected';
+
+/**
+ * Pedido de compra feito no chão de fábrica (QR code → celular, sem login no app; o técnico se identifica com o PIN do ponto).
+ * Todos os campos são obrigatórios. A Logística marca como pedido (nº da PO) ou recusa (motivo).
+ */
+export interface ShopfloorRequest {
+  id: ID;
+  /** SF-00001… */
+  number: string;
+  employeeId: ID;
+  createdAt: string;
+  /** Foto do item (JPEG reduzido, data URL). */
+  photo: string;
+  description: string;
+  quantity: number;
+  supplier: string;
+  supplierCode: string;
+  status: ShopfloorRequestStatus;
+  handledBy?: ID;
+  handledAt?: string;
+  /** Nº da PO (pedido) ou motivo (recusa). */
+  note?: string;
 }
 
 export type CollectionName = keyof AppDatabase;

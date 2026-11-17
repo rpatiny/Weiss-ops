@@ -327,6 +327,17 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
     `ensureDefaults` renomeia `ph_7` Packing/Delivery → "Packaging & Delivery" e remove `ph_5` "Balancing" se só tiver apontamentos
     da demo (ids `te_<n>`). Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
+- **Pedidos de compra do shop floor** (`domain/shopfloor.ts`, coleção `shopfloorRequests`, SF-xxxxx):
+  - QR code no shop floor → `#/shop-request` (`modules/shopfloor/ShopRequestPage.tsx`), celular, sem login e sem aviso modal:
+    **foto** (câmera; `lib/image.ts` reduz p/ JPEG ≤1024 px) → descrição → quantidade → fornecedor (sugestões do cadastro) →
+    código do fornecedor — **todos obrigatórios** (`validateShopfloorField`) → revisão → nome + **PIN do ponto** (reusa `WhoStep`/
+    `PinStep` do ponto) → "Request sent". Rascunho some após 3 min sem uso.
+  - Logística/Master (`requisition.process`): aba **Shop floor** em Ordens de Compra (`ShopfloorTab`): foto (ampliar), item,
+    fornecedor/código, quem pediu; "Marcar como pedido" (nº da PO) / "Recusar" (motivo) / "Reabrir". QR/cartaz via
+    `components/ui/QrPoster.tsx` (também usado no QR do ponto). Badge do menu soma os pedidos sem ação.
+  - **Aging** (`shopfloorAge` em dias úteis sem ação, `agingBucket`): Novo 0–1 · Aguardando 2–3 · Virando prioridade 4–6 ·
+    Urgente 7+; cards com cor/anel por faixa, contadores por faixa, pendentes ordenados do mais velho para o mais novo.
+  - Excel: aba `Shopfloor_Requests` (sem foto). Backup: coleção opcional (backups antigos ok).
 - **Tela da TV** (`#/tv`, `#/tv?view=biweekly`, `modules/tv/TvBoard.tsx`): rota da equipe só leitura para a TV da oficina,
   sem login, sem aviso modal; dias (fim de semana estreito e acinzentado) × colaboradores ativos, hoje destacado, férias hachuradas, barra com anel verde
   + "● fase" quando o técnico está marcando horas naquele projeto; rodapé "Agora na oficina" (flags). Tudo em vh/vw

@@ -14,6 +14,7 @@ import { lineTotal, poTotal } from './purchasing';
 import { materialStatus, projectPoRef, projectSpindleRef } from './schedule';
 import { entryMinutes, localDay } from './timeTracking';
 import { reportCheck } from './hoursReport';
+import { shopfloorAge } from './shopfloor';
 
 const label = (key: string) => translate('en-GB', key as TranslationKey);
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
@@ -187,6 +188,22 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       'Working days': businessDaysBetween(a.startDate, a.endDate),
       Note: a.note,
     })),
+    // Pedidos do shop floor (sem a foto: só no app/backup).
+    Shopfloor_Requests: [...(data.shopfloorRequests ?? [])]
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((r) => ({
+        'Request no.': r.number,
+        Date: d(localDay(r.createdAt)),
+        'Requested by': emp.get(r.employeeId)?.name ?? '',
+        Description: r.description,
+        Quantity: r.quantity,
+        Supplier: r.supplier,
+        'Supplier code': r.supplierCode,
+        Status: r.status,
+        'Working days without action': r.status === 'new' ? shopfloorAge(r) : '',
+        'PO / reason': r.note ?? '',
+        'Handled by': r.handledBy ? (usr.get(r.handledBy)?.name ?? '') : '',
+      })),
     // Sem relatório parcial: só serviços concluídos (todas as fases) e sem apontamento aberto.
     Workshop_Hours: [...data.timeEntries]
       .filter((e) => reportCheck(e.projectId, data).ok)
@@ -279,9 +296,10 @@ const RULES: Record<CollectionName, FieldRule[]> = {
   forecast: [['customer', 'string'], ['estimatedValue', 'number'], ['expectedDate', 'date'], ['probability', 'number']],
   workPhases: [['name', 'string'], ['order', 'number'], ['active', 'boolean']],
   timeEntries: [['employeeId', 'string'], ['projectId', 'string'], ['phaseId', 'string'], ['start', 'string']],
+  shopfloorRequests: [['number', 'string'], ['employeeId', 'string'], ['description', 'string'], ['quantity', 'number'], ['status', 'string']],
 };
 /** Coleções criadas depois da v5: podem faltar em backups antigos (viram listas vazias). */
-const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries']);
+const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries', 'shopfloorRequests']);
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 const okType = (v: unknown, kind: FieldRule[1]) =>

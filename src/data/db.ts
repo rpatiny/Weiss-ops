@@ -15,7 +15,7 @@ type Repos = { [K in CollectionName]: Repository<EntityOf<K>> };
 
 const DATA_COLLECTIONS = [
   'requisitions', 'extensions', 'employees', 'projects', 'assignments', 'absences',
-  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast', 'workPhases', 'timeEntries',
+  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast', 'workPhases', 'timeEntries', 'shopfloorRequests',
 ] as const satisfies readonly Exclude<CollectionName, 'users'>[];
 
 /** Modo nuvem: repositórios sincronizados com o Supabase; modo local: localStorage. */
@@ -41,6 +41,7 @@ export const repos: Repos = {
   forecast: makeRepo('forecast'),
   workPhases: makeRepo('workPhases'),
   timeEntries: makeRepo('timeEntries'),
+  shopfloorRequests: makeRepo('shopfloorRequests'),
 } as Repos;
 
 export const COLLECTIONS = Object.keys(repos) as CollectionName[];
@@ -171,6 +172,7 @@ export const db = {
       forecast: [...repos.forecast.getAll()],
       workPhases: [...repos.workPhases.getAll()],
       timeEntries: [...repos.timeEntries.getAll()],
+      shopfloorRequests: [...repos.shopfloorRequests.getAll()],
     };
   },
 
@@ -191,6 +193,7 @@ export const db = {
     // Coleções novas: backups antigos não as têm.
     repos.workPhases.replaceAll(data.workPhases ?? []);
     repos.timeEntries.replaceAll(data.timeEntries ?? []);
+    repos.shopfloorRequests.replaceAll(data.shopfloorRequests ?? []);
     db.ensureDefaults();
     writeMeta({ id: META_KEY, schemaVersion: APP_CONFIG.schemaVersion, initializedAt: new Date().toISOString(), source });
   },
@@ -209,7 +212,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [], workPhases: [], timeEntries: [] }, 'empty');
+    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [], workPhases: [], timeEntries: [], shopfloorRequests: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {

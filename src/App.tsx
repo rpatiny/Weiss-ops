@@ -9,6 +9,7 @@ import { ExtensionsPage } from '@/modules/extensions/ExtensionsPage';
 import { ProjectsPage } from '@/modules/projects/ProjectsPage';
 import { ClockPage } from '@/modules/clock/ClockPage';
 import { TvBoard } from '@/modules/tv/TvBoard';
+import { ShopRequestPage } from '@/modules/shopfloor/ShopRequestPage';
 import { TimesheetPage } from '@/modules/timesheet/TimesheetPage';
 import { lazy, Suspense } from 'react';
 
@@ -32,6 +33,7 @@ function Page({ path }: { path: RoutePath }) {
       return <TimesheetPage />;
     case '/clock':
     case '/tv':
+    case '/shop-request':
       return null;
     case '/admin':
       return <SchedulePage />;
@@ -53,6 +55,8 @@ export default function App() {
   if (path === '/clock') return <ClockPage />;
   // Tela da TV da oficina: só leitura, sem login.
   if (path === '/tv') return <TvBoard />;
+  // Pedido de compra do shop floor (QR code): sem login no app; identifica com o PIN do ponto.
+  if (path === '/shop-request') return <ShopRequestPage />;
   // Master não aparece na lista do login: acesso por #/admin (ou 5 cliques na logo da tela de login).
   if (!user) return <LoginScreen revealMaster={path === '/admin'} />;
   return (

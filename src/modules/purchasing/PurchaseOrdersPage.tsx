@@ -27,9 +27,10 @@ import { PODrawer } from './PODrawer';
 import { ReadinessTab } from './ReadinessTab';
 import { SuppliersTab } from './SuppliersTab';
 import { usePurchasingData } from './usePurchasingData';
+import { ShopfloorTab } from '@/modules/shopfloor/ShopfloorTab';
 
-type Tab = 'requisitions' | 'orders' | 'receiving' | 'materials' | 'readiness' | 'suppliers';
-const TABS: Tab[] = ['requisitions', 'orders', 'receiving', 'materials', 'readiness', 'suppliers'];
+type Tab = 'requisitions' | 'shopfloor' | 'orders' | 'receiving' | 'materials' | 'readiness' | 'suppliers';
+const TABS: Tab[] = ['requisitions', 'shopfloor', 'orders', 'receiving', 'materials', 'readiness', 'suppliers'];
 const isTab = (v: unknown): v is Tab => typeof v === 'string' && (TABS as string[]).includes(v);
 
 export function PurchaseOrdersPage() {
@@ -38,6 +39,7 @@ export function PurchaseOrdersPage() {
   const pd = usePurchasingData();
   const user = useCurrentUser();
   const allowed = useCan();
+  const shopfloorNew = useCollection('shopfloorRequests').filter((r) => r.status === 'new').length;
   const requisitions = useCollection('requisitions');
   const [tab, setTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, user?.role === 'master' ? 'orders' : 'requisitions', isTab);
   const [drawer, setDrawer] = useState<{ id?: string } | null>(null);
@@ -146,12 +148,14 @@ export function PurchaseOrdersPage() {
               tab === x ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
             )}
           >
-            {x === 'requisitions' || x === 'receiving' ? t(`process.tabs.${x}`) : t(`purchasing.tabs.${x}`)}
+            {x === 'shopfloor' ? t('shopfloor.tab') : x === 'requisitions' || x === 'receiving' ? t(`process.tabs.${x}`) : t(`purchasing.tabs.${x}`)}
+            {x === 'shopfloor' && shopfloorNew > 0 && <span className="ml-1.5 rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums">{shopfloorNew}</span>}
           </button>
         ))}
       </div>
 
       {tab === 'requisitions' && <RequisitionsTab openId={reqOpen} onOpenChange={setReqOpen} />}
+      {tab === 'shopfloor' && <ShopfloorTab />}
       {tab === 'orders' && <OrdersTab onOpen={(id) => setDrawer({ id })} />}
       {tab === 'receiving' && <ReceivingTab />}
       {tab === 'materials' && <CatalogTab />}
