@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/Modal';
+import { ProtectedInput } from '@/components/ui/ProtectedInput';
 import { Avatar } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
@@ -243,12 +244,12 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
         {tab === 'details' && (
           <form id="project-form" onSubmit={submit} className="space-y-5" noValidate>
             <fieldset disabled={readOnly} className="space-y-5">
-            <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('calendar.project.number')} required error={errors.projectNumber && t(errors.projectNumber)}>
-                {(id) => <Input id={id} name="projectNumber" value={draft.projectNumber} onChange={(e) => set('projectNumber', e.target.value)} className="font-mono" invalid={!!errors.projectNumber} />}
+                {(id) => <ProtectedInput protect={!!project} resetKey={project?.id} fieldLabel={t('calendar.project.number')} id={id} name="projectNumber" value={draft.projectNumber} onChange={(e) => set('projectNumber', e.target.value)} className="font-mono" invalid={!!errors.projectNumber} />}
               </Field>
               <Field label={t('calendar.project.customer')} required error={errors.customer && t(errors.customer)}>
-                {(id) => <Input id={id} name="customer" value={draft.customer} onChange={(e) => set('customer', e.target.value)} list="project-customers" placeholder={t('calendar.project.customerPlaceholder')} invalid={!!errors.customer} autoFocus={!project} />}
+                {(id) => <ProtectedInput protect={!!project} resetKey={project?.id} fieldLabel={t('calendar.project.customer')} id={id} name="customer" value={draft.customer} onChange={(e) => set('customer', e.target.value)} list="project-customers" placeholder={t('calendar.project.customerPlaceholder')} invalid={!!errors.customer} autoFocus={!project} />}
               </Field>
             </div>
             <datalist id="project-customers">
@@ -303,7 +304,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
               <Field label={t('calendar.project.linkSpindle')}>
                 {(id) => (
                   <div className="flex gap-2">
-                    <Input id={id} name="spindleRef" value={draft.spindleRef ?? ''} onChange={(e) => set('spindleRef', e.target.value)} list="project-spindle-refs" autoComplete="off" />
+                    <div className="min-w-0 flex-1"><ProtectedInput protect={!!project && !!(project.spindleRef?.trim() || project.spindleId)} resetKey={project?.id} fieldLabel={t('calendar.project.linkSpindle')} id={id} name="spindleRef" value={draft.spindleRef ?? ''} onChange={(e) => set('spindleRef', e.target.value)} list="project-spindle-refs" autoComplete="off" /></div>
                     {linkedSpindle && <Button icon={ExternalLink} onClick={() => navigate('/financial', { open: linkedSpindle.id })} aria-label="Spindle" />}
                   </div>
                 )}

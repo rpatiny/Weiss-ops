@@ -4,6 +4,12 @@
  * Interpolação: `{nome}` → t('chave', { nome: 'valor' }).
  */
 export const pt = {
+  protected: {
+    title: 'Editar {field}?',
+    message: '{field} é um dado-chave, usado em cronograma, compras, financeiro e relatórios. Tem certeza de que quer editar?',
+    confirm: 'Sim, editar',
+    editAria: 'Editar {field}',
+  },
   common: {
     add: 'Adicionar',
     save: 'Salvar',

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/Modal';
+import { ProtectedInput } from '@/components/ui/ProtectedInput';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { enumOptions } from '@/domain/labels';
@@ -205,7 +206,7 @@ export function PODrawer({ open, poId, onClose, onRegisterGR }: Props) {
                     options={[{ value: '', label: t('purchasing.po.selectSupplier') }, ...[...suppliers].sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ value: s.id, label: s.name }))]}
                   />
                 ) : (
-                  <Input id={id} name="customer" value={draft.customerOrVendor} onChange={(e) => set('customerOrVendor', e.target.value)} list="po-customers" invalid={!!errors.customerOrVendor} />
+                  <ProtectedInput protect={!!existing} resetKey={existing?.id} fieldLabel={t('purchasing.po.customer')} id={id} name="customer" value={draft.customerOrVendor} onChange={(e) => set('customerOrVendor', e.target.value)} list="po-customers" invalid={!!errors.customerOrVendor} />
                 )
               }
             </Field>

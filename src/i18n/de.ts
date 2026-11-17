@@ -1,6 +1,12 @@
 import type { Dictionary } from './types';
 
 export const de: Dictionary = {
+  protected: {
+    title: '{field} bearbeiten?',
+    message: '{field} ist ein Schlüsselfeld, das in Planung, Einkauf, Finanzen und Berichten verwendet wird. Wirklich bearbeiten?',
+    confirm: 'Ja, bearbeiten',
+    editAria: '{field} bearbeiten',
+  },
   common: {
     add: 'Hinzufügen',
     save: 'Speichern',

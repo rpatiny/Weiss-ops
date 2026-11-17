@@ -1,6 +1,12 @@
 import type { Dictionary } from './types';
 
 export const en: Dictionary = {
+  protected: {
+    title: 'Edit {field}?',
+    message: '{field} is key data used across the schedule, purchasing, finance and reports. Are you sure you want to edit it?',
+    confirm: 'Yes, edit',
+    editAria: 'Edit {field}',
+  },
   common: {
     add: 'Add',
     save: 'Save',

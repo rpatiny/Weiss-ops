@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
 interface FieldProps {
@@ -29,9 +29,9 @@ export function Field({ label, error, hint, required, className, children }: Fie
   );
 }
 
-export function Input({ className, invalid, ...rest }: InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }) {
-  return <input className={cn('input', invalid && 'border-red-500 focus:border-red-500 focus:ring-red-500/30', className)} {...rest} />;
-}
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }>(function Input({ className, invalid, ...rest }, ref) {
+  return <input ref={ref} className={cn('input', invalid && 'border-red-500 focus:border-red-500 focus:ring-red-500/30', className)} {...rest} />;
+});
 
 export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={cn('input min-h-20', className)} {...rest} />;

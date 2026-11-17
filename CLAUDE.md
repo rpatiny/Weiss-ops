@@ -147,6 +147,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Status visuais**: sempre `<StatusBadge kind="activityStatus" value={...} />`.
 - **Datas/números** usam o idioma ativo (`setFormatLocale` é chamado pelo I18nProvider); a moeda é fixa (`APP_CONFIG.currency`).
 - **Preferências de UI** (visão do calendário, filtros) via `usePersistentState` (`spindleops:ui:*`).
+- **Dados-chave travados** (`components/ui/ProtectedInput.tsx`): em registros já salvos, nº do projeto, cliente, spindle/motor do
+  projeto, nº de série e cliente do spindle e cliente da PO de venda ficam travados (cadeado); botão **Edit** → confirmação
+  "Are you sure?" → libera. Em registros novos o campo é livre. Volta a travar ao reabrir (`resetKey`).
 - **Criação/edição**: `Drawer` lateral; **confirmações destrutivas**: `ConfirmDialog`; **feedback**: `useToast()`.
 - **Deep-link** para registros: `navigate('/purchase-orders', { open: poId })`; a página lê `params.get('open')`.
 - Componentes de página ficam em `modules/<módulo>/`; regras em `domain/<módulo>.ts`.

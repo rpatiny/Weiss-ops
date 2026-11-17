@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/Modal';
+import { ProtectedInput } from '@/components/ui/ProtectedInput';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { forecastService, spindlePoRef, spindleService, validateForecast, validateSpindle, weightedValue, type ForecastDraft, type SpindleDraft } from '@/domain/financial';
@@ -112,7 +113,7 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
           <fieldset disabled={readOnly} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label={t('financial.spindleForm.serialNumber')} required error={err('serialNumber')}>
-                {(id) => <Input id={id} name="serialNumber" value={d.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} className="font-mono" invalid={!!errors.serialNumber} autoFocus={!existing} />}
+                {(id) => <ProtectedInput protect={!!existing} resetKey={existing?.id} fieldLabel={t('financial.spindleForm.serialNumber')} id={id} name="serialNumber" value={d.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} className="font-mono" invalid={!!errors.serialNumber} autoFocus={!existing} />}
               </Field>
               <Field label={t('financial.spindleForm.manufacturer')}>
                 {(id) => <Input id={id} name="manufacturer" value={d.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} list="sp-manufacturers" />}
@@ -128,7 +129,7 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
             </datalist>
             <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
               <Field label={t('financial.spindleForm.customer')} required error={err('customer')}>
-                {(id) => <Input id={id} name="customer" value={d.customer} onChange={(e) => set('customer', e.target.value)} list="sp-customers" invalid={!!errors.customer} />}
+                {(id) => <ProtectedInput protect={!!existing} resetKey={existing?.id} fieldLabel={t('financial.spindleForm.customer')} id={id} name="customer" value={d.customer} onChange={(e) => set('customer', e.target.value)} list="sp-customers" invalid={!!errors.customer} />}
               </Field>
               <Field label={t('financial.spindleForm.receivedDate')} required error={err('receivedDate')}>
                 {(id) => <Input id={id} type="date" value={d.receivedDate} onChange={(e) => set('receivedDate', e.target.value)} />}
