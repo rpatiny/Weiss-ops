@@ -37,15 +37,57 @@ const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   logistics: ['requisition.process', 'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process'],
 };
 
-const KEY = `${APP_CONFIG.storagePrefix}:session`;
-const listeners = new Set<() => void>();
-let currentId: string | null = (() => {
+/**
+ * Sessão com validade (antes ficava gravada para sempre e o app abria sem login):
+ * expira após IDLE_MS sem uso ou MAX_MS desde o login. Gravada como `{ userId, startedAt, lastActive }`;
+ * o formato antigo (só o id) não vale mais ⇒ pede login.
+ */
+const KEY = `${APP_CONFIG.storagePrefix}:session.v2`;
+const LEGACY_KEY = `${APP_CONFIG.storagePrefix}:session`;
+export const SESSION_IDLE_MS = 30 * 60 * 1000;
+export const SESSION_MAX_MS = 12 * 60 * 60 * 1000;
+
+interface StoredSession {
+  userId: string;
+  startedAt: number;
+  lastActive: number;
+}
+
+const isValid = (x: StoredSession | null, now = Date.now()): x is StoredSession =>
+  !!x && typeof x.userId === 'string' && now - x.lastActive < SESSION_IDLE_MS && now - x.startedAt < SESSION_MAX_MS && x.lastActive <= now + 60_000;
+
+function readStored(): StoredSession | null {
   try {
-    return localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY);
+    return raw ? (JSON.parse(raw) as StoredSession) : null;
   } catch {
     return null;
   }
+}
+
+function writeStored(x: StoredSession | null) {
+  try {
+    if (x) localStorage.setItem(KEY, JSON.stringify(x));
+    else localStorage.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Sessão local (PIN). Modo e-mail: a sessão é do Supabase (`setSessionUser`). */
+let stored: StoredSession | null = (() => {
+  try {
+    localStorage.removeItem(LEGACY_KEY);
+  } catch {
+    /* ignore */
+  }
+  const x = readStored();
+  if (isValid(x)) return x;
+  writeStored(null);
+  return null;
 })();
+let currentId: string | null = stored?.userId ?? null;
+const listeners = new Set<() => void>();
 
 function emit() {
   listeners.forEach((l) => l());
@@ -85,11 +127,9 @@ export async function login(userId: string, pin: string): Promise<boolean> {
   if (!user?.active) return false;
   if ((await hashPin(userId, pin)) !== user.pinHash) return false;
   currentId = userId;
-  try {
-    localStorage.setItem(KEY, userId);
-  } catch {
-    /* ignore */
-  }
+  const now = Date.now();
+  stored = { userId, startedAt: now, lastActive: now };
+  writeStored(stored);
   emit();
   return true;
 }
@@ -112,12 +152,46 @@ export function logout(): void {
     return;
   }
   currentId = null;
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    /* ignore */
-  }
+  stored = null;
+  writeStored(null);
   emit();
+}
+
+// ───────── Validade da sessão (PIN) ─────────
+
+let lastTouch = 0;
+/** Uso do app renova o prazo de inatividade (no máx. 1 gravação a cada 15 s). */
+function touch() {
+  if (!stored) return;
+  const now = Date.now();
+  if (now - lastTouch < 15_000) return;
+  lastTouch = now;
+  // Outra aba pode ter saído/entrado com outro usuário: respeita o que está gravado.
+  const disk = readStored();
+  if (!disk || disk.userId !== stored.userId || disk.startedAt !== stored.startedAt) return checkSession();
+  if (!isValid(stored, now)) return checkSession();
+  stored = { ...stored, lastActive: now };
+  writeStored(stored);
+}
+
+/** Encerra a sessão vencida (ou encerrada em outra aba). */
+function checkSession() {
+  if (!stored) return;
+  const disk = readStored();
+  const now = Date.now();
+  // Atividade em outra aba conta (mesma sessão, lastActive mais recente).
+  if (disk && disk.userId === stored.userId && disk.startedAt === stored.startedAt && disk.lastActive > stored.lastActive) stored = disk;
+  const same = !!disk && disk.userId === stored.userId && disk.startedAt === stored.startedAt;
+  if (!same || !isValid(stored, now)) logout();
+}
+
+if (typeof window !== 'undefined') {
+  for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const) window.addEventListener(ev, touch, { passive: true, capture: true });
+  // Ao voltar para a aba/app (ex.: celular desbloqueado depois de horas), confere antes de mostrar os dados.
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkSession());
+  window.addEventListener('pageshow', checkSession);
+  window.addEventListener('storage', (e) => e.key === KEY && checkSession());
+  setInterval(checkSession, 30_000);
 }
 
 function subscribe(cb: () => void) {

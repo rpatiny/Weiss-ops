@@ -231,6 +231,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - `office` (orçamento): cronograma/projetos, colaboradores, materiais dos projetos, criar/cancelar requisições.
   - `logistics`: processar requisições (cotação, registrar PO do SAP, rejeitar), POs, GR, catálogo/cotações, fornecedores.
   - A UI esconde/desabilita (fieldset `disabled`) e os **serviços de domínio chamam `assertCan`** — a regra vale mesmo se a UI falhar.
+  - **Sessão com validade** (`session.ts`, chave `spindleops:session.v2` = `{ userId, startedAt, lastActive }`): expira após
+    30 min sem uso (`SESSION_IDLE_MS`) ou 12 h do login (`SESSION_MAX_MS`); confere a cada 30 s, ao voltar para a aba e entre
+    abas (sair numa aba sai em todas). A chave antiga `spindleops:session` (sem prazo) é apagada ⇒ pede login.
   - ⚠️ Com localStorage, o PIN só separa perfis no mesmo navegador; uso multiusuário real exige backend compartilhado
     (implementar um `StorageDriver`/repositório remoto e mover a autenticação para ele).
 - **Processo de compras** (`domain/requisitions.ts`):
