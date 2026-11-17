@@ -297,9 +297,11 @@ const RULES: Record<CollectionName, FieldRule[]> = {
   workPhases: [['name', 'string'], ['order', 'number'], ['active', 'boolean']],
   timeEntries: [['employeeId', 'string'], ['projectId', 'string'], ['phaseId', 'string'], ['start', 'string']],
   shopfloorRequests: [['number', 'string'], ['employeeId', 'string'], ['description', 'string'], ['quantity', 'number'], ['status', 'string']],
+  customers: [['name', 'string'], ['username', 'string'], ['pinHash', 'string'], ['active', 'boolean']],
+  projectUpdates: [['projectId', 'string'], ['kind', 'string'], ['status', 'string'], ['photos', 'array']],
 };
 /** Coleções criadas depois da v5: podem faltar em backups antigos (viram listas vazias). */
-const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries', 'shopfloorRequests']);
+const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries', 'shopfloorRequests', 'customers', 'projectUpdates']);
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 const okType = (v: unknown, kind: FieldRule[1]) =>

@@ -101,6 +101,8 @@ export interface Project {
   /** Vínculo DERIVADO do texto: spindle cadastrado com o mesmo nº de série (se houver). */
   spindleId?: ID;
   materials: ProjectMaterial[];
+  /** Link do portal do cliente (token aleatório). Sem token = portal desligado para o projeto. */
+  portalToken?: string;
 }
 
 /**
@@ -406,6 +408,8 @@ export interface AppDatabase {
   workPhases: WorkPhase[];
   timeEntries: TimeEntry[];
   shopfloorRequests: ShopfloorRequest[];
+  customers: CustomerAccount[];
+  projectUpdates: ProjectUpdate[];
 }
 
 export type ShopfloorRequestStatus = 'new' | 'ordered' | 'rejected';
@@ -431,6 +435,52 @@ export interface ShopfloorRequest {
   handledAt?: string;
   /** Nº da PO (pedido) ou motivo (recusa). */
   note?: string;
+}
+
+/**
+ * Conta de acesso do CLIENTE ao portal (não é usuário interno). Vale para os projetos cujo `customer` tem o mesmo nome
+ * (sem diferenciar maiúsculas/espaços). Senha = 6 dígitos (hash com sal = id).
+ */
+export interface CustomerAccount {
+  id: ID;
+  /** Nome do cliente, igual ao usado nos projetos (ex.: "Rolls-Royce"). */
+  name: string;
+  /** Usuário de login (minúsculas). */
+  username: string;
+  pinHash: string;
+  active: boolean;
+  email?: string;
+  createdAt: string;
+}
+
+export type ProjectUpdateKind = 'assessment' | 'phase' | 'note';
+export type ProjectUpdateStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * Atualização do relatório do cliente. Nasce SEMPRE como `pending`; só aparece no portal depois que o Office aprova
+ * (pode editar título/texto, tirar fotos e esconder as horas antes de aprovar).
+ */
+export interface ProjectUpdate {
+  id: ID;
+  projectId: ID;
+  kind: ProjectUpdateKind;
+  title: string;
+  text: string;
+  /** Fotos reduzidas (data URL JPEG). */
+  photos: string[];
+  /** Fase concluída (kind = 'phase'). */
+  phaseId?: ID;
+  /** Horas trabalhadas na fase (minutos, foto do momento da conclusão). */
+  minutes?: number;
+  /** Mostrar as horas ao cliente (decisão do Office na revisão). */
+  showHours: boolean;
+  createdAt: string;
+  author: { kind: 'employee' | 'user'; id: ID };
+  status: ProjectUpdateStatus;
+  reviewedBy?: ID;
+  reviewedAt?: string;
+  /** Motivo da recusa (interno). */
+  reviewNote?: string;
 }
 
 export type CollectionName = keyof AppDatabase;

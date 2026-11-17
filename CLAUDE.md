@@ -341,6 +341,26 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - **Aging** (`shopfloorAge` em dias úteis sem ação, `agingBucket`): Novo 0–1 · Aguardando 2–3 · Virando prioridade 4–6 ·
     Urgente 7+; cards com cor/anel por faixa, contadores por faixa, pendentes ordenados do mais velho para o mais novo.
   - Excel: aba `Shopfloor_Requests` (sem foto). Backup: coleção opcional (backups antigos ok).
+- **Portal do cliente / relatório do cliente** (`domain/portal.ts`, coleções `customers` e `projectUpdates`):
+  - **Contas de cliente** (`#/customers`, rodapé do menu, `customers.manage` = Office/Master): nome do cliente (igual ao dos
+    projetos — `normName`), usuário (minúsculas, único) e **senha de 6 dígitos gerada pelo sistema** (`portalPinHash`, sal = id),
+    mostrada UMA vez (copiar), "Nova senha" invalida a anterior. Uma conta vê todos os projetos com o mesmo nome de cliente.
+  - **Link por projeto**: `Project.portalToken` aleatório → `#/portal?p=<token>`; aba **Customer report** no projeto
+    (`portal.review` = Office/Master): criar/copiar/desligar link, "Copiar mensagem para o cliente", abrir, **Ver como o
+    cliente**, contas com acesso (aviso se não houver).
+  - **Atualizações** (`ProjectUpdate`): `assessment`/`note` (Office, com fotos) e `phase` — **toda conclusão de fase no ponto**
+    gera uma (horas da fase + fotos/nota opcionais pedidas no 2º toque de "Concluir fase", `PhotoPicker`). **Nascem `pending`;
+    nada vai ao cliente sem "Approve & publish"**. Office edita texto/fotos, liga/desliga "mostrar horas", recusa (motivo
+    interno), despublica. Contadores: aba (pendentes), item Projects no menu (`usePendingCustomerUpdates`), card do projeto.
+  - **Portal** (`modules/portal/CustomerPortalPage.tsx`, sem login interno, sem aviso modal): usuário + senha de 6 dígitos;
+    só entra se a conta estiver ativa e for do mesmo cliente do projeto; 5 erros ⇒ bloqueio de 15 min; sessão na aba, expira
+    após 30 min parado. Mostra `buildPortalView` (só aprovadas: andamento = fases com atualização aprovada, linha do tempo
+    com fotos ampliáveis, horas liberadas) e "Imprimir / salvar PDF". A mesma `CustomerReportView` é a pré-visualização do Office.
+  - ⚠️ **Para clientes reais**: (1) precisa do modo nuvem (local = só no mesmo navegador); (2) no modo PIN da nuvem a chave anon
+    lê toda a tabela `records` — antes de dar acesso a clientes, usar login por e-mail para a equipe e servir o portal por uma
+    função do servidor (RPC `security definer`/Edge Function) que confere usuário+senha+token e devolve **só** `buildPortalView`
+    (tabela própria de visões publicadas, sem acesso direto do anon), com bloqueio de tentativas no servidor; (3) fotos em
+    base64 pesam no localStorage (~100–200 KB cada) — na nuvem, mover para o Supabase Storage.
 - **Tela da TV** (`#/tv`, `#/tv?view=biweekly`, `modules/tv/TvBoard.tsx`): rota da equipe só leitura para a TV da oficina,
   sem login, sem aviso modal; dias (fim de semana estreito e acinzentado) × colaboradores ativos, hoje destacado, férias hachuradas, barra com anel verde
   + "● fase" quando o técnico está marcando horas naquele projeto; rodapé "Agora na oficina" (flags). Tudo em vh/vw
@@ -428,7 +448,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 ## Ideias para o futuro
 
-> Lista combinada com o usuário (17/11/2026), em ordem de prioridade sugerida. A nº 3 virou o **Portal do cliente** (em andamento).
+> Lista combinada com o usuário (17/11/2026), em ordem de prioridade sugerida. A nº 3 virou o **Portal do cliente** (feito — ver "Portal do cliente").
 
 1. **Nuvem de verdade (Supabase)** — sem ela os dados ficam no navegador de cada aparelho (shop floor, Office × Logística,
    horas e portal do cliente não funcionam entre pessoas). Código pronto; falta projeto Supabase + variáveis na Vercel.

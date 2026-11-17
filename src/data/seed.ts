@@ -519,5 +519,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     workPhases,
     timeEntries,
     shopfloorRequests: [],
+    customers: [],
+    projectUpdates: [],
   };
 }

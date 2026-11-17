@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Languages, LogOut, Menu, Moon, Sun, X, RotateCw, Smartphone } from 'lucide-react';
-import { logout, useCurrentUser } from '@/app/session';
+import { can, logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts, usePendingExtensions, usePendingShopfloor, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions, usePendingShopfloor, usePendingCustomerUpdates, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
@@ -113,6 +113,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const pending = usePendingCounts();
   const pendingExt = usePendingExtensions();
   const pendingShopfloor = usePendingShopfloor();
+  const pendingReview = usePendingCustomerUpdates();
   const myUpdates = useRequesterUpdates();
   const myExtUpdates = useRequesterExtensionUpdates();
   const myRejections = useRequesterRejections();
@@ -131,7 +132,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
                 item={item}
                 active={path === item.path}
                 onNavigate={onNavigate}
-                badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : item.path === '/shopfloor' ? pendingShopfloor : undefined}
+                badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : item.path === '/shopfloor' ? pendingShopfloor : item.path === '/projects' ? pendingReview : undefined}
                 goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined}
                 warnBadge={item.path === '/purchase-orders' ? myRejections.requisitions : item.path === '/extensions' ? myRejections.extensions : undefined}
               />
@@ -140,7 +141,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">
-        {NAV_FOOTER.map((item) => (
+        {NAV_FOOTER.filter((item) => item.path !== '/customers' || can('customers.manage', user)).map((item) => (
           <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} />
         ))}
         <button

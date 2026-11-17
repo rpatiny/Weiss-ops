@@ -30,6 +30,13 @@ export function usePendingShopfloor(): number {
   return useMemo(() => (!user || user.role === 'office' ? 0 : list.filter((r) => r.status === 'new').length), [user, list]);
 }
 
+/** Atualizações para o cliente aguardando revisão do Office (badge em Projects). */
+export function usePendingCustomerUpdates(): number {
+  const user = useCurrentUser();
+  const list = useCollection('projectUpdates');
+  return useMemo(() => (!user || user.role === 'logistics' ? 0 : list.filter((u) => u.status === 'pending').length), [user, list]);
+}
+
 /** Pedidos de extensão em aberto (para quem executa: logística e master). */
 export function usePendingExtensions(): number {
   const user = useCurrentUser();

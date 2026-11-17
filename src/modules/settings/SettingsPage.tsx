@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Boxes, Camera, FileInput, Globe2, ListOrdered, Timer, UserCog, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { Boxes, Building2, Camera, Images, FileInput, Globe2, ListOrdered, Timer, UserCog, CalendarRange, ClipboardList, Cog, Truck, Database, FolderKanban, Palmtree, RotateCcw, Trash2, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/ui/misc';
@@ -30,6 +30,8 @@ const COLLECTION_ICONS: Record<CollectionName, LucideIcon> = {
   workPhases: ListOrdered,
   timeEntries: Timer,
   shopfloorRequests: Camera,
+  customers: Building2,
+  projectUpdates: Images,
 };
 
 function CollectionCount({ name }: { name: CollectionName }) {

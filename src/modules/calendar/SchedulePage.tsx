@@ -61,14 +61,15 @@ export function SchedulePage() {
   // Deep-link: #/calendar?open=<projectId>
   // Só trata o parâmetro quando a rota atual é desta página (evita "roubar" o deep-link de outra tela).
   const openParam = routePath === '/calendar' ? params.get('open') : null;
+  const tabParam = routePath === '/calendar' ? params.get('tab') : null;
   useEffect(() => {
     if (!openParam) return;
     if (repos.projects.getById(openParam)) {
       const first = repos.assignments.getAll().filter((a) => a.projectId === openParam).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
       if (first) setAnchor(first.startDate < today && first.endDate >= today ? today : first.startDate);
-      setProjectDrawer({ id: openParam });
+      setProjectDrawer({ id: openParam, tab: tabParam === 'report' || tabParam === 'materials' || tabParam === 'team' ? tabParam : undefined });
     }
-    clearParams('open');
+    clearParams('open', 'tab');
   }, [openParam]);
 
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);

@@ -1,4 +1,4 @@
-import { Camera, CalendarRange, ClipboardList, Database, FolderKanban, Globe2, LineChart, Timer, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Camera, CalendarRange, ClipboardList, Database, FolderKanban, Globe2, LineChart, Timer, Users, type LucideIcon } from 'lucide-react';
 import type { RoutePath } from '@/app/router';
 import type { TranslationKey } from '@/i18n/types';
 import type { UserRole } from '@/types/models';
@@ -58,5 +58,6 @@ export const NAV_ITEMS: NavItem[] = [OPERATIONS, PURCHASING, FINANCE].flatMap((s
 /** Rodapé da barra lateral: cadastros e manutenção (junto do tema escuro). */
 export const NAV_FOOTER: NavItem[] = [
   { path: '/employees', labelKey: 'app.nav.employees', icon: Users },
+  { path: '/customers', labelKey: 'app.nav.customers', icon: Building2 },
   { path: '/settings', labelKey: 'app.nav.settings', icon: Database },
 ];

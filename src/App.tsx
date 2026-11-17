@@ -11,6 +11,8 @@ import { ClockPage } from '@/modules/clock/ClockPage';
 import { TvBoard } from '@/modules/tv/TvBoard';
 import { ShopRequestPage } from '@/modules/shopfloor/ShopRequestPage';
 import { ShopfloorPage } from '@/modules/shopfloor/ShopfloorPage';
+import { CustomersPage } from '@/modules/customers/CustomersPage';
+import { CustomerPortalPage } from '@/modules/portal/CustomerPortalPage';
 import { TimesheetPage } from '@/modules/timesheet/TimesheetPage';
 import { lazy, Suspense } from 'react';
 
@@ -30,6 +32,8 @@ function Page({ path }: { path: RoutePath }) {
       return <PurchaseOrdersPage />;
     case '/shopfloor':
       return <ShopfloorPage />;
+    case '/customers':
+      return <CustomersPage />;
     case '/projects':
       return <ProjectsPage />;
     case '/timesheet':
@@ -37,6 +41,7 @@ function Page({ path }: { path: RoutePath }) {
     case '/clock':
     case '/tv':
     case '/shop-request':
+    case '/portal':
       return null;
     case '/admin':
       return <SchedulePage />;
@@ -60,6 +65,8 @@ export default function App() {
   if (path === '/tv') return <TvBoard />;
   // Pedido de compra do shop floor (QR code): sem login no app; identifica com o PIN do ponto.
   if (path === '/shop-request') return <ShopRequestPage />;
+  // Portal do CLIENTE (link do projeto + usuário e senha de 6 dígitos do cliente; nunca usa o login interno).
+  if (path === '/portal') return <CustomerPortalPage />;
   // Master não aparece na lista do login: acesso por #/admin (ou 5 cliques na logo da tela de login).
   if (!user) return <LoginScreen revealMaster={path === '/admin'} />;
   return (

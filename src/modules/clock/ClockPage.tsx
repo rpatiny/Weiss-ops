@@ -5,6 +5,8 @@ import { BrandLogo } from '@/components/layout/BrandLogo';
 import { Avatar } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
+import { MAX_UPDATE_PHOTOS, updateService } from '@/domain/portal';
+import { PhotoPicker } from '@/components/ui/PhotoPicker';
 import { canClock, clockService, currentJobOf, entryMinutes, formatMinutes, jobProgress, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
 import { LOCALES, useI18n } from '@/i18n';
 import type { TranslationKey } from '@/i18n/types';
@@ -192,6 +194,9 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   const [pickedId, setPickedId] = useState('');
   const [query, setQuery] = useState('');
   const [confirming, setConfirming] = useState(false);
+  // Relatório do cliente: fotos + nota opcionais ao concluir a fase (vão para revisão do Office).
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [, tick] = useState(0);
   useEffect(() => {
@@ -238,6 +243,8 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   const stop = (complete: boolean) => {
     const r = clockService.stop(employee.id, pin, complete);
     if (!r.ok) return fail(r);
+    // Toda conclusão de fase gera a atualização do relatório (horas da fase + fotos/nota) — pendente até o Office aprovar.
+    if (complete) updateService.fromPhaseCompletion(employee.id, pin, r.entry, photos, note);
     const next = jobProgress(r.entry.projectId, phases, [...entries.filter((e) => e.id !== r.entry.id), r.entry]).next;
     onDone({
       kind: 'done',
@@ -310,6 +317,24 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
               <p className="mt-2 flex gap-1.5 rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
                 <TriangleAlert className="size-4 shrink-0" /> {t('clock.review', { date: formatDate(open.start.slice(0, 10)) })}
               </p>
+            )}
+            {confirming && (
+              <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('clock.reportTitle')}</p>
+                <p className="text-xs text-slate-500">{t('clock.reportHint')}</p>
+                <PhotoPicker value={photos} onChange={setPhotos} max={MAX_UPDATE_PHOTOS} large label={t('clock.addPhotos')} />
+                <textarea
+                  rows={2}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={t('clock.notePlaceholder')}
+                  aria-label={t('clock.notePlaceholder')}
+                  className="input text-base"
+                />
+                <button type="button" onClick={() => { setConfirming(false); setPhotos([]); setNote(''); }} className="text-sm font-medium text-slate-500 underline">
+                  {t('common.cancel')}
+                </button>
+              </div>
             )}
             <button
               onClick={() => (confirming ? stop(true) : setConfirming(true))}

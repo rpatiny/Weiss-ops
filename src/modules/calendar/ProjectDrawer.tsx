@@ -33,8 +33,9 @@ import { addBusinessDays, businessDaysBetween, snapBackward, snapForward, todayI
 import { formatDate } from '@/lib/format';
 import type { ProjectAssignment } from '@/types/models';
 import { MaterialsTab } from './MaterialsTab';
+import { CustomerReportTab } from '@/modules/portal/CustomerReportTab';
 
-export type ProjectTab = 'details' | 'team' | 'materials';
+export type ProjectTab = 'details' | 'team' | 'materials' | 'report';
 
 interface Props {
   open: boolean;
@@ -58,7 +59,11 @@ const emptyDraft = (): ProjectDraft => ({
 export function ProjectDrawer({ open, projectId: initialId, initialTab = 'details', defaults, onClose }: Props) {
   const { t } = useI18n();
   const toast = useToast();
-  const readOnly = !useCan()('schedule.edit');
+  const allowedTo = useCan();
+  const readOnly = !allowedTo('schedule.edit');
+  const canReviewPortal = allowedTo('portal.review');
+  const projectUpdates = useCollection('projectUpdates');
+  const pendingReport = projectUpdates.filter((u) => u.projectId === initialId && u.status === 'pending').length;
   const projects = useCollection('projects');
   const assignments = useCollection('assignments');
   const employees = useCollection('employees');
@@ -183,6 +188,8 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     { id: 'details', label: t('calendar.project.tabs.details') },
     { id: 'team', label: t('calendar.project.tabs.team'), disabled: !project, count: projAssignments.length },
     { id: 'materials', label: t('calendar.project.tabs.materials'), disabled: !project, count: project?.materials.length },
+    // Relatório do cliente (Office/Master revisam e aprovam o que o cliente vê).
+    ...(canReviewPortal ? [{ id: 'report' as const, label: t('portal.tab'), disabled: !project, count: pendingReport || undefined }] : []),
   ];
 
   return (
@@ -354,6 +361,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
         )}
 
         {tab === 'materials' && project && <MaterialsTab project={project} projectStart={projectStart} />}
+        {tab === 'report' && project && canReviewPortal && <CustomerReportTab project={project} />}
       </Drawer>
 
       <ConfirmDialog

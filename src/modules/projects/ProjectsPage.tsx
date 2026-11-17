@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  FileImage,
   AlertTriangle,
   Check,
   CalendarRange,
@@ -17,6 +18,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { navigate } from '@/app/router';
+import { useCan } from '@/app/session';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
@@ -137,6 +139,8 @@ const PHASE_TONE = { unscheduled: 'slate', scheduled: 'cyan', in_production: 'bl
 function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
   const { t } = useI18n();
   const [showHistory, setShowHistory] = useState(false);
+  const canReviewPortal = useCan()('portal.review');
+  const pendingReport = useCollection('projectUpdates').filter((u) => u.projectId === d.project.id && u.status === 'pending').length;
   const { project, spindle, customerPO } = d;
   const received = d.materials.length - d.pending.length;
   const MAX_PENDING = 4;
@@ -301,6 +305,12 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
           {spindle && (
             <ActionBtn icon={Cog} onClick={() => navigate('/financial', { open: spindle.id })}>
               {t('projects.open.financial')}
+            </ActionBtn>
+          )}
+          {canReviewPortal && (
+            <ActionBtn icon={FileImage} onClick={() => navigate('/calendar', { open: project.id, tab: 'report' })}>
+              {t('portal.tab')}
+              {pendingReport > 0 && <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950 tabular-nums">{pendingReport}</span>}
             </ActionBtn>
           )}
           {d.requisitions[0] && (

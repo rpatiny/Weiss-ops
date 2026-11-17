@@ -15,7 +15,7 @@ type Repos = { [K in CollectionName]: Repository<EntityOf<K>> };
 
 const DATA_COLLECTIONS = [
   'requisitions', 'extensions', 'employees', 'projects', 'assignments', 'absences',
-  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast', 'workPhases', 'timeEntries', 'shopfloorRequests',
+  'purchaseOrders', 'suppliers', 'materials', 'spindles', 'forecast', 'workPhases', 'timeEntries', 'shopfloorRequests', 'customers', 'projectUpdates',
 ] as const satisfies readonly Exclude<CollectionName, 'users'>[];
 
 /** Modo nuvem: repositórios sincronizados com o Supabase; modo local: localStorage. */
@@ -42,6 +42,8 @@ export const repos: Repos = {
   workPhases: makeRepo('workPhases'),
   timeEntries: makeRepo('timeEntries'),
   shopfloorRequests: makeRepo('shopfloorRequests'),
+  customers: makeRepo('customers'),
+  projectUpdates: makeRepo('projectUpdates'),
 } as Repos;
 
 export const COLLECTIONS = Object.keys(repos) as CollectionName[];
@@ -173,6 +175,8 @@ export const db = {
       workPhases: [...repos.workPhases.getAll()],
       timeEntries: [...repos.timeEntries.getAll()],
       shopfloorRequests: [...repos.shopfloorRequests.getAll()],
+      customers: [...repos.customers.getAll()],
+      projectUpdates: [...repos.projectUpdates.getAll()],
     };
   },
 
@@ -194,6 +198,8 @@ export const db = {
     repos.workPhases.replaceAll(data.workPhases ?? []);
     repos.timeEntries.replaceAll(data.timeEntries ?? []);
     repos.shopfloorRequests.replaceAll(data.shopfloorRequests ?? []);
+    repos.customers.replaceAll(data.customers ?? []);
+    repos.projectUpdates.replaceAll(data.projectUpdates ?? []);
     db.ensureDefaults();
     writeMeta({ id: META_KEY, schemaVersion: APP_CONFIG.schemaVersion, initializedAt: new Date().toISOString(), source });
   },
@@ -212,7 +218,7 @@ export const db = {
   },
 
   clearAll(): void {
-    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [], workPhases: [], timeEntries: [], shopfloorRequests: [] }, 'empty');
+    db.load({ users: buildSeed().users, requisitions: [], extensions: [], employees: [], projects: [], assignments: [], absences: [], purchaseOrders: [], suppliers: [], materials: [], spindles: [], forecast: [], workPhases: [], timeEntries: [], shopfloorRequests: [], customers: [], projectUpdates: [] }, 'empty');
   },
 
   getMeta(): Meta | undefined {
