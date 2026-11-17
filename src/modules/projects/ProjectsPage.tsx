@@ -146,7 +146,8 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
       <div className="h-1.5" style={{ backgroundColor: project.color }} aria-hidden />
       <div className="flex flex-1 flex-col gap-4 p-5">
         {/* Cabeçalho */}
-        <header className="flex flex-wrap items-start justify-between gap-2">
+        {/* Selos sempre abaixo do título (antes iam para a direita ou quebravam linha conforme o tamanho do texto). */}
+        <header className="min-w-0 space-y-1.5">
           <div className="min-w-0">
             <p className="font-mono text-xs font-semibold text-slate-500">{project.projectNumber}</p>
             <h2 className="truncate text-lg font-semibold text-slate-900 dark:text-white">{project.customer}</h2>

@@ -242,7 +242,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
 
         {tab === 'details' && (
           <form id="project-form" onSubmit={submit} className="space-y-5" noValidate>
-            <fieldset disabled={readOnly} className="contents">
+            <fieldset disabled={readOnly} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
               <Field label={t('calendar.project.number')} required error={errors.projectNumber && t(errors.projectNumber)}>
                 {(id) => <Input id={id} name="projectNumber" value={draft.projectNumber} onChange={(e) => set('projectNumber', e.target.value)} className="font-mono" invalid={!!errors.projectNumber} />}
@@ -432,29 +432,31 @@ function TeamTab({
             const conflict = conflicts.has(a.id);
             return (
               <li key={a.id} className={cn('rounded-lg border p-3', conflict ? 'border-red-400 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20' : 'border-slate-200 dark:border-slate-800')}>
-                <div className="flex flex-wrap items-center gap-3">
+                {/* 1) avatar + colaborador + excluir · 2) início | fim · 3) resumo — mesma grade no celular e no desktop */}
+                <div className="flex items-center gap-3">
                   {emp && <Avatar name={emp.name} color={emp.color} size="sm" muted={emp.status === 'inactive'} />}
                   <Select
-                    className="min-w-40 flex-1"
+                    className="min-w-0 flex-1"
                     value={a.employeeId}
                     onChange={(v) => update(a, { employeeId: v })}
                     options={[...active, ...(emp && emp.status === 'inactive' ? [emp] : [])].map((e) => ({ value: e.id, label: e.status === 'inactive' ? `${e.name} ${t('calendar.project.inactiveSuffix')}` : e.name }))}
                     aria-label={t('calendar.project.employee')}
                   />
-                  <Input type="date" className="w-40" value={a.startDate} onChange={(e) => e.target.value && update(a, { startDate: e.target.value })} aria-label={t('calendar.project.startDate')} />
-                  <Input type="date" className="w-40" value={a.endDate} onChange={(e) => e.target.value && update(a, { endDate: e.target.value })} aria-label={t('calendar.project.endDate')} />
-                  <span className="text-xs whitespace-nowrap text-slate-500">{t('calendar.businessDays', { count: businessDaysBetween(a.startDate, a.endDate) })}</span>
                   <Button
                     size="sm"
                     variant="ghost"
                     icon={Trash2}
-                    className="text-red-600"
+                    className="shrink-0 text-red-600"
                     onClick={() => {
                       scheduleService.removeAssignment(a.id);
                       toast.success(t('calendar.toast.assignmentRemoved'));
                     }}
                     aria-label={t('common.delete')}
                   />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <Input type="date" className="min-w-0" value={a.startDate} onChange={(e) => e.target.value && update(a, { startDate: e.target.value })} aria-label={t('calendar.project.startDate')} />
+                  <Input type="date" className="min-w-0" value={a.endDate} onChange={(e) => e.target.value && update(a, { endDate: e.target.value })} aria-label={t('calendar.project.endDate')} />
                 </div>
                 {conflict && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600">
@@ -466,8 +468,8 @@ function TeamTab({
                     <Lock className="size-3.5" /> {rowError[a.id]}
                   </p>
                 )}
-                <p className="mt-1 text-[11px] text-slate-400">
-                  {formatDate(a.startDate)} – {formatDate(a.endDate)}
+                <p className="mt-2 text-xs text-slate-500">
+                  {t('calendar.businessDays', { count: businessDaysBetween(a.startDate, a.endDate) })} · {formatDate(a.startDate)} – {formatDate(a.endDate)}
                 </p>
               </li>
             );
@@ -479,11 +481,13 @@ function TeamTab({
         <p className="flex items-center gap-2 text-sm font-semibold">
           <UserPlus className="size-4 text-slate-400" /> {t('calendar.project.addAssignment')}
         </p>
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
-          <Select value={add.employeeId} onChange={(v) => setAdd({ ...add, employeeId: v })} options={[{ value: '', label: t('calendar.project.selectEmployee') }, ...active.map((e) => ({ value: e.id, label: e.name }))]} aria-label={t('calendar.project.employee')} />
-          <Input type="date" value={add.startDate} onChange={(e) => setAdd({ ...add, startDate: e.target.value })} aria-label={t('calendar.project.startDate')} />
-          <Input type="date" value={add.endDate} onChange={(e) => setAdd({ ...add, endDate: e.target.value })} aria-label={t('calendar.project.endDate')} />
-          <Button variant="primary" icon={Plus} onClick={addAssignment}>
+        <Select value={add.employeeId} onChange={(v) => setAdd({ ...add, employeeId: v })} options={[{ value: '', label: t('calendar.project.selectEmployee') }, ...active.map((e) => ({ value: e.id, label: e.name }))]} aria-label={t('calendar.project.employee')} />
+        <div className="grid grid-cols-2 gap-3">
+          <Input type="date" className="min-w-0" value={add.startDate} onChange={(e) => setAdd({ ...add, startDate: e.target.value })} aria-label={t('calendar.project.startDate')} />
+          <Input type="date" className="min-w-0" value={add.endDate} onChange={(e) => setAdd({ ...add, endDate: e.target.value })} aria-label={t('calendar.project.endDate')} />
+        </div>
+        <div className="flex justify-end">
+          <Button variant="primary" icon={Plus} onClick={addAssignment} className="w-full sm:w-auto">
             {t('calendar.project.addAssignment')}
           </Button>
         </div>
