@@ -38,6 +38,8 @@ export function generatePortalToken(): string {
 }
 
 export interface AccountDraft {
+  /** Cliente do cadastro (o nome vem dele). */
+  clientId?: string;
   name: string;
   username: string;
   email: string;
@@ -62,6 +64,7 @@ export const accountService = {
     const pin = generatePortalPin();
     const account: CustomerAccount = {
       id,
+      clientId: d.clientId,
       name: d.name.trim(),
       username: d.username.trim().toLowerCase(),
       email: d.email.trim() || undefined,
@@ -90,8 +93,8 @@ export const accountService = {
 };
 
 /** Contas que enxergam o projeto (mesmo nome de cliente). */
-export const accountsForProject = (project: Pick<Project, 'customer'>, accounts: readonly CustomerAccount[]) =>
-  accounts.filter((a) => normName(a.name) === normName(project.customer));
+export const accountsForProject = (project: Pick<Project, 'customer' | 'clientId'>, accounts: readonly CustomerAccount[]) =>
+  accounts.filter((a) => (project.clientId && a.clientId ? a.clientId === project.clientId : normName(a.name) === normName(project.customer)));
 
 // ───────────── Link do projeto ─────────────
 
@@ -225,7 +228,8 @@ export function portalLogin(token: string, username: string, pin: string, now = 
   const project = repos.projects.getAll().find((p) => p.portalToken && p.portalToken === token);
   if (!project) return { ok: false, error: 'portal.login.invalidLink' };
   const account = repos.customers.getAll().find((a) => a.username === username.trim().toLowerCase());
-  const ok = !!account && account.active && PORTAL_PIN_RE.test(pin) && portalPinHash(account.id, pin) === account.pinHash && normName(account.name) === normName(project.customer);
+  const sameClient = !!account && (project.clientId && account.clientId ? account.clientId === project.clientId : normName(account.name) === normName(project.customer));
+  const ok = !!account && account.active && PORTAL_PIN_RE.test(pin) && portalPinHash(account.id, pin) === account.pinHash && sameClient;
   if (!ok) {
     const fails = lock.fails + 1;
     writeLock(token, fails >= MAX_ATTEMPTS ? { fails: 0, until: now + LOCK_MS } : { fails, until: 0 });

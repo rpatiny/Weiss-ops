@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Languages, LogOut, Menu, Moon, Sun, X, RotateCw, Smartphone } from 'lucide-react';
-import { can, logout, useCurrentUser } from '@/app/session';
+import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
 import { usePendingCounts, usePendingExtensions, usePendingShopfloor, usePendingCustomerUpdates, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
@@ -141,7 +141,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">
-        {NAV_FOOTER.filter((item) => item.path !== '/customers' || can('customers.manage', user)).map((item) => (
+        {NAV_FOOTER.map((item) => (
           <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} />
         ))}
         <button

@@ -10,7 +10,8 @@ import { assertCan } from '@/app/session';
 import { repos } from '@/data/db';
 import type { TranslationKey } from '@/i18n/types';
 import { newId } from '@/lib/id';
-import type { ShopfloorRequest } from '@/types/models';
+import type { POLineItem, ProjectMaterial, ShopfloorRequest } from '@/types/models';
+import { derivePOStatus } from './purchasing';
 import { addDays, businessDaysBetween, todayISO } from '@/lib/dates';
 import { localDay, verifyClockPin } from './timeTracking';
 
@@ -20,9 +21,18 @@ export interface ShopfloorInput {
   quantity: number;
   supplier: string;
   supplierCode: string;
+  /** Projeto escolhido ou 'general' (uso geral / estoque). Escolha obrigatória. */
+  projectId: string;
 }
 
 export type ShopfloorField = keyof ShopfloorInput;
+
+export interface ShopfloorOrderInput {
+  supplierId: string;
+  poNumber: string;
+  unitPrice: number;
+  expectedDate: string;
+}
 
 /** Valida um passo (a tela usa a mesma regra do serviço). */
 export function validateShopfloorField(field: ShopfloorField, v: ShopfloorInput): TranslationKey | undefined {
@@ -36,7 +46,8 @@ export function validateShopfloorField(field: ShopfloorField, v: ShopfloorInput)
   }
 }
 
-export const SHOPFLOOR_FIELDS: readonly ShopfloorField[] = ['photo', 'description', 'quantity', 'supplier', 'supplierCode'];
+export const SHOPFLOOR_FIELDS: readonly ShopfloorField[] = ['photo', 'description', 'quantity', 'supplier', 'supplierCode', 'projectId'];
+export const GENERAL = 'general';
 
 function nextNumber(): string {
   const used = new Set(repos.shopfloorRequests.getAll().map((r) => r.number));
@@ -84,17 +95,63 @@ export const shopfloorService = {
       quantity: input.quantity,
       supplier: input.supplier.trim(),
       supplierCode: input.supplierCode.trim(),
+      projectId: input.projectId && input.projectId !== GENERAL ? input.projectId : undefined,
       status: 'new',
     };
     repos.shopfloorRequests.create(request);
     return { ok: true, request };
   },
 
-  /** Logística: pedido feito (nº da PO obrigatório). */
-  markOrdered(id: string, poNumber: string): void {
+  /**
+   * Logística: registra a PO do SAP para o pedido — cria a PO de compra (ou acrescenta a linha numa PO existente do mesmo
+   * fornecedor). Se o pedido é de um projeto, o item vira material do projeto ligado à linha (entra na prontidão e no GR).
+   */
+  order(id: string, input: ShopfloorOrderInput): { ok: true } | { ok: false; error: TranslationKey } {
     const user = assertCan('requisition.process');
-    if (!poNumber.trim()) throw new Error('shopfloor.validation.required');
-    repos.shopfloorRequests.update(id, { status: 'ordered', note: poNumber.trim(), handledBy: user.id, handledAt: new Date().toISOString() });
+    const r = repos.shopfloorRequests.getById(id);
+    if (!r) return { ok: false, error: 'shopfloor.validation.required' };
+    const supplier = repos.suppliers.getById(input.supplierId);
+    if (!supplier) return { ok: false, error: 'process.validation.supplierRequired' };
+    const poNumber = input.poNumber.trim();
+    if (!poNumber) return { ok: false, error: 'process.validation.poNumberRequired' };
+    if (!input.expectedDate) return { ok: false, error: 'shopfloor.validation.expectedDate' };
+    const existing = repos.purchaseOrders.getAll().find((p) => p.poNumber.trim() === poNumber);
+    if (existing && (existing.kind !== 'purchase' || existing.supplierId !== supplier.id)) return { ok: false, error: 'process.validation.poNumberTaken' };
+    const project = r.projectId ? repos.projects.getById(r.projectId) : undefined;
+    const startLine = existing ? Math.max(0, ...existing.lines.map((l) => l.lineNumber)) : 0;
+    const line: POLineItem = {
+      id: newId('pol'),
+      lineNumber: startLine + 10,
+      partNumber: r.supplierCode,
+      description: r.description,
+      quantity: r.quantity,
+      unitPrice: Math.max(0, input.unitPrice || 0),
+      expectedDeliveryDate: input.expectedDate,
+      status: 'open',
+      receipts: [],
+    };
+    const po = existing
+      ? repos.purchaseOrders.update(existing.id, { lines: [...existing.lines, line], status: derivePOStatus(existing.status, [...existing.lines, line]) })
+      : repos.purchaseOrders.create({
+          id: newId('po'),
+          poNumber,
+          kind: 'purchase',
+          supplierId: supplier.id,
+          customerOrVendor: supplier.name,
+          orderDate: todayISO(),
+          requester: repos.employees.getById(r.employeeId)?.name ?? '',
+          paymentTerms: '',
+          status: 'open',
+          notes: [`${r.number} (shop floor)`, project ? `${project.projectNumber} — ${project.customer}` : ''].filter(Boolean).join('\n'),
+          attachments: [],
+          lines: [line],
+        });
+    if (project) {
+      const material: ProjectMaterial = { id: newId('mat'), partNumber: r.supplierCode, description: r.description, quantity: r.quantity, status: 'ordered', poId: po.id, poLineId: line.id, neededBy: todayISO() };
+      repos.projects.update(project.id, { materials: [...project.materials, material] });
+    }
+    repos.shopfloorRequests.update(id, { status: 'ordered', note: poNumber, poId: po.id, poLineId: line.id, handledBy: user.id, handledAt: new Date().toISOString() });
+    return { ok: true };
   },
 
   /** Logística: recusa (motivo obrigatório). */
@@ -107,6 +164,7 @@ export const shopfloorService = {
   /** Logística: volta para "novo" (desfaz um engano). */
   reopen(id: string): void {
     assertCan('requisition.process');
-    repos.shopfloorRequests.update(id, { status: 'new', note: undefined, handledBy: undefined, handledAt: undefined });
+    // A PO criada continua em Compras (tem histórico próprio); o pedido só volta a 'novo'.
+    repos.shopfloorRequests.update(id, { status: 'new', note: undefined, handledBy: undefined, handledAt: undefined, poId: undefined, poLineId: undefined });
   },
 };

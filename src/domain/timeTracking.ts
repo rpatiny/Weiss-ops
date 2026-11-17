@@ -112,6 +112,33 @@ export function verifyClockPin(employeeId: string, pin: string): boolean {
 
 const projectsMap = () => new Map(repos.projects.getAll().map((p) => [p.id, p]));
 
+// ───────────── Status do projeto e do spindle acompanham a oficina ─────────────
+
+const SPINDLE_BEFORE_REPAIR = new Set(['received', 'under_evaluation', 'quoted', 'approved']);
+
+/**
+ * Depois de cada marcação, o status do projeto e do spindle seguem o que a oficina fez (só para frente; nunca mexe em
+ * cancelado/recusado/entregue — a entrega e a fatura continuam decisão do Office):
+ * - 1º apontamento ⇒ projeto "In progress" e spindle "In repair";
+ * - fase de teste iniciada ⇒ spindle "Testing";
+ * - todas as fases concluídas ⇒ projeto "Completed" (spindle fica em Testing até o Office marcar a entrega).
+ */
+export function syncWorkflowStatus(projectId: string): void {
+  const project = repos.projects.getById(projectId);
+  if (!project || project.status === 'canceled') return;
+  const entries = repos.timeEntries.getAll().filter((e) => e.projectId === projectId);
+  if (!entries.length) return;
+  const progress = jobProgress(projectId, repos.workPhases.getAll(), repos.timeEntries.getAll());
+  const nextStatus = progress.complete ? 'completed' : 'in_progress';
+  if (project.status === 'planned' || (project.status === 'in_progress' && nextStatus === 'completed')) repos.projects.update(projectId, { status: nextStatus });
+  const spindle = project.spindleId ? repos.spindles.getById(project.spindleId) : undefined;
+  if (!spindle) return;
+  const phaseName = (id: string) => repos.workPhases.getById(id)?.name ?? '';
+  const testingStarted = entries.some((e) => /test/i.test(phaseName(e.phaseId)));
+  const target = testingStarted || progress.complete ? 'testing' : 'in_repair';
+  if (SPINDLE_BEFORE_REPAIR.has(spindle.status) || (spindle.status === 'in_repair' && target === 'testing')) repos.spindles.update(spindle.id, { status: target });
+}
+
 export const clockService = {
   /**
    * Inicia (ou retoma) a próxima fase pendente do projeto. Recusa outro projeto enquanto o atual não terminar.
@@ -131,6 +158,7 @@ export const clockService = {
     if (progress.complete || !progress.next) return { ok: false, error: 'clock.errors.projectDone' };
     const entry: TimeEntry = { id: newId('te'), employeeId, projectId, phaseId: progress.next.id, start: now.toISOString(), source: 'qr', note: '' };
     repos.timeEntries.upsert(entry);
+    syncWorkflowStatus(projectId);
     return { ok: true, entry };
   },
 
@@ -142,6 +170,7 @@ export const clockService = {
     const entry: TimeEntry = { ...open, end: now.toISOString(), ...(complete ? { completesPhase: true } : {}) };
     repos.timeEntries.upsert(entry);
     const jobComplete = complete && jobProgress(open.projectId, repos.workPhases.getAll(), repos.timeEntries.getAll()).complete;
+    syncWorkflowStatus(open.projectId);
     return { ok: true, entry, jobComplete };
   },
 };
@@ -167,6 +196,7 @@ export const timesheetService = {
     if (!entry.end) delete entry.end;
     if (!entry.end || !entry.completesPhase) delete entry.completesPhase;
     repos.timeEntries.upsert(entry);
+    syncWorkflowStatus(entry.projectId);
     return entry;
   },
   /** Libera o colaborador do serviço atual sem concluir as fases (encerra a fase aberta como pausa). */

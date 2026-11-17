@@ -7,15 +7,16 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { ProtectedInput } from '@/components/ui/ProtectedInput';
+import { deliveryAddressOf, findClientByName, formatAddress } from '@/domain/clients';
+import { DeliverTo } from '@/modules/customers/CustomersPage';
+import { APP_CONFIG } from '@/lib/config';
 import { Avatar } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
-import { spindlePoRef } from '@/domain/financial';
 import { enumOptions } from '@/domain/labels';
 import {
   checkPlacement,
   findConflicts,
-  findPOByRef,
   findSpindleByRef,
   nextProjectColor,
   nextProjectNumber,
@@ -34,8 +35,9 @@ import { formatDate } from '@/lib/format';
 import type { ProjectAssignment } from '@/types/models';
 import { MaterialsTab } from './MaterialsTab';
 import { CustomerReportTab } from '@/modules/portal/CustomerReportTab';
+import { ProjectHistoryTab } from './ProjectHistoryTab';
 
-export type ProjectTab = 'details' | 'team' | 'materials' | 'report';
+export type ProjectTab = 'details' | 'team' | 'materials' | 'report' | 'history';
 
 interface Props {
   open: boolean;
@@ -92,7 +94,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
       const { id: _id, materials: _m, ...rest } = p;
       setDraft({
         ...rest,
-        customerPoRef: projectPoRef(p, new Map(purchaseOrders.map((x) => [x.id, x]))),
+        customerPoRef: p.customerPoRef ?? projectPoRef(p, new Map(purchaseOrders.map((x) => [x.id, x]))),
         spindleRef: projectSpindleRef(p, new Map(spindles.map((x) => [x.id, x]))),
       });
     } else {
@@ -109,21 +111,16 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
   const projectStart = projAssignments[0]?.startDate;
   const conflicts = useMemo(() => findConflicts(assignments, new Map(projects.map((p) => [p.id, p]))), [assignments, projects]);
 
-  const knownCustomers = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of purchaseOrders) map.set(p.customerOrVendor, '');
-    for (const s of spindles) map.set(s.customer, map.get(s.customer) ?? '');
-    for (const p of projects) if (p.address) map.set(p.customer, p.address);
-    return map;
-  }, [purchaseOrders, spindles, projects]);
+  // Cliente vem do cadastro único; endereço do serviço sugerido = endereço de ENTREGA do cliente.
+  const clients = useCollection('clients');
+  const knownCustomers = useMemo(() => new Map(clients.map((c) => [c.name, formatAddress(deliveryAddressOf(c))])), [clients]);
+  const client = findClientByName(draft.customer, clients);
 
   const set = <K extends keyof ProjectDraft>(k: K, v: ProjectDraft[K]) => {
     const next = { ...draft, [k]: v };
     if (k === 'customer' && !draft.address.trim()) next.address = knownCustomers.get(String(v)) ?? '';
     if (k === 'spindleRef') {
       const sp = findSpindleByRef(String(v ?? ''), spindles);
-      const spPo = sp ? spindlePoRef(sp, new Map(purchaseOrders.map((p) => [p.id, p]))) : '';
-      if (spPo && !draft.customerPoRef?.trim()) next.customerPoRef = spPo;
       if (sp && !draft.customer.trim()) {
         next.customer = sp.customer;
         next.address = draft.address || (knownCustomers.get(sp.customer) ?? '');
@@ -132,7 +129,6 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     setDraft(next);
   };
 
-  const linkedPO = findPOByRef(draft.customerPoRef, purchaseOrders);
   const linkedSpindle = findSpindleByRef(draft.spindleRef, spindles);
 
   const activeEmployees = employees.filter((e) => e.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
@@ -144,6 +140,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const errs = validateProject(draft, projects, projectId);
+    if (!errs.customer && !findClientByName(draft.customer, clients)) errs.customer = 'clients.validation.notRegistered';
     setErrors(errs);
     if (Object.keys(errs).length) {
       setTab('details');
@@ -190,6 +187,8 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     { id: 'materials', label: t('calendar.project.tabs.materials'), disabled: !project, count: project?.materials.length },
     // Relatório do cliente (Office/Master revisam e aprovam o que o cliente vê).
     ...(canReviewPortal ? [{ id: 'report' as const, label: t('portal.tab'), disabled: !project, count: pendingReport || undefined }] : []),
+    // Histórico de mudanças: só Master.
+    ...(allowedTo('audit.view') ? [{ id: 'history' as const, label: t('audit.tab'), disabled: !project }] : []),
   ];
 
   return (
@@ -228,7 +227,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
         }
       >
         {/* Abas */}
-        <div className="-mt-1 mb-5 flex gap-1 border-b border-slate-200 dark:border-slate-800" role="tablist">
+        <div className="-mt-1 mb-5 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800" role="tablist">
           {tabs.map((x) => (
             <button
               key={x.id}
@@ -238,7 +237,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
               title={x.disabled ? t('calendar.project.saveFirst') : undefined}
               onClick={() => setTab(x.id)}
               className={cn(
-                '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-40',
                 tab === x.id ? 'border-brand-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
               )}
             >
@@ -259,6 +258,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
                 {(id) => <ProtectedInput protect={!!project} resetKey={project?.id} fieldLabel={t('calendar.project.customer')} id={id} name="customer" value={draft.customer} onChange={(e) => set('customer', e.target.value)} list="project-customers" placeholder={t('calendar.project.customerPlaceholder')} invalid={!!errors.customer} autoFocus={!project} />}
               </Field>
             </div>
+            {client && <DeliverTo client={client} compact />}
             <datalist id="project-customers">
               {[...knownCustomers.keys()].sort().map((c) => (
                 <option key={c} value={c} />
@@ -299,15 +299,35 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
                 </div>
               )}
             </Field>
+            {/* PO do cliente: UMA por projeto. Número, data e valor travados — editar exige confirmação. */}
+            <fieldset className="space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+              <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t('calendar.project.customerPoTitle')}</legend>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label={t('calendar.project.customerPoNumber')}>
+                  {(id) => <ProtectedInput protect={!!project?.customerPoRef} resetKey={project?.id} fieldLabel={t('calendar.project.customerPoNumber')} id={id} name="customerPoRef" className="font-mono" autoComplete="off" value={draft.customerPoRef ?? ''} onChange={(e) => set('customerPoRef', e.target.value)} />}
+                </Field>
+                <Field label={t('calendar.project.customerPoDate')}>
+                  {(id) => <ProtectedInput protect={!!project?.customerPoDate} resetKey={project?.id} fieldLabel={t('calendar.project.customerPoDate')} id={id} type="date" value={draft.customerPoDate ?? ''} onChange={(e) => set('customerPoDate', e.target.value || undefined)} />}
+                </Field>
+                <Field label={t('calendar.project.customerPoValue', { currency: APP_CONFIG.currency })}>
+                  {(id) => (
+                    <ProtectedInput
+                      protect={project?.customerPoValue !== undefined}
+                      resetKey={project?.id}
+                      fieldLabel={t('calendar.project.customerPoValue', { currency: APP_CONFIG.currency })}
+                      id={id}
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="text-right tabular-nums"
+                      value={draft.customerPoValue ?? ''}
+                      onChange={(e) => set('customerPoValue', e.target.value === '' ? undefined : Number(e.target.value))}
+                    />
+                  )}
+                </Field>
+              </div>
+            </fieldset>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('calendar.project.linkPO')}>
-                {(id) => (
-                  <div className="flex gap-2">
-                    <Input id={id} name="customerPoRef" value={draft.customerPoRef ?? ''} onChange={(e) => set('customerPoRef', e.target.value)} list="project-po-refs" className="font-mono" autoComplete="off" />
-                    {linkedPO && <Button icon={ExternalLink} onClick={() => navigate('/purchase-orders', { open: linkedPO.id })} aria-label="PO" />}
-                  </div>
-                )}
-              </Field>
               <Field label={t('calendar.project.linkSpindle')}>
                 {(id) => (
                   <div className="flex gap-2">
@@ -316,11 +336,6 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
                   </div>
                 )}
               </Field>
-              <datalist id="project-po-refs">
-                {[...purchaseOrders].filter((p) => p.kind === 'sales').sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => (
-                  <option key={p.id} value={p.poNumber}>{p.customerOrVendor}</option>
-                ))}
-              </datalist>
               <datalist id="project-spindle-refs">
                 {spindles.map((s) => (
                   <option key={s.id} value={s.serialNumber}>{`${s.manufacturer} ${s.model} — ${s.customer}`}</option>
@@ -362,6 +377,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
 
         {tab === 'materials' && project && <MaterialsTab project={project} projectStart={projectStart} />}
         {tab === 'report' && project && canReviewPortal && <CustomerReportTab project={project} />}
+        {tab === 'history' && project && allowedTo('audit.view') && <ProjectHistoryTab project={project} />}
       </Drawer>
 
       <ConfirmDialog

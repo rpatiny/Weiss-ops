@@ -1,5 +1,8 @@
 # SpindleOps — Walkthrough das telas
 
+> ✅ **Atualização 17/11/2026:** todos os ajustes da seção 5 foram feitos (ver "Ajustes do walkthrough" no CLAUDE.md),
+> mais: horas manuais com confirmação digitada e histórico de mudanças por projeto (Master).
+
 > Revisão de 17/11/2026 (versão `ffa5b54`). Para cada tela: **para quê**, **quem usa**, **com o que se liga**,
 > **o que repete** e **o que ajustar**. No fim: mapa de redundâncias, ligações que faltam e lista de ajustes por prioridade.
 
@@ -191,18 +194,18 @@ Sugestão: **um único QR "Shop floor"** que abre um menu com "Marcar horas" e "
 ## 5. Ajustes por prioridade
 
 **Rápidos (horas, sem mudar estrutura)**
-- [ ] "New project" e edição do projeto direto na tela Projects (mesmo Drawer da Agenda).
-- [ ] "Definir PIN do ponto" também no formulário de Employees.
-- [ ] Telefone dos colaboradores no formato UK (sem DDD brasileiro).
-- [ ] Office vê em Purchase Orders só *Requisitions* e *Readiness* (menos abas para quem não é da Logística).
-- [ ] QR único "Shop floor" com menu Marcar horas / Pedir material.
+- [x] "New project" e edição do projeto direto na tela Projects (mesmo Drawer da Agenda).
+- [x] "Definir PIN do ponto" também no formulário de Employees.
+- [x] Telefone dos colaboradores no formato UK (sem DDD brasileiro).
+- [x] Office vê em Purchase Orders só *Requisitions* e *Readiness* (menos abas para quem não é da Logística).
+- [x] QR único "Shop floor" com menu Marcar horas / Pedir material.
 
 **Médios (ligam telas)**
-- [ ] Status do projeto e do spindle sugeridos pelas fases do ponto.
-- [ ] Shop floor request → "Criar requisição" (com projeto opcional) e PO de verdade.
-- [ ] Fase atual (real) desenhada na barra da Agenda.
+- [x] Status do projeto e do spindle sugeridos pelas fases do ponto.
+- [x] Shop floor request → "Criar requisição" (com projeto opcional) e PO de verdade.
+- [x] Fase atual (real) desenhada na barra da Agenda.
 
 **Estruturais (decisões de negócio)**
-- [ ] Cadastro único de clientes (e migração dos nomes existentes).
-- [ ] PO do cliente: um dono (Office) e um lugar (spindle/projeto), saindo de Compras.
-- [ ] Nuvem + segurança do portal (pré-requisito para uso real).
+- [x] Cadastro único de clientes (e migração dos nomes existentes).
+- [x] PO do cliente: um dono (Office) e um lugar (spindle/projeto), saindo de Compras.
+- [x] Nuvem + segurança do portal (pré-requisito para uso real).

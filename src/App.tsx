@@ -10,6 +10,7 @@ import { ProjectsPage } from '@/modules/projects/ProjectsPage';
 import { ClockPage } from '@/modules/clock/ClockPage';
 import { TvBoard } from '@/modules/tv/TvBoard';
 import { ShopRequestPage } from '@/modules/shopfloor/ShopRequestPage';
+import { ShopHubPage } from '@/modules/shopfloor/ShopHubPage';
 import { ShopfloorPage } from '@/modules/shopfloor/ShopfloorPage';
 import { CustomersPage } from '@/modules/customers/CustomersPage';
 import { CustomerPortalPage } from '@/modules/portal/CustomerPortalPage';
@@ -40,6 +41,7 @@ function Page({ path }: { path: RoutePath }) {
       return <TimesheetPage />;
     case '/clock':
     case '/tv':
+    case '/shop':
     case '/shop-request':
     case '/portal':
       return null;
@@ -64,6 +66,8 @@ export default function App() {
   // Tela da TV da oficina: só leitura, sem login.
   if (path === '/tv') return <TvBoard />;
   // Pedido de compra do shop floor (QR code): sem login no app; identifica com o PIN do ponto.
+  // QR único do chão de fábrica: menu com ponto e pedido de material.
+  if (path === '/shop') return <ShopHubPage />;
   if (path === '/shop-request') return <ShopRequestPage />;
   // Portal do CLIENTE (link do projeto + usuário e senha de 6 dígitos do cliente; nunca usa o login interno).
   if (path === '/portal') return <CustomerPortalPage />;

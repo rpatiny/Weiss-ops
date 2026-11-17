@@ -39,7 +39,11 @@ export function PurchaseOrdersPage() {
   const user = useCurrentUser();
   const allowed = useCan();
   const requisitions = useCollection('requisitions');
-  const [tab, setTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, user?.role === 'master' ? 'orders' : 'requisitions', isTab);
+  // Office só cria/acompanha requisições e vê a prontidão; o resto das abas é trabalho da Logística.
+  const visibleTabs: Tab[] = user?.role === 'office' ? ['requisitions', 'readiness'] : TABS;
+  const [savedTab, setSavedTab] = usePersistentState<Tab>(`purchasing.tab.${user?.role ?? 'x'}`, user?.role === 'master' ? 'orders' : 'requisitions', isTab);
+  const tab: Tab = visibleTabs.includes(savedTab) ? savedTab : visibleTabs[0]!;
+  const setTab = (x: Tab) => visibleTabs.includes(x) && setSavedTab(x);
   const [drawer, setDrawer] = useState<{ id?: string } | null>(null);
   const [reqOpen, setReqOpen] = useState<string>();
   const [grPo, setGrPo] = useState<string>();
@@ -135,7 +139,7 @@ export function PurchaseOrdersPage() {
       </div>
 
       <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800" role="tablist">
-        {TABS.map((x) => (
+        {visibleTabs.map((x) => (
           <button
             key={x}
             role="tab"
@@ -170,12 +174,13 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useI18n();
   const pd = usePurchasingData();
   const [query, setQuery] = useState('');
-  const [kind, setKind] = usePersistentState<'all' | POKind>('purchasing.kind', 'all', (v): v is 'all' | POKind => v === 'all' || v === 'sales' || v === 'purchase');
+  // PO do CLIENTE agora vive no projeto (uma por projeto); aqui só POs de compra (fornecedores).
+  const kind: POKind = 'purchase';
   const [status, setStatus] = useState<'all' | POStatus>('all');
   const [onlyLate, setOnlyLate] = useState(false);
 
   const rows = pd.purchaseOrders
-    .filter((p) => kind === 'all' || p.kind === kind)
+    .filter((p) => p.kind === kind)
     .filter((p) => status === 'all' || p.status === status)
     .filter((p) => !onlyLate || p.lines.some((l) => isLineLate(l, pd.today)))
     .filter((p) => {
@@ -191,7 +196,7 @@ function OrdersTab({ onOpen }: { onOpen: (id: string) => void }) {
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
           <input className="input pl-9" placeholder={t('purchasing.orders.search')} value={query} onChange={(e) => setQuery(e.target.value)} aria-label={t('common.search')} />
         </div>
-        <Select<'all' | POKind> className="lg:w-44" value={kind} onChange={setKind} options={[{ value: 'all', label: t('purchasing.orders.allKinds') }, ...enumOptions(t, 'poKind')]} aria-label={t('purchasing.po.kind')} />
+
         <Select<'all' | POStatus> className="lg:w-44" value={status} onChange={setStatus} options={[{ value: 'all', label: t('purchasing.orders.allStatuses') }, ...enumOptions(t, 'poStatus')]} aria-label={t('common.status')} />
         <label className="flex cursor-pointer items-center gap-2 text-sm whitespace-nowrap">
           <input type="checkbox" className="size-4 accent-amber-500" checked={onlyLate} onChange={(e) => setOnlyLate(e.target.checked)} />

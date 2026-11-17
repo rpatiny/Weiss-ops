@@ -164,6 +164,7 @@ export const spindleService = {
       invoicedValue: d.invoicedValue === undefined || Number.isNaN(d.invoicedValue) ? undefined : Number(d.invoicedValue),
       deliveryDate: d.deliveryDate || undefined,
       poRef: d.poRef?.trim() || undefined,
+      clientId: repos.clients.getAll().find((c) => c.name.trim().toLowerCase() === d.customer.trim().toLowerCase())?.id,
       poId: findPOByRef(d.poRef, repos.purchaseOrders.getAll())?.id,
     };
     return id ? repos.spindles.update(id, clean) : repos.spindles.create({ id: newId('sp'), ...clean });
@@ -179,7 +180,14 @@ export const spindleService = {
 export const forecastService = {
   save(d: ForecastDraft, id?: string): ForecastItem {
     assertCan('financial.edit');
-    const clean = { ...d, customer: d.customer.trim(), spindleModel: d.spindleModel.trim(), description: d.description.trim(), probability: Math.min(100, Math.max(0, Math.round(d.probability))) };
+    const clean = {
+      ...d,
+      customer: d.customer.trim(),
+      clientId: repos.clients.getAll().find((c) => c.name.trim().toLowerCase() === d.customer.trim().toLowerCase())?.id,
+      spindleModel: d.spindleModel.trim(),
+      description: d.description.trim(),
+      probability: Math.min(100, Math.max(0, Math.round(d.probability))),
+    };
     return id ? repos.forecast.update(id, clean) : repos.forecast.create({ id: newId('fc'), ...clean });
   },
   remove(id: string): void {

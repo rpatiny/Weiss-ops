@@ -42,8 +42,8 @@ export interface TimelineEvent {
 export interface ProjectDossier {
   project: Project;
   spindle?: SpindleUnit;
-  customerPO?: PurchaseOrder;
-  customerPOTotal?: number;
+  /** PO do cliente — uma por projeto (campos do próprio projeto). */
+  customerPO?: { number: string; date?: string; value?: number };
   assignments: ProjectAssignment[];
   team: Employee[];
   start?: string;
@@ -68,7 +68,13 @@ export interface DossierContext {
 
 export function buildDossier(project: Project, ctx: DossierContext, today = todayISO()): ProjectDossier {
   const spindle = project.spindleId ? ctx.spindlesById.get(project.spindleId) : undefined;
-  const customerPO = project.poId ? ctx.poById.get(project.poId) : undefined;
+  // PO do cliente: do próprio projeto; bases antigas ainda podem ter só o vínculo com a PO de venda.
+  const legacyPO = project.poId ? ctx.poById.get(project.poId) : undefined;
+  const customerPO = project.customerPoRef?.trim()
+    ? { number: project.customerPoRef.trim(), date: project.customerPoDate, value: project.customerPoValue }
+    : legacyPO
+      ? { number: legacyPO.poNumber, date: legacyPO.orderDate, value: poTotal(legacyPO) }
+      : undefined;
 
   const assignments = [...(ctx.assignmentsByProject.get(project.id) ?? [])].sort((a, b) => a.startDate.localeCompare(b.startDate));
   const start = assignments[0]?.startDate;
@@ -105,7 +111,7 @@ export function buildDossier(project: Project, ctx: DossierContext, today = toda
     push(spindle.receivedDate, 'received', `${spindle.manufacturer} ${spindle.model} · ${spindle.serialNumber}`);
     push(spindle.quoteDate, 'quote', spindle.quoteNumber, spindle.quotedValue || undefined);
   }
-  if (customerPO) push(customerPO.orderDate, 'customer_po', customerPO.poNumber, poTotal(customerPO));
+  if (customerPO) push(customerPO.date, 'customer_po', customerPO.number, customerPO.value);
   for (const r of reqs) push(r.requestedAt, 'requisition', r.number);
   for (const po of purchasePOs) push(po.orderDate, 'purchase_po', `${po.poNumber} · ${po.customerOrVendor}`, poTotal(po));
   const grSeen = new Set<string>();
@@ -127,7 +133,6 @@ export function buildDossier(project: Project, ctx: DossierContext, today = toda
     project,
     spindle,
     customerPO,
-    customerPOTotal: customerPO ? poTotal(customerPO) : undefined,
     assignments,
     team,
     start,
@@ -151,7 +156,7 @@ export function dossierSearchText(d: ProjectDossier): string {
     d.spindle?.serialNumber,
     d.spindle?.model,
     d.spindle?.quoteNumber,
-    d.customerPO?.poNumber,
+    d.customerPO?.number,
     d.project.customerPoRef,
     d.project.spindleRef,
     ...d.purchasePOs.map((p) => p.poNumber),

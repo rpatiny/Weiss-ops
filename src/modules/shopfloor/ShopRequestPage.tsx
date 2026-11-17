@@ -3,8 +3,9 @@ import { ArrowLeft, ArrowRight, Camera, CheckCircle2, RotateCcw, Send } from 'lu
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 import { useCollection } from '@/data/hooks';
-import { SHOPFLOOR_FIELDS, shopfloorService, validateShopfloorField, type ShopfloorField, type ShopfloorInput } from '@/domain/shopfloor';
+import { GENERAL, SHOPFLOOR_FIELDS, shopfloorService, validateShopfloorField, type ShopfloorField, type ShopfloorInput } from '@/domain/shopfloor';
 import { canClock } from '@/domain/timeTracking';
+import { isProjectActive } from '@/domain/purchasing';
 import { LOCALES, useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { compressImage } from '@/lib/image';
@@ -13,7 +14,7 @@ import { BackBtn, PinStep, WhoStep } from '@/modules/clock/ClockPage';
 
 type Step = { kind: 'field'; index: number } | { kind: 'review' } | { kind: 'who' } | { kind: 'pin'; employee: Employee } | { kind: 'done'; request: ShopfloorRequest };
 
-const EMPTY: ShopfloorInput = { photo: '', description: '', quantity: 0, supplier: '', supplierCode: '' };
+const EMPTY: ShopfloorInput = { photo: '', description: '', quantity: 0, supplier: '', supplierCode: '', projectId: '' };
 const INACTIVITY_MS = 3 * 60_000;
 const DONE_SECONDS = 8;
 
@@ -67,7 +68,9 @@ export function ShopRequestPage() {
       <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white">
         <div className="flex items-center gap-2.5">
           <BrandLogo className="w-20" />
-          <p className="border-l border-slate-700 pl-2.5 font-bold leading-tight">{t('shopfloor.title')}</p>
+          <a href="#/shop" className="border-l border-slate-700 pl-2.5 font-bold leading-tight" title={t('shopHub.title')}>
+            {t('shopfloor.title')}
+          </a>
         </div>
         <div className="flex gap-0.5">
           {LOCALES.map((l) => (
@@ -226,6 +229,7 @@ function FieldStep({
           </datalist>
         </>
       )}
+      {field === 'projectId' && <ProjectChoice value={data.projectId} onChange={(projectId) => onChange({ projectId })} />}
       {field === 'supplierCode' && (
         <input autoFocus className={cn(inputCls, 'font-mono')} autoComplete="off" autoCapitalize="characters" value={data.supplierCode} onChange={(e) => onChange({ supplierCode: e.target.value })} aria-label={t('shopfloor.fields.supplierCode')} />
       )}
@@ -240,13 +244,46 @@ function FieldStep({
   );
 }
 
+/** "Para qual serviço?": projetos ativos (os que estão na oficina primeiro) ou uso geral / estoque. */
+function ProjectChoice({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n();
+  const projects = useCollection('projects');
+  const entries = useCollection('timeEntries');
+  const inShop = new Set(entries.map((e) => e.projectId));
+  const list = projects.filter(isProjectActive).sort((a, b) => Number(inShop.has(b.id)) - Number(inShop.has(a.id)) || a.projectNumber.localeCompare(b.projectNumber));
+  const opt = (id: string, title: string, sub?: string) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => onChange(id)}
+      aria-pressed={value === id}
+      className={cn('card flex w-full items-center gap-3 p-3 text-left', value === id && 'ring-2 ring-brand-500')}
+    >
+      <span className={cn('size-4 shrink-0 rounded-full border-2', value === id ? 'border-brand-500 bg-brand-500' : 'border-slate-300 dark:border-slate-600')} />
+      <span className="min-w-0">
+        <span className="block truncate font-semibold text-slate-900 dark:text-white">{title}</span>
+        {sub && <span className="block truncate text-xs text-slate-500">{sub}</span>}
+      </span>
+    </button>
+  );
+  return (
+    <div className="max-h-[50vh] space-y-2 overflow-y-auto">
+      {opt(GENERAL, t('shopfloor.general'), t('shopfloor.generalHint'))}
+      {list.map((p) => opt(p.id, `${p.projectNumber} · ${p.customer}`, p.description))}
+    </div>
+  );
+}
+
 function ReviewStep({ data, error, onEdit, onSend }: { data: ShopfloorInput; error?: string; onEdit: (index: number) => void; onSend: () => void }) {
   const { t } = useI18n();
+  const projects = useCollection('projects');
+  const project = projects.find((p) => p.id === data.projectId);
   const rows: [ShopfloorField, string][] = [
     ['description', data.description],
     ['quantity', String(data.quantity)],
     ['supplier', data.supplier],
     ['supplierCode', data.supplierCode],
+    ['projectId', project ? `${project.projectNumber} · ${project.customer}` : t('shopfloor.general')],
   ];
   return (
     <>

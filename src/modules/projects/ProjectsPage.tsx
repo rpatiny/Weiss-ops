@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import {
   FileImage,
+  History,
+  Pencil,
+  Plus,
   AlertTriangle,
   Check,
   CalendarRange,
@@ -20,6 +23,9 @@ import {
 import { navigate } from '@/app/router';
 import { useCan } from '@/app/session';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { ProjectDrawer, type ProjectTab } from '@/modules/calendar/ProjectDrawer';
+import { DeliverTo } from '@/modules/customers/CustomersPage';
 import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
 import { buildDossier, dossierSearchText, type MaterialTrail, type ProjectDossier, type TimelineKind } from '@/domain/projects';
@@ -49,6 +55,9 @@ export function ProjectsPage() {
   const { projects, poById, readinessOf, today } = usePurchasingData();
   const [filter, setFilter] = usePersistentState<Filter>('projects.filter', 'active', isFilter);
   const [query, setQuery] = useState('');
+  // Criar/editar o projeto aqui mesmo (mesma ficha da Agenda), sem pular de tela.
+  const canEditProjects = useCan()('schedule.edit');
+  const [drawer, setDrawer] = useState<{ id?: string; tab?: ProjectTab } | null>(null);
 
   const dossiers = useMemo(() => {
     const byProject = new Map<string, ProjectAssignment[]>();
@@ -90,7 +99,18 @@ export function ProjectsPage() {
 
   return (
     <>
-      <PageHeader icon={FolderKanban} title={t('projects.title')} description={t('projects.description')} />
+      <PageHeader
+        icon={FolderKanban}
+        title={t('projects.title')}
+        description={t('projects.description')}
+        actions={
+          canEditProjects && (
+            <Button variant="primary" icon={Plus} onClick={() => setDrawer({})}>
+              {t('calendar.newProject')}
+            </Button>
+          )
+        }
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard icon={FolderKanban} label={t('projects.kpis.active')} value={kpis.active} />
@@ -126,20 +146,24 @@ export function ProjectsPage() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {visible.map((d) => (
-            <ProjectCard key={d.project.id} d={d} job={jobProgress(d.project.id, workPhases, timeEntries)} />
+            <ProjectCard key={d.project.id} d={d} job={jobProgress(d.project.id, workPhases, timeEntries)} onOpen={(tab) => setDrawer({ id: d.project.id, tab })} />
           ))}
         </div>
       )}
+      <ProjectDrawer open={!!drawer} projectId={drawer?.id} initialTab={drawer?.tab} onClose={() => setDrawer(null)} />
     </>
   );
 }
 
 const PHASE_TONE = { unscheduled: 'slate', scheduled: 'cyan', in_production: 'blue', finished: 'green' } as const;
 
-function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
+function ProjectCard({ d, job, onOpen }: { d: ProjectDossier; job: JobProgress; onOpen: (tab?: ProjectTab) => void }) {
   const { t } = useI18n();
   const [showHistory, setShowHistory] = useState(false);
-  const canReviewPortal = useCan()('portal.review');
+  const can = useCan();
+  const canReviewPortal = can('portal.review');
+  const client = useCollection('clients').find((c) => c.id === d.project.clientId);
+  const canSeeHistory = can('audit.view');
   const pendingReport = useCollection('projectUpdates').filter((u) => u.projectId === d.project.id && u.status === 'pending').length;
   const { project, spindle, customerPO } = d;
   const received = d.materials.length - d.pending.length;
@@ -163,6 +187,9 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
           </div>
         </header>
 
+        {/* Entrega (Logística) */}
+        {client && <DeliverTo client={client} compact />}
+
         {/* Fatos principais */}
         <dl className="grid gap-3 sm:grid-cols-2">
           <Fact icon={FileText} label={t('projects.quote')}>
@@ -182,11 +209,10 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
           <Fact icon={ClipboardList} label={t('projects.customerPO')}>
             {customerPO ? (
               <>
-                <LinkBtn onClick={() => navigate('/purchase-orders', { open: customerPO.id })}>{customerPO.poNumber}</LinkBtn> · {formatDate(customerPO.orderDate)}
-                {d.customerPOTotal ? <> · <span className="font-semibold tabular-nums">{formatCurrency(d.customerPOTotal)}</span></> : null}
+                <span className="font-mono">{customerPO.number}</span>
+                {customerPO.date && <> · {formatDate(customerPO.date)}</>}
+                {customerPO.value ? <> · <span className="font-semibold tabular-nums">{formatCurrency(customerPO.value)}</span></> : null}
               </>
-            ) : project.customerPoRef ? (
-              <span className="font-mono">{project.customerPoRef}</span>
             ) : (
               <Muted>{t('projects.noCustomerPO')}</Muted>
             )}
@@ -276,7 +302,7 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
                     ))}
                   </ul>
                   {d.pending.length > MAX_PENDING && (
-                    <LinkBtn className="mt-1.5 text-xs" onClick={() => navigate('/calendar', { open: project.id })}>
+                    <LinkBtn className="mt-1.5 text-xs" onClick={() => onOpen('team')}>
                       {t('projects.more', { count: d.pending.length - MAX_PENDING })}
                     </LinkBtn>
                   )}
@@ -299,6 +325,9 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
 
         {/* Ações */}
         <footer className="mt-auto flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <ActionBtn icon={Pencil} onClick={() => onOpen()}>
+            {t('projects.open.edit')}
+          </ActionBtn>
           <ActionBtn icon={CalendarRange} onClick={() => navigate('/calendar', { open: project.id })}>
             {t('projects.open.schedule')}
           </ActionBtn>
@@ -307,8 +336,13 @@ function ProjectCard({ d, job }: { d: ProjectDossier; job: JobProgress }) {
               {t('projects.open.financial')}
             </ActionBtn>
           )}
+          {canSeeHistory && (
+            <ActionBtn icon={History} onClick={() => onOpen('history')}>
+              {t('audit.tab')}
+            </ActionBtn>
+          )}
           {canReviewPortal && (
-            <ActionBtn icon={FileImage} onClick={() => navigate('/calendar', { open: project.id, tab: 'report' })}>
+            <ActionBtn icon={FileImage} onClick={() => onOpen('report')}>
               {t('portal.tab')}
               {pendingReport > 0 && <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950 tabular-nums">{pendingReport}</span>}
             </ActionBtn>

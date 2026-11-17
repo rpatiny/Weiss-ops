@@ -103,6 +103,11 @@ export interface Project {
   materials: ProjectMaterial[];
   /** Link do portal do cliente (token aleatório). Sem token = portal desligado para o projeto. */
   portalToken?: string;
+  /** Cliente do cadastro (o nome fica em `customer`). */
+  clientId?: ID;
+  /** PO do cliente — UMA por projeto (número em `customerPoRef`): data e valor. Editar exige confirmação. */
+  customerPoDate?: ISODate;
+  customerPoValue?: number;
 }
 
 /**
@@ -327,6 +332,7 @@ export type SpindleStatus =
 
 export interface SpindleUnit {
   id: ID;
+  clientId?: ID;
   serialNumber: string;
   model: string;
   manufacturer: string;
@@ -348,6 +354,7 @@ export interface SpindleUnit {
 
 export interface ForecastItem {
   id: ID;
+  clientId?: ID;
   customer: string;
   spindleModel: string;
   description: string;
@@ -410,6 +417,8 @@ export interface AppDatabase {
   shopfloorRequests: ShopfloorRequest[];
   customers: CustomerAccount[];
   projectUpdates: ProjectUpdate[];
+  auditLog: AuditEntry[];
+  clients: Client[];
 }
 
 export type ShopfloorRequestStatus = 'new' | 'ordered' | 'rejected';
@@ -430,6 +439,11 @@ export interface ShopfloorRequest {
   quantity: number;
   supplier: string;
   supplierCode: string;
+  /** Projeto (serviço) a que o material se destina; vazio/'general' = uso geral / estoque da oficina. */
+  projectId?: ID;
+  /** PO de compra real criada/completada ao "marcar como pedido" (entra em GR, catálogo, último valor pago). */
+  poId?: ID;
+  poLineId?: ID;
   status: ShopfloorRequestStatus;
   handledBy?: ID;
   handledAt?: string;
@@ -443,6 +457,8 @@ export interface ShopfloorRequest {
  */
 export interface CustomerAccount {
   id: ID;
+  /** Cliente do cadastro. */
+  clientId?: ID;
   /** Nome do cliente, igual ao usado nos projetos (ex.: "Rolls-Royce"). */
   name: string;
   /** Usuário de login (minúsculas). */
@@ -481,6 +497,61 @@ export interface ProjectUpdate {
   reviewedAt?: string;
   /** Motivo da recusa (interno). */
   reviewNote?: string;
+}
+
+export interface Address {
+  line1: string;
+  line2?: string;
+  city: string;
+  postcode: string;
+  country: string;
+}
+
+/**
+ * Cadastro único de CLIENTES. Projetos, spindles, forecast e contas do portal apontam para cá (`clientId`); o nome
+ * continua copiado nos registros (exibição) e é atualizado quando o cliente é renomeado.
+ * O ENDEREÇO DE ENTREGA pode ser diferente do de cobrança — é o que a Logística usa para enviar.
+ */
+export interface Client {
+  id: ID;
+  /** Nome usado no app (ex.: "Rolls-Royce"). Único. */
+  name: string;
+  /** Nº da conta do cliente (SAP / ERP). */
+  accountNumber: string;
+  legalName?: string;
+  vatNumber?: string;
+  billingAddress: Address;
+  /** Entrega no mesmo endereço da cobrança? */
+  deliverySameAsBilling: boolean;
+  deliveryAddress?: Address;
+  deliveryContact?: string;
+  deliveryPhone?: string;
+  /** Instruções de entrega (horário de recebimento, doca, portaria…). */
+  deliveryNotes?: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  notes?: string;
+  createdAt: string;
+  /** Criado automaticamente a partir de um nome antigo — faltam dados (completar). */
+  incomplete?: boolean;
+}
+
+/** Histórico de mudanças (gerado automaticamente em `data/audit.ts`; só o Master vê). */
+export interface AuditEntry {
+  id: ID;
+  at: string;
+  /** Projetos afetados pela mudança. */
+  projectIds: ID[];
+  collection: string;
+  recordId: ID;
+  /** Nome curto do registro (nº do projeto, RC, PO, nº de série…). */
+  label: string;
+  action: 'create' | 'update' | 'delete';
+  actor: string;
+  actorKind: 'user' | 'employee' | 'system';
+  /** "campo: antes → depois" */
+  changes: string[];
 }
 
 export type CollectionName = keyof AppDatabase;

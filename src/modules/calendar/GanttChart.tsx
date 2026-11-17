@@ -58,6 +58,8 @@ interface Props {
   onCommit: (assignmentId: string, next: DragResult) => void;
   /** Perfil sem permissão de edição: sem arrastar e sem criar. */
   readOnly?: boolean;
+  /** Real (oficina): fase atual por projeto — alguém trabalhando agora ou aguardando a próxima fase. */
+  livePhase?: ReadonlyMap<string, { phase: string; working: boolean }>;
 }
 
 interface DragState {
@@ -354,11 +356,17 @@ export function GanttChart(props: Props) {
                         {hasConflict && <AlertTriangle className="size-3.5 shrink-0 text-white" />}
                         <div className="min-w-0 flex-1 leading-tight">
                           <p className="truncate text-xs font-semibold drop-shadow-sm">{compact ? p.projectNumber.split('-').pop() : p.customer}</p>
-                          {!compact && (
-                            <p className="truncate font-mono text-[10px] opacity-90">
-                              {p.projectNumber} · {bizDays}d
-                            </p>
-                          )}
+                          {!compact &&
+                            (props.livePhase?.get(p.id) ? (
+                              <p className="flex items-center gap-1 truncate text-[10px] font-semibold opacity-95" title={props.livePhase.get(p.id)!.working ? t('calendar.live.working') : t('calendar.live.waiting')}>
+                                <span className={cn('size-1.5 shrink-0 rounded-full', props.livePhase.get(p.id)!.working ? 'animate-pulse bg-green-300' : 'border border-white bg-transparent')} />
+                                <span className="truncate">{props.livePhase.get(p.id)!.phase}</span>
+                              </p>
+                            ) : (
+                              <p className="truncate font-mono text-[10px] opacity-90">
+                                {p.projectNumber} · {bizDays}d
+                              </p>
+                            ))}
                         </div>
                         {summary && summary.total > 0 && (
                           <MaterialBadge summary={summary} compact={compact || view === 'month'} corner={r.width < 70} onOpen={() => props.onOpenProject(p.id, 'materials')} />

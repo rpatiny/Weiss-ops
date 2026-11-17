@@ -8,6 +8,7 @@ import { Popover } from '@/components/ui/Popover';
 import { useToast } from '@/components/ui/Toast';
 import { repos } from '@/data/db';
 import { useCollection } from '@/data/hooks';
+import { jobProgress } from '@/domain/timeTracking';
 import { enumLabel, enumValues } from '@/domain/labels';
 import {
   checkPlacement,
@@ -67,11 +68,25 @@ export function SchedulePage() {
     if (repos.projects.getById(openParam)) {
       const first = repos.assignments.getAll().filter((a) => a.projectId === openParam).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
       if (first) setAnchor(first.startDate < today && first.endDate >= today ? today : first.startDate);
-      setProjectDrawer({ id: openParam, tab: tabParam === 'report' || tabParam === 'materials' || tabParam === 'team' ? tabParam : undefined });
+      setProjectDrawer({ id: openParam, tab: tabParam === 'report' || tabParam === 'materials' || tabParam === 'team' || tabParam === 'history' ? tabParam : undefined });
     }
     clearParams('open', 'tab');
   }, [openParam]);
 
+  // Real × planejado: fase em que cada projeto está na oficina (pelo ponto), desenhada na barra.
+  const timeEntries = useCollection('timeEntries');
+  const workPhases = useCollection('workPhases');
+  const livePhase = useMemo(() => {
+    const m = new Map<string, { phase: string; working: boolean }>();
+    for (const pid of new Set(timeEntries.map((e) => e.projectId))) {
+      const prog = jobProgress(pid, workPhases, timeEntries);
+      if (prog.complete) continue;
+      const active = prog.phases.find((x) => x.state === 'active');
+      if (active) m.set(pid, { phase: active.phase.name, working: true });
+      else if (prog.next && prog.started) m.set(pid, { phase: prog.next.name, working: false });
+    }
+    return m;
+  }, [timeEntries, workPhases]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const poById = useMemo(() => new Map(purchaseOrders.map((p) => [p.id, p])), [purchaseOrders]);
   const conflicts = useMemo(() => findConflicts(assignments, projectsById), [assignments, projectsById]);
@@ -325,6 +340,7 @@ export function SchedulePage() {
           onOpenAbsence={(a) => setAbsenceDrawer({ editing: a })}
           onCommit={commit}
           readOnly={!canEdit}
+          livePhase={livePhase}
         />
       )}
 

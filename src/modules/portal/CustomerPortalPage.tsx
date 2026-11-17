@@ -48,7 +48,8 @@ export function CustomerPortalPage() {
   const project = token ? projects.find((p) => p.portalToken === token) : undefined;
   const account = accountId ? accounts.find((a) => a.id === accountId) : undefined;
   // Revalida sempre: link ainda ativo, conta ativa e do mesmo cliente.
-  const allowed = !!project && !!account && account.active && normName(account.name) === normName(project.customer);
+  const sameClient = !!project && !!account && (project.clientId && account.clientId ? account.clientId === project.clientId : normName(account.name) === normName(project.customer));
+  const allowed = !!project && !!account && account.active && sameClient;
 
   useEffect(() => {
     if (accountId && !allowed) {

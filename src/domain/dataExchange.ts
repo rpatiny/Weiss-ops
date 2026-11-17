@@ -15,6 +15,7 @@ import { materialStatus, projectPoRef, projectSpindleRef } from './schedule';
 import { entryMinutes, localDay } from './timeTracking';
 import { reportCheck } from './hoursReport';
 import { shopfloorAge } from './shopfloor';
+import { deliveryAddressOf, deliveryContactOf, formatAddress } from './clients';
 
 const label = (key: string) => translate('en-GB', key as TranslationKey);
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
@@ -60,6 +61,8 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
           'Working days': businessDaysBetween(a.startDate, a.endDate),
           'Project status': p ? label(`enums.projectStatus.${p.status}`) : '',
           'Customer PO': p ? projectPoRef(p, po) : '',
+          'Customer PO date': p?.customerPoDate ? d(p.customerPoDate) : '',
+          'Customer PO value': p?.customerPoValue ?? '',
           'Spindle / motor': p ? projectSpindleRef(p, sp) : '',
         };
       })
@@ -189,6 +192,25 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
       Note: a.note,
     })),
     // Pedidos do shop floor (sem a foto: só no app/backup).
+    // Cadastro de clientes (entrega separada da cobrança — é o que a Logística usa).
+    Customers: [...(data.clients ?? [])]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((c) => ({
+        Customer: c.name,
+        'Account no.': c.accountNumber,
+        'Legal name': c.legalName ?? '',
+        'VAT no.': c.vatNumber ?? '',
+        Contact: c.contactName,
+        Email: c.email,
+        Phone: c.phone,
+        'Billing address': formatAddress(c.billingAddress),
+        'Delivery address': formatAddress(deliveryAddressOf(c)),
+        'Delivery = billing': c.deliverySameAsBilling ? 'Yes' : 'No',
+        'Delivery contact': deliveryContactOf(c).name,
+        'Delivery phone': deliveryContactOf(c).phone,
+        'Delivery instructions': c.deliveryNotes ?? '',
+        Incomplete: c.incomplete ? 'Yes' : '',
+      })),
     Shopfloor_Requests: [...(data.shopfloorRequests ?? [])]
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .map((r) => ({
@@ -299,9 +321,11 @@ const RULES: Record<CollectionName, FieldRule[]> = {
   shopfloorRequests: [['number', 'string'], ['employeeId', 'string'], ['description', 'string'], ['quantity', 'number'], ['status', 'string']],
   customers: [['name', 'string'], ['username', 'string'], ['pinHash', 'string'], ['active', 'boolean']],
   projectUpdates: [['projectId', 'string'], ['kind', 'string'], ['status', 'string'], ['photos', 'array']],
+  auditLog: [['at', 'string'], ['action', 'string'], ['projectIds', 'array']],
+  clients: [['name', 'string'], ['billingAddress', 'object' as never]],
 };
 /** Coleções criadas depois da v5: podem faltar em backups antigos (viram listas vazias). */
-const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries', 'shopfloorRequests', 'customers', 'projectUpdates']);
+const OPTIONAL = new Set<CollectionName>(['workPhases', 'timeEntries', 'shopfloorRequests', 'customers', 'projectUpdates', 'auditLog', 'clients']);
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 const okType = (v: unknown, kind: FieldRule[1]) =>

@@ -62,7 +62,9 @@ export function ClockPage() {
       <header className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white">
         <div className="flex items-center gap-2.5">
           <BrandLogo className="w-20" />
-          <p className="border-l border-slate-700 pl-2.5 font-bold leading-tight">{t('clock.title')}</p>
+          <a href="#/shop" className="border-l border-slate-700 pl-2.5 font-bold leading-tight" title={t('shopHub.title')}>
+            {t('clock.title')}
+          </a>
         </div>
         <div className="flex gap-0.5">
           {LOCALES.map((l) => (

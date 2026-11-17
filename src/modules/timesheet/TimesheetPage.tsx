@@ -7,6 +7,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import { QrPoster } from '@/components/ui/QrPoster';
+import { TypeToConfirm } from '@/components/ui/TypeToConfirm';
 import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
@@ -393,7 +394,8 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
   const blank: EntryDraft = { employeeId: '', projectId: '', phaseId: '', start: '', end: '', note: '', completesPhase: false };
   const [d, setD] = useState<EntryDraft>(blank);
   const [error, setError] = useState('');
-  const [confirm, setConfirm] = useState(false);
+  // Horas devem vir dos engenheiros pelo ponto: lançar/corrigir à mão exige motivo + frase digitada.
+  const [guard, setGuard] = useState<'save' | 'delete' | null>(null);
   useEffect(() => {
     if (open) {
       setD(entry ? { employeeId: entry.employeeId, projectId: entry.projectId, phaseId: entry.phaseId, start: entry.start, end: entry.end ?? '', note: entry.note, completesPhase: !!entry.completesPhase } : blank);
@@ -407,10 +409,19 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
     const draft = { ...d, end: d.end || undefined };
     const err = validateEntry(draft);
     if (err) return setError(t(err));
-    timesheetService.save(draft, entry?.id);
+    if (!d.note.trim()) return setError(t('timesheet.manual.reasonRequired'));
+    setError('');
+    setGuard('save');
+  };
+  const commitSave = () => {
+    timesheetService.save({ ...d, end: d.end || undefined }, entry?.id);
+    setGuard(null);
     toast.success(t('timesheet.saved'));
     onClose();
   };
+  const empFirst = (employees.find((e) => e.id === d.employeeId)?.name.split(' ')[0] ?? '').toLowerCase();
+  const prjNo = projects.find((p) => p.id === d.projectId)?.projectNumber ?? '';
+  const phrase = `${empFirst}/${prjNo}`;
 
   const set = <K extends keyof EntryDraft>(k: K, v: EntryDraft[K]) => setD((x) => ({ ...x, [k]: v }));
   return (
@@ -421,7 +432,7 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
       footer={
         <div className="flex w-full items-center gap-2">
           {entry && (
-            <Button variant="ghost" icon={Trash2} onClick={() => setConfirm(true)} className="text-red-600">
+            <Button variant="ghost" icon={Trash2} onClick={() => setGuard('delete')} className="text-red-600">
               {t('timesheet.delete')}
             </Button>
           )}
@@ -432,6 +443,9 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
       }
     >
       <form id="entry-form" onSubmit={save} className="space-y-4">
+        <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {t('timesheet.manual.warning')}
+        </p>
         <Field label={t('timesheet.cols.employee')} required>
           {(id) => <Select id={id} value={d.employeeId} onChange={(v) => set('employeeId', v)} options={[{ value: '', label: '—' }, ...employees.map((e) => ({ value: e.id, label: e.name }))]} />}
         </Field>
@@ -460,21 +474,35 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
           <input type="checkbox" checked={!!d.completesPhase} disabled={!d.end} onChange={(e) => set('completesPhase', e.target.checked)} className="size-4 accent-amber-500" />
           {t('timesheet.phaseDone')}
         </label>
-        <Field label={t('timesheet.note')}>{(id) => <Input id={id} value={d.note} onChange={(e) => set('note', e.target.value)} />}</Field>
+        <Field label={t('timesheet.manual.reason')} required hint={t('timesheet.manual.reasonHint')}>
+          {(id) => <Input id={id} value={d.note} onChange={(e) => set('note', e.target.value)} />}
+        </Field>
         {error && (
           <p role="alert" className="text-sm text-red-600">
             {error}
           </p>
         )}
       </form>
-      <ConfirmDialog
-        open={confirm}
+      <TypeToConfirm
+        open={guard === 'save'}
+        title={t(isNew ? 'timesheet.manual.addTitle' : 'timesheet.manual.editTitle')}
+        message={t('timesheet.manual.confirmMessage')}
+        phrase={phrase}
+        confirmLabel={t('timesheet.manual.confirm')}
+        danger={false}
+        onCancel={() => setGuard(null)}
+        onConfirm={commitSave}
+      />
+      <TypeToConfirm
+        open={guard === 'delete'}
         title={t('timesheet.delete')}
         message={t('timesheet.deleteConfirm')}
-        onCancel={() => setConfirm(false)}
+        phrase={phrase}
+        confirmLabel={t('timesheet.delete')}
+        onCancel={() => setGuard(null)}
         onConfirm={() => {
           if (entry) timesheetService.remove(entry.id);
-          setConfirm(false);
+          setGuard(null);
           toast.success(t('timesheet.deleted'));
           onClose();
         }}
@@ -693,11 +721,11 @@ function QrTab() {
   const { t } = useI18n();
   return (
     <QrPoster
-      hash="#/clock"
-      title={t('timesheet.qrTitle')}
-      hint={t('timesheet.qrHint')}
-      posterTitle={t('timesheet.posterTitle')}
-      posterText={t('timesheet.posterText')}
+      hash="#/shop"
+      title={t('shopHub.qrTitle')}
+      hint={t('shopHub.qrHint')}
+      posterTitle={t('shopHub.posterTitle')}
+      posterText={t('shopHub.posterText')}
       fileName="ponto-oficina-qr.png"
       openLabel={t('timesheet.openClock')}
     />

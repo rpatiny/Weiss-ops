@@ -30,7 +30,7 @@ import { cn } from '@/lib/cn';
 import { addDays, todayISO } from '@/lib/dates';
 import { newId } from '@/lib/id';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { POLineItem, POKind } from '@/types/models';
+import type { POLineItem } from '@/types/models';
 
 interface Props {
   open: boolean;
@@ -192,9 +192,9 @@ export function PODrawer({ open, poId, onClose, onRegisterGR }: Props) {
             <Field label={t('purchasing.po.number')} required error={errors.poNumber && t(errors.poNumber)}>
               {(id) => <Input id={id} name="poNumber" value={draft.poNumber} onChange={(e) => set('poNumber', e.target.value)} className="font-mono" invalid={!!errors.poNumber} />}
             </Field>
-            <Field label={t('purchasing.po.kind')}>
-              {(id) => <Select<POKind> id={id} name="kind" value={draft.kind} onChange={(v) => setDraft((d) => ({ ...d, kind: v, supplierId: v === 'purchase' ? d.supplierId : undefined }))} options={enumOptions(t, 'poKind')} />}
-            </Field>
+            {existing?.kind === 'sales' && (
+              <p className="sm:col-span-3 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">{t('purchasing.po.legacySales')}</p>
+            )}
             <Field label={draft.kind === 'purchase' ? t('purchasing.po.supplier') : t('purchasing.po.customer')} required error={errors.customerOrVendor && t(errors.customerOrVendor)} className="sm:col-span-2">
               {(id) =>
                 draft.kind === 'purchase' ? (

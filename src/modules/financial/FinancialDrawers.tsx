@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { forecastService, spindlePoRef, spindleService, validateForecast, validateSpindle, weightedValue, type ForecastDraft, type SpindleDraft } from '@/domain/financial';
 import { enumOptions } from '@/domain/labels';
-import { findPOByRef } from '@/domain/schedule';
+import { findClientByName } from '@/domain/clients';
 import { useI18n } from '@/i18n';
 import { addMonths, todayISO } from '@/lib/dates';
 import { formatCurrency } from '@/lib/format';
@@ -51,10 +51,12 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
     } else setD(emptySpindle());
   }, [open, spindleId]);
 
-  const customers = useMemo(() => [...new Set([...spindles.map((s) => s.customer), ...pos.filter((p) => p.kind === 'sales').map((p) => p.customerOrVendor)])].sort(), [spindles, pos]);
+  // Cliente do cadastro único; a PO do cliente é do PROJETO (uma por projeto) — aqui só aparece para consulta.
+  const clients = useCollection('clients');
+  const customers = useMemo(() => clients.map((c) => c.name).sort(), [clients]);
+  const projectPO = existing ? projects.find((p) => p.spindleId === existing.id && p.customerPoRef?.trim()) : undefined;
   const manufacturers = useMemo(() => [...new Set(spindles.map((s) => s.manufacturer).filter(Boolean))].sort(), [spindles]);
 
-  const linkedPO = findPOByRef(d.poRef, pos);
 
   const set = <K extends keyof SpindleDraft>(k: K, v: SpindleDraft[K]) =>
     setD((x) => {
@@ -75,6 +77,7 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const errs = validateSpindle(d, spindles, spindleId);
+    if (!errs.customer && !findClientByName(d.customer, clients)) errs.customer = 'clients.validation.notRegistered';
     setErrors(errs);
     if (Object.keys(errs).length) return;
     spindleService.save(d, spindleId);
@@ -176,16 +179,11 @@ export function SpindleDrawer({ open, spindleId, onClose }: { open: boolean; spi
                 )}
               </Field>
             </div>
-            <Field label={t('financial.spindleForm.po')}>
+            <Field label={t('financial.spindleForm.po')} hint={t('financial.spindleForm.poFromProject')}>
               {(id) => (
                 <div className="flex gap-2">
-                  <Input id={id} name="spindlePoRef" value={d.poRef ?? ''} onChange={(e) => set('poRef', e.target.value)} list="spindle-po-refs" className="font-mono" autoComplete="off" />
-                  {linkedPO && <Button icon={ExternalLink} onClick={() => { onClose(); navigate('/purchase-orders', { open: linkedPO.id }); }} aria-label="PO" />}
-                  <datalist id="spindle-po-refs">
-                    {[...pos].filter((p) => p.kind === 'sales').sort((a, b) => b.orderDate.localeCompare(a.orderDate)).map((p) => (
-                      <option key={p.id} value={p.poNumber}>{p.customerOrVendor}</option>
-                    ))}
-                  </datalist>
+                  <Input id={id} readOnly className="font-mono" value={projectPO ? `${projectPO.customerPoRef} · ${projectPO.projectNumber}` : (d.poRef ?? '')} />
+                  {projectPO && <Button icon={ExternalLink} onClick={() => { onClose(); navigate('/calendar', { open: projectPO.id }); }} aria-label={projectPO.projectNumber} />}
                 </div>
               )}
             </Field>
@@ -235,7 +233,6 @@ export function ForecastDrawer({ open, forecastId, onClose }: { open: boolean; f
   const toast = useToast();
   const readOnly = !useCan()('financial.edit');
   const forecast = useCollection('forecast');
-  const spindles = useCollection('spindles');
   const existing = forecast.find((f) => f.id === forecastId);
   const [d, setD] = useState<ForecastDraft>(emptyForecast());
   const [errors, setErrors] = useState<ReturnType<typeof validateForecast>>({});
@@ -250,7 +247,9 @@ export function ForecastDrawer({ open, forecastId, onClose }: { open: boolean; f
     } else setD(emptyForecast());
   }, [open, forecastId]);
 
-  const customers = useMemo(() => [...new Set([...spindles.map((s) => s.customer), ...forecast.map((f) => f.customer)])].sort(), [spindles, forecast]);
+  // Forecast pode ser de cliente novo (prospecção): sugere os do cadastro, sem obrigar.
+  const clientNames = useCollection('clients');
+  const customers = useMemo(() => [...new Set([...clientNames.map((c) => c.name), ...forecast.map((f) => f.customer)])].sort(), [clientNames, forecast]);
   const err = (k: keyof ForecastDraft) => (errors[k] ? t(errors[k]!) : undefined);
 
   const submit = (e: FormEvent) => {

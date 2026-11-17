@@ -3,7 +3,7 @@ import { Ban, Camera, Check, QrCode, RotateCcw, X } from 'lucide-react';
 import { useCan } from '@/app/session';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Field';
+import { Field, Input, Select } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 import { QrPoster } from '@/components/ui/QrPoster';
 import { useToast } from '@/components/ui/Toast';
@@ -15,6 +15,8 @@ import type { Tone } from '@/domain/labels';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/format';
+import { addDays, todayISO } from '@/lib/dates';
+import { navigate } from '@/app/router';
 import type { ShopfloorRequest, ShopfloorRequestStatus } from '@/types/models';
 
 type Filter = 'new' | 'handled' | 'all';
@@ -88,11 +90,11 @@ export function ShopfloorTab() {
 
       {showQr && (
         <QrPoster
-          hash="#/shop-request"
-          title={t('shopfloor.qrTitle')}
-          hint={t('shopfloor.qrHint')}
-          posterTitle={t('shopfloor.posterTitle')}
-          posterText={t('shopfloor.posterText')}
+          hash="#/shop"
+          title={t('shopHub.qrTitle')}
+          hint={t('shopHub.qrHint')}
+          posterTitle={t('shopHub.posterTitle')}
+          posterText={t('shopHub.posterText')}
           fileName="shopfloor-request-qr.png"
           openLabel={t('shopfloor.openPage')}
         />
@@ -130,15 +132,16 @@ function RequestCard({ r, onZoom }: { r: ShopfloorRequest; onZoom: () => void })
   const age = shopfloorAge(r);
   const bucket = agingBucket(age);
 
+  const projects = useCollection('projects');
+  const pos = useCollection('purchaseOrders');
+  const project = r.projectId ? projects.find((p) => p.id === r.projectId) : undefined;
+  const po = r.poId ? pos.find((p) => p.id === r.poId) : undefined;
+  const [ordering, setOrdering] = useState(false);
+
   const confirm = () => {
     if (!text.trim()) return setError(true);
-    if (mode === 'order') {
-      shopfloorService.markOrdered(r.id, text);
-      toast.success(t('shopfloor.toast.ordered', { number: r.number }));
-    } else {
-      shopfloorService.reject(r.id, text);
-      toast.success(t('shopfloor.toast.rejected', { number: r.number }));
-    }
+    shopfloorService.reject(r.id, text);
+    toast.success(t('shopfloor.toast.rejected', { number: r.number }));
     setMode(undefined);
     setText('');
     setError(false);
@@ -169,17 +172,26 @@ function RequestCard({ r, onZoom }: { r: ShopfloorRequest; onZoom: () => void })
           <dd className="min-w-0 break-words">{r.supplier}</dd>
           <dt className="text-slate-500">{t('shopfloor.fields.supplierCode')}</dt>
           <dd className="min-w-0 font-mono break-all">{r.supplierCode}</dd>
+          <dt className="text-slate-500">{t('shopfloor.forJob')}</dt>
+          <dd className="min-w-0 break-words">{project ? <span className="font-medium">{project.projectNumber} · {project.customer}</span> : t('shopfloor.general')}</dd>
         </dl>
         <p className="text-xs text-slate-500">{t('shopfloor.requestedBy', { name: who, date: formatDate(r.createdAt.slice(0, 10)) })}</p>
         {r.status !== 'new' && (
+          <>
+          {po && (
+            <button type="button" onClick={() => navigate('/purchase-orders', { open: po.id })} className="block text-xs font-medium text-brand-700 hover:underline dark:text-brand-400">
+              PO {po.poNumber} · {po.customerOrVendor}
+            </button>
+          )}
           <p className={cn('text-xs font-medium', r.status === 'ordered' ? 'text-green-700 dark:text-green-400' : 'text-red-600')}>
             {t(r.status === 'ordered' ? 'shopfloor.orderedInfo' : 'shopfloor.rejectedInfo', { note: r.note ?? '', name: handler })}
           </p>
+          </>
         )}
 
         {canProcess && r.status === 'new' && !mode && (
           <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="primary" icon={Check} onClick={() => setMode('order')}>
+            <Button size="sm" variant="primary" icon={Check} onClick={() => setOrdering(true)}>
               {t('shopfloor.markOrdered')}
             </Button>
             <Button size="sm" variant="ghost" icon={Ban} className="text-red-600" onClick={() => setMode('reject')}>
@@ -216,6 +228,67 @@ function RequestCard({ r, onZoom }: { r: ShopfloorRequest; onZoom: () => void })
           </Button>
         )}
       </div>
+      {ordering && <OrderDialog r={r} onClose={() => setOrdering(false)} />}
     </li>
+  );
+}
+
+/** "Marcar como pedido": registra a PO do SAP — cria/completa a PO de compra de verdade (GR, catálogo, prontidão). */
+function OrderDialog({ r, onClose }: { r: ShopfloorRequest; onClose: () => void }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const suppliers = useCollection('suppliers');
+  const match = suppliers.find((s) => s.name.trim().toLowerCase() === r.supplier.trim().toLowerCase());
+  const [supplierId, setSupplierId] = useState(match?.id ?? '');
+  const [poNumber, setPoNumber] = useState('');
+  const [unitPrice, setUnitPrice] = useState('');
+  const [expectedDate, setExpectedDate] = useState(addDays(todayISO(), 7));
+  const [error, setError] = useState('');
+  const save = () => {
+    const res = shopfloorService.order(r.id, { supplierId, poNumber, unitPrice: Number(unitPrice) || 0, expectedDate });
+    if (!res.ok) return setError(t(res.error));
+    toast.success(t('shopfloor.toast.ordered', { number: r.number }));
+    onClose();
+  };
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t('shopfloor.orderTitle', { number: r.number })}
+      footer={
+        <>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" icon={Check} onClick={save}>
+            {t('shopfloor.markOrdered')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          {r.description} × {r.quantity} · <span className="font-mono">{r.supplierCode}</span>
+        </p>
+        <Field label={t('shopfloor.fields.supplier')} required hint={match ? undefined : t('shopfloor.supplierNotRegistered', { name: r.supplier })}>
+          {(id) => <Select id={id} value={supplierId} onChange={setSupplierId} options={[{ value: '', label: '—' }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]} />}
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label={t('shopfloor.poNumber')} required>
+            {(id) => <Input id={id} className="font-mono" value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />}
+          </Field>
+          <Field label={t('shopfloor.unitPrice')}>
+            {(id) => <Input id={id} type="number" min={0} step="0.01" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />}
+          </Field>
+          <Field label={t('shopfloor.expected')} required>
+            {(id) => <Input id={id} type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />}
+          </Field>
+        </div>
+        <p className="text-xs text-slate-500">{t('shopfloor.orderHint')}</p>
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }

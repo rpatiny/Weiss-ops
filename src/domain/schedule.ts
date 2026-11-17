@@ -251,6 +251,8 @@ function normalizeProjectDraft(d: ProjectDraft): ProjectDraft {
     customerPoRef,
     spindleRef,
     poId: findPOByRef(customerPoRef, repos.purchaseOrders.getAll())?.id,
+    clientId: repos.clients.getAll().find((c) => c.name.trim().toLowerCase() === d.customer.trim().toLowerCase())?.id,
+    customerPoValue: d.customerPoValue === undefined || Number.isNaN(d.customerPoValue) ? undefined : Math.max(0, d.customerPoValue),
     spindleId: findSpindleByRef(spindleRef, repos.spindles.getAll())?.id,
   };
 }

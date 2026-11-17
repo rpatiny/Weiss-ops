@@ -7,6 +7,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { repos } from '@/data/db';
+import { setAuditActorProvider, setAuditEmployeeLookup } from '@/data/audit';
 import { APP_CONFIG } from '@/lib/config';
 import { sha256Hex } from '@/lib/sha256';
 import type { User, UserRole } from '@/types/models';
@@ -27,13 +28,14 @@ export type Permission =
   | 'extension.process' // executar/concluir a extensão
   | 'customers.manage' // contas de clientes do portal
   | 'portal.review' // revisar/aprovar atualizações e links do portal do cliente
+  | 'audit.view' // histórico de mudanças por projeto (só Master)
   | 'data.manage' // reset/limpar/backup
   | 'users.manage';
 
 const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
   master: [
     'schedule.edit', 'employees.edit', 'time.manage', 'materials.edit', 'requisition.create', 'requisition.process',
-    'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process', 'financial.edit', 'customers.manage', 'portal.review', 'data.manage', 'users.manage',
+    'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process', 'financial.edit', 'customers.manage', 'portal.review', 'audit.view', 'data.manage', 'users.manage',
   ],
   office: ['schedule.edit', 'employees.edit', 'time.manage', 'materials.edit', 'requisition.create', 'extension.request', 'financial.edit', 'customers.manage', 'portal.review'],
   logistics: ['requisition.process', 'po.edit', 'gr.register', 'catalog.edit', 'suppliers.edit', 'extension.request', 'extension.process'],
@@ -112,6 +114,13 @@ export function assertCan(permission: Permission): User {
 }
 
 export const currentUserId = () => getCurrentUser()?.id ?? 'system';
+
+// Histórico de mudanças: quem está agindo e nome dos engenheiros (injetado para evitar import circular com db).
+setAuditActorProvider(() => {
+  const u = getCurrentUser();
+  return u ? { kind: 'user', id: u.id, name: u.name } : null;
+});
+setAuditEmployeeLookup((id) => repos.employees.getById(id)?.name ?? id);
 
 // ───────── PIN ─────────
 

@@ -184,7 +184,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 
 - **Colaboradores**: nome e cargo obrigatórios (cargo padrão `DEFAULT_EMPLOYEE_ROLE = 'Engineer'` em `lib/config.ts` — todos os técnicos
   das rotas são engenheiros; vem preenchido no cadastro e na demo; cargos da demo antiga viram "Engineer" se não editados); e-mail válido e único; telefone com DDD (máscara BR);
-  cor `#RRGGBB`. Inativos não aparecem para novos agendamentos (`selectActiveEmployees`), mas mantêm histórico.
+  cor `#RRGGBB` (telefone livre, formato UK — a máscara BR foi removida). Inativos não aparecem para novos agendamentos (`selectActiveEmployees`), mas mantêm histórico.
   Exclusão só é permitida sem atividades vinculadas — caso contrário o sistema oferece **inativar**.
   Ao inativar alguém com atividades futuras, um aviso pede reatribuição na Agenda.
 - **Agenda & Rotas = Cronograma de projetos** (`domain/schedule.ts`):
@@ -456,6 +456,41 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
       com validação, revisão final de UX e build de produção.
 
 > **Walkthrough das telas** (conexões, redundâncias e ajustes priorizados): `docs/WALKTHROUGH.md` (17/11/2026).
+> Ajustes do walkthrough FEITOS em 17/11/2026 (ver seção "Ajustes do walkthrough" abaixo).
+
+## Ajustes do walkthrough (17/11/2026)
+
+- **Cadastro único de clientes** (`domain/clients.ts`, coleção `clients`, tela `#/customers` = **Customers**, rodapé, todos os perfis
+  veem; Office/Master editam): nome (único), nº da conta, razão social, VAT, contato/e-mail/telefone, **endereço de cobrança** e
+  **endereço de ENTREGA** (pode ser igual; se diferente: endereço + contato + telefone + instruções). Tudo obrigatório
+  (`validateClient`). Cliente salvo fica travado — "Edit customer data" → confirmação. `DeliverTo` (bloco âmbar "Deliver to")
+  aparece no card de Customers, na ficha do projeto e no card de Projects (é o que a Logística usa). Projetos/spindles/forecast/
+  contas do portal guardam `clientId` + nome copiado (`propagateName` ao renomear). Projeto e spindle **exigem cliente
+  cadastrado** (`clients.validation.notRegistered`); forecast só sugere (prospecção). Aba "Portal access" no cliente (logins).
+  Migração (`migrateClientsAndCustomerPOs` em `ensureDefaults`): cria clientes dos nomes existentes (demo = `demoClients`, dados
+  **TBC** porque são clientes reais — nada inventado; marcados `incomplete`) e liga `clientId`. Excel: aba `Customers`.
+- **PO do cliente = uma por projeto** (`Project.customerPoRef/customerPoDate/customerPoValue`, os três `ProtectedInput`). POs de
+  venda (`kind: 'sales'`) saíram de Purchase Orders (lista/novas só `purchase`; PO de venda antiga abre com aviso "legacy");
+  migração copia nº/data/valor da PO de venda ligada para o projeto. Spindle mostra a PO do projeto (só leitura). Dossiê usa os
+  campos do projeto.
+- **Horas manuais** (`TypeToConfirm`, estilo GitHub): lançar/corrigir/excluir apontamento exige **motivo** + digitar
+  `nome/nº-do-projeto` (ex.: `dave/1000BKXA`). Aviso no formulário: horas devem vir dos engenheiros pelo ponto.
+- **Histórico de mudanças por projeto — só Master** (`data/audit.ts`, coleção `auditLog`, permissão `audit.view`): proxy nos
+  repositórios de `clients, projects, assignments, timeEntries, projectUpdates, requisitions, shopfloorRequests, purchaseOrders,
+  spindles` grava data/hora, quem (usuário; no ponto/QR = engenheiro "(time clock)"; automático = System), ação e
+  "campo: antes → depois" (listas com id: + / − / alterado; fotos só contagem). Liga ao projeto por `projectId`, materiais→PO,
+  `spindleId`, `clientId`. Fora: carga de backup/demo e migrações (`withoutAudit`). Máx. 5000 entradas. Aba **History** na ficha
+  do projeto (busca, copiar texto, baixar .txt) e botão no card de Projects.
+- **Status automático pelas fases** (`syncWorkflowStatus` após start/stop/save do ponto): 1º apontamento ⇒ projeto In progress e
+  spindle In repair; fase de teste ⇒ spindle Testing; todas as fases ⇒ projeto Completed. Só para frente; entrega/fatura = Office.
+- **Agenda mostra o real**: barra com "● fase" (verde pulsando = alguém agora; contorno = aguardando próxima fase).
+- **Shop floor → PO de verdade**: pedido ganha passo 6 "Para qual serviço?" (projeto ou uso geral/estoque); "Mark as ordered"
+  abre formulário (fornecedor cadastrado, nº PO SAP, preço, previsão) e cria/completa a PO de compra; com projeto, o item vira
+  material do projeto ligado à linha (prontidão, GR, último valor pago).
+- **QR único do chão de fábrica** `#/shop` (`ShopHubPage`): "Log my hours" (`#/clock`) / "Request material" (`#/shop-request`);
+  os cartazes de QR (Workshop hours → Settings e Shop floor requests) apontam para ele.
+- **Projects**: "New project" e "Edit project" abrem a mesma ficha da Agenda na própria tela. **Employees**: PIN do ponto na ficha.
+  Telefone sem máscara BR. **Office** vê em Purchase Orders só *Requisitions* e *Readiness*.
 
 ## Ideias para o futuro
 

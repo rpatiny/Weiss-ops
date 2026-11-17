@@ -17,6 +17,7 @@ import {
   type ValidationErrors,
 } from '@/domain/employees';
 import { EMPLOYEE_COLORS, enumLabel } from '@/domain/labels';
+import { timesheetService } from '@/domain/timeTracking';
 import { businessDaysBetween } from '@/lib/dates';
 import { useI18n } from '@/i18n';
 import { useCan } from '@/app/session';
@@ -78,21 +79,33 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
   const empAbsences = employee ? upcomingAbsences(employee.id, absences) : [];
   const colorTakenBy = employees.find((e) => e.id !== employee?.id && e.color.toLowerCase() === draft.color.toLowerCase());
 
+  // PIN do ponto direto na ficha (antes só em Horas da oficina → Ajustes). Em branco = mantém o atual.
+  const canSetPin = useCan()('time.manage');
+  const [clockPin, setClockPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+  useEffect(() => {
+    setClockPin('');
+    setPinError(false);
+  }, [open, employee?.id]);
+
   const submit = (ev: FormEvent) => {
     ev.preventDefault();
     setTouched(true);
     const errs = validateEmployee(draft, employees, employee?.id);
     setErrors(errs);
     if (Object.keys(errs).length) return;
+    if (clockPin && !/^\d{4,6}$/.test(clockPin)) return setPinError(true);
     try {
       if (employee) {
         employeeService.update(employee.id, draft);
+        if (clockPin && canSetPin) timesheetService.setClockPin(employee.id, clockPin);
         toast.success(t('employees.toast.updated', { name: draft.name }));
         if (employee.status === 'active' && draft.status === 'inactive' && upcoming.length) {
           toast.info(t('employees.toast.upcomingWarning', { count: upcoming.length }));
         }
       } else {
-        employeeService.create(draft);
+        const created = employeeService.create(draft);
+        if (clockPin && canSetPin) timesheetService.setClockPin(created.id, clockPin);
         toast.success(t('employees.toast.created', { name: draft.name }));
       }
       onClose();
@@ -162,6 +175,28 @@ export function EmployeeFormDrawer({ open, employee, onClose }: Props) {
             {(id) => <Input id={id} name="email" type="email" value={draft.email} onChange={(e) => set('email', e.target.value)} invalid={!!errors.email} placeholder="name@company.com" />}
           </Field>
         </div>
+
+        {canSetPin && (
+          <Field
+            label={t('employees.form.clockPin')}
+            error={pinError ? t('timesheet.pinInvalid') : undefined}
+            hint={employee?.clockPinHash ? t('employees.form.clockPinSet') : t('employees.form.clockPinHint')}
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                maxLength={6}
+                className="max-w-40 font-mono tracking-[0.3em]"
+                value={clockPin}
+                onChange={(e) => { setClockPin(e.target.value.replace(/\D/g, '').slice(0, 6)); setPinError(false); }}
+                invalid={pinError}
+              />
+            )}
+          </Field>
+        )}
 
         <Field
           label={t('employees.form.color')}

@@ -27,6 +27,7 @@ import type {
   SpindleUnit,
   Supplier,
   SupplierOffer,
+  Client,
 } from '@/types/models';
 
 const CUSTOMERS = {
@@ -40,6 +41,41 @@ const CUSTOMERS = {
   hidrotec: { name: 'Rolls-Royce', address: 'United Kingdom' },
   textil: { name: 'Renishaw', address: 'United Kingdom' },
 } as const;
+
+/**
+ * Cadastro de clientes da demonstração. São clientes reais da Weiss UK: os endereços NÃO são inventados —
+ * ficam "TBC" (a confirmar) e o cadastro sai marcado como incompleto para a equipe preencher os dados reais.
+ */
+const tbc = (label: string) => ({ line1: `${label} — address to be confirmed`, city: 'TBC', postcode: 'TBC', country: 'United Kingdom' });
+export function demoClients(now: string): Client[] {
+  const mk = (id: string, name: string, n: number, separateDelivery = false): Client => ({
+    id,
+    name,
+    accountNumber: `C-${1000 + n}`,
+    billingAddress: tbc('Accounts payable'),
+    deliverySameAsBilling: !separateDelivery,
+    deliveryAddress: separateDelivery ? tbc('Goods-in / site') : undefined,
+    deliveryContact: separateDelivery ? 'Goods-in team' : undefined,
+    deliveryPhone: separateDelivery ? `01632 9601${10 + n}` : undefined,
+    deliveryNotes: separateDelivery ? 'Deliveries Mon–Fri 08:00–15:30. Book a slot 24 h ahead.' : undefined,
+    contactName: 'Purchasing contact (TBC)',
+    email: `purchasing.${id.replace('cl_', '')}@example.com`,
+    phone: `01632 9600${10 + n}`,
+    createdAt: now,
+    incomplete: true,
+  });
+  return [
+    mk('cl_pcs', CUSTOMERS.usinagem.name, 1, true),
+    mk('cl_gestamp', CUSTOMERS.metalforte.name, 2),
+    mk('cl_bae', CUSTOMERS.aeromec.name, 3, true),
+    mk('cl_cnc', CUSTOMERS.moldes.name, 4),
+    mk('cl_gkn', CUSTOMERS.alfa.name, 5),
+    mk('cl_jcb', CUSTOMERS.autopecas.name, 6),
+    mk('cl_rr', CUSTOMERS.hidrotec.name, 7),
+    mk('cl_ren', CUSTOMERS.textil.name, 8),
+    { ...mk('cl_weiss', 'Weiss workshop (bench)', 9), contactName: 'Workshop', incomplete: true },
+  ];
+}
 
 /** Projetos: 1000 + 4 caracteres; em teste os 4 dígitos são letras (ver `nextProjectNumber`). */
 export const DEMO_PROJECT_NUMBERS = ['1000BKXA', '1000CMRT', '1000DHWL', '1000FJQE', '1000GNPS', '1000HTVB', '1000KRZD', '1000LWCF', '1000MPXG', '1000NQAH'];
@@ -521,5 +557,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     shopfloorRequests: [],
     customers: [],
     projectUpdates: [],
+    auditLog: [],
+    clients: demoClients(new Date().toISOString()),
   };
 }

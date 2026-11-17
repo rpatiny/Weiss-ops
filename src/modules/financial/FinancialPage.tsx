@@ -209,6 +209,7 @@ function SpindlesTab({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useI18n();
   const spindles = useCollection('spindles');
   const pos = useCollection('purchaseOrders');
+  const projects = useCollection('projects');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | SpindleStatus>('all');
 
@@ -249,6 +250,8 @@ function SpindlesTab({ onOpen }: { onOpen: (id: string) => void }) {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {rows.map((s) => {
                 const po = pos.find((p) => p.id === s.poId);
+                // PO do cliente é do projeto: mostra a do projeto ligado ao spindle.
+                const prjPo = projects.find((p) => p.spindleId === s.id && p.customerPoRef?.trim());
                 return (
                   <tr key={s.id} onClick={() => onOpen(s.id)} className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="td font-mono text-sm font-semibold">{s.serialNumber}</td>
@@ -267,10 +270,12 @@ function SpindlesTab({ onOpen }: { onOpen: (id: string) => void }) {
                     </td>
                     <td className="td">
                       <StatusBadge kind="spindleStatus" value={s.status} />
-                      {po ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate('/purchase-orders', { open: po.id }); }} className="mt-1 block font-mono text-[11px] text-brand-700 hover:underline dark:text-brand-400">
-                          PO {po.poNumber}
+                      {prjPo ? (
+                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate('/calendar', { open: prjPo.id }); }} className="mt-1 block font-mono text-[11px] text-brand-700 hover:underline dark:text-brand-400">
+                          PO {prjPo.customerPoRef}
                         </button>
+                      ) : po ? (
+                        <span className="mt-1 block font-mono text-[11px] text-slate-500">PO {po.poNumber}</span>
                       ) : s.poRef ? (
                         <span className="mt-1 block font-mono text-[11px] text-slate-500">PO {s.poRef}</span>
                       ) : null}
