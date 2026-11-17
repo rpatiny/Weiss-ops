@@ -471,6 +471,16 @@ export const de: Dictionary = {
     },
   },
   projects: {
+    archive: {
+      title: 'Archiv',
+      hint: 'Abgeschlossene Projekte. Sie sind aus Planung, TV und Werkstattstunden ausgeblendet. Wiederherstellen bringt das Projekt in alle Ansichten zurück.',
+      empty: 'Keine archivierten Projekte.',
+      archivedOn: 'Archiviert am {date}',
+      restore: 'Wiederherstellen',
+      restoreTitle: 'Projekt {number} wiederherstellen?',
+      restoreMessage: 'Das Projekt kehrt in Planung, TV, Werkstattstunden und alle zugehörigen Ansichten zurück. Dies wird im Projektverlauf protokolliert.',
+      restored: 'Projekt {number} wiederhergestellt.',
+    },
     phasesProgress: '{done}/{total} Phasen',
     hours: 'Werkstattstunden',
     noHours: 'Keine Stunden erfasst',

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
+  Archive,
+  ArchiveRestore,
   FileImage,
   History,
   Pencil,
@@ -38,6 +40,9 @@ import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
 import type { ProjectAssignment } from '@/types/models';
 import { formatHoursDecimal, formatMinutes, jobProgress, type JobProgress } from '@/domain/timeTracking';
 import { HoursReportButton } from '@/modules/timesheet/HoursReportButton';
+import { TypeToConfirm } from '@/components/ui/TypeToConfirm';
+import { useToast } from '@/components/ui/Toast';
+import { scheduleService } from '@/domain/schedule';
 
 type Filter = 'active' | 'finished' | 'all';
 const FILTERS: Filter[] = ['active', 'finished', 'all'];
@@ -91,7 +96,10 @@ export function ProjectsPage() {
   };
 
   const q = query.trim().toLowerCase();
+  // Arquivados (concluídos) só aparecem no Arquivo, no fim da página.
+  const archived = dossiers.filter((d) => d.project.archived && (!q || dossierSearchText(d).includes(q)));
   const visible = dossiers.filter((d) => {
+    if (d.project.archived) return false;
     if (filter === 'active' && !isProjectActive(d.project)) return false;
     if (filter === 'finished' && isProjectActive(d.project)) return false;
     return !q || dossierSearchText(d).includes(q);
@@ -150,6 +158,7 @@ export function ProjectsPage() {
           ))}
         </div>
       )}
+      <ArchiveSection items={archived} canEdit={canEditProjects} onOpen={(id) => setDrawer({ id })} />
       <ProjectDrawer open={!!drawer} projectId={drawer?.id} initialTab={drawer?.tab} onClose={() => setDrawer(null)} />
     </>
   );
@@ -471,5 +480,65 @@ function ActionBtn({ icon: Icon, children, onClick }: { icon: LucideIcon; childr
     >
       <Icon className="size-3.5" /> {children}
     </button>
+  );
+}
+
+/**
+ * Arquivo: projetos concluídos (fora da Agenda, TV e horas). Exporta horas; "Restore" exige digitar o nº do projeto
+ * (estilo GitHub) e o projeto volta para todas as telas.
+ */
+function ArchiveSection({ items, canEdit, onOpen }: { items: ProjectDossier[]; canEdit: boolean; onOpen: (id: string) => void }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [open, setOpen] = usePersistentState<boolean>('projects.archiveOpen', false, (v): v is boolean => typeof v === 'boolean');
+  const [restoring, setRestoring] = useState<ProjectDossier>();
+  return (
+    <section className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
+        <Archive className="size-5 text-slate-400" />
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{t('projects.archive.title')}</h2>
+        <Badge tone="slate">{items.length}</Badge>
+        <span className="ml-auto text-slate-400">{open ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}</span>
+      </button>
+      <p className="mt-1 text-sm text-slate-500">{t('projects.archive.hint')}</p>
+      {open &&
+        (items.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">{t('projects.archive.empty')}</p>
+        ) : (
+          <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+            {items.map((d) => (
+              <li key={d.project.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: d.project.color }} />
+                <button type="button" onClick={() => onOpen(d.project.id)} className="min-w-0 flex-1 text-left">
+                  <span className="block font-mono text-xs text-slate-500">{d.project.projectNumber}</span>
+                  <span className="block truncate font-semibold text-slate-900 dark:text-white">{d.project.customer}</span>
+                  <span className="block truncate text-xs text-slate-500">{d.project.description}</span>
+                </button>
+                <span className="text-xs text-slate-500">{d.project.archivedAt ? t('projects.archive.archivedOn', { date: formatDate(d.project.archivedAt.slice(0, 10)) }) : ''}</span>
+                <HoursReportButton projectId={d.project.id} />
+                {canEdit && (
+                  <Button size="sm" icon={ArchiveRestore} onClick={() => setRestoring(d)}>
+                    {t('projects.archive.restore')}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        ))}
+      <TypeToConfirm
+        open={!!restoring}
+        danger={false}
+        title={t('projects.archive.restoreTitle', { number: restoring?.project.projectNumber ?? '' })}
+        message={t('projects.archive.restoreMessage')}
+        phrase={restoring?.project.projectNumber ?? ''}
+        confirmLabel={t('projects.archive.restore')}
+        onCancel={() => setRestoring(undefined)}
+        onConfirm={() => {
+          scheduleService.restoreProject(restoring!.project.id);
+          toast.success(t('projects.archive.restored', { number: restoring!.project.projectNumber }));
+          setRestoring(undefined);
+        }}
+      />
+    </section>
   );
 }

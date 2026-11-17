@@ -474,6 +474,16 @@ export const pt = {
     },
   },
   projects: {
+    archive: {
+      title: 'Arquivo',
+      hint: 'Projetos concluídos. Ficam fora da agenda, da TV e das horas da oficina. Recuperar traz o projeto de volta para todas as telas.',
+      empty: 'Nenhum projeto arquivado.',
+      archivedOn: 'Arquivado em {date}',
+      restore: 'Recuperar',
+      restoreTitle: 'Recuperar o projeto {number}?',
+      restoreMessage: 'O projeto volta para a agenda, a TV, as horas da oficina e todas as telas relacionadas. Isso fica registrado no histórico do projeto.',
+      restored: 'Projeto {number} recuperado.',
+    },
     phasesProgress: '{done}/{total} fases',
     hours: 'Horas da oficina',
     noHours: 'Sem horas apontadas',

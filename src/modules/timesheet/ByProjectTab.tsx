@@ -53,7 +53,8 @@ export function ByProjectTab({ onEditEntry, filter, setFilter, actions }: { onEd
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return projects
-      .filter((p) => entries.some((e) => e.projectId === p.id))
+      // Arquivados ficam no Arquivo (tela Projects), não aqui.
+      .filter((p) => !p.archived && entries.some((e) => e.projectId === p.id))
       .map((p) => {
         const mine = entries.filter((e) => e.projectId === p.id);
         const { flag, progress } = jobFlag(p.id, phases, entries);

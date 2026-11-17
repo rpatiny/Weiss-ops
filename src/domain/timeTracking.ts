@@ -130,7 +130,9 @@ export function syncWorkflowStatus(projectId: string): void {
   if (!entries.length) return;
   const progress = jobProgress(projectId, repos.workPhases.getAll(), repos.timeEntries.getAll());
   const nextStatus = progress.complete ? 'completed' : 'in_progress';
-  if (project.status === 'planned' || (project.status === 'in_progress' && nextStatus === 'completed')) repos.projects.update(projectId, { status: nextStatus });
+  if (project.status === 'planned' || (project.status === 'in_progress' && nextStatus === 'completed'))
+    // Todas as fases concluídas ⇒ projeto concluído e ARQUIVADO (sai das telas de trabalho).
+    repos.projects.update(projectId, nextStatus === 'completed' ? { status: nextStatus, archived: true, archivedAt: new Date().toISOString() } : { status: nextStatus });
   const spindle = project.spindleId ? repos.spindles.getById(project.spindleId) : undefined;
   if (!spindle) return;
   const phaseName = (id: string) => repos.workPhases.getById(id)?.name ?? '';

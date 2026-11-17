@@ -105,6 +105,12 @@ export interface Project {
   portalToken?: string;
   /** Cliente do cadastro (o nome fica em `customer`). */
   clientId?: ID;
+  /**
+   * Arquivado: projeto concluído sai de todas as telas (Agenda, TV, horas…) e fica no Arquivo no fim de Projects.
+   * `false` explícito = recuperado (não volta a arquivar sozinho). Recuperar exige confirmação digitada.
+   */
+  archived?: boolean;
+  archivedAt?: string;
   /** PO do cliente — UMA por projeto (número em `customerPoRef`): data e valor. Editar exige confirmação. */
   customerPoDate?: ISODate;
   customerPoValue?: number;

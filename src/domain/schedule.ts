@@ -219,6 +219,9 @@ export function validateProject(d: ProjectDraft, all: readonly Project[], selfId
  * Material já no processo de compras (em requisição ou com PO): passa a ser dado da Logística —
  * o Office não edita nem exclui (Master pode). Volta a ser editável se a requisição for cancelada/recusada sem PO.
  */
+/** Projeto no arquivo (concluído e não recuperado): fica fora das telas de trabalho. */
+export const isArchived = (p: Pick<Project, 'archived'>) => p.archived === true;
+
 export const isMaterialInPurchasing = (m: Pick<ProjectMaterial, 'requisitionId' | 'poId'>) => !!(m.requisitionId || m.poId);
 
 // ── PO do cliente / Spindle: texto livre com vínculo automático ──
@@ -297,7 +300,21 @@ export const scheduleService = {
   },
   updateProject(id: string, draft: ProjectDraft): Project {
     assertCan('schedule.edit');
-    return repos.projects.update(id, normalizeProjectDraft(draft));
+    const prev = repos.projects.getById(id);
+    const next = normalizeProjectDraft(draft);
+    // Concluído agora ⇒ vai para o arquivo (some das telas).
+    const archive = next.status === 'completed' && prev?.status !== 'completed' ? { archived: true, archivedAt: new Date().toISOString() } : {};
+    return repos.projects.update(id, { ...next, ...archive });
+  },
+  /** Arquivar à mão (ex.: projeto concluído que tinha sido recuperado). */
+  archiveProject(id: string): void {
+    assertCan('schedule.edit');
+    repos.projects.update(id, { archived: true, archivedAt: new Date().toISOString() });
+  },
+  /** Recuperar do arquivo (a tela exige digitar o nº do projeto). Volta para todas as telas. */
+  restoreProject(id: string): void {
+    assertCan('schedule.edit');
+    repos.projects.update(id, { archived: false, archivedAt: undefined });
   },
   removeProject(id: string): void {
     assertCan('schedule.edit');

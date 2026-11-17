@@ -28,7 +28,9 @@ export function TvBoard() {
   const { params } = useRoute();
   const view: TvView = params.get('view') === 'biweekly' ? 'biweekly' : 'week';
   const employees = useCollection('employees');
-  const projects = useCollection('projects');
+  // Arquivados (concluídos) não aparecem na TV.
+  const allProjects = useCollection('projects');
+  const projects = useMemo(() => allProjects.filter((p) => !p.archived), [allProjects]);
   const assignments = useCollection('assignments');
   const absences = useCollection('absences');
   const entries = useCollection('timeEntries');

@@ -332,6 +332,8 @@ export const db = {
           repos.workPhases.replaceAll(repos.workPhases.getAll().filter((p) => p.id !== bal.id).sort((x, y) => x.order - y.order).map((p, i) => ({ ...p, order: i + 1 })));
         }
       }
+      // Projetos já concluídos vão para o arquivo (uma vez; recuperados têm archived=false e ficam).
+      for (const p of repos.projects.getAll()) if (p.status === 'completed' && p.archived === undefined) repos.projects.update(p.id, { archived: true, archivedAt: new Date().toISOString() });
       // Cadastro único de clientes + PO do cliente dentro do projeto (bases criadas antes destas mudanças).
       migrateClientsAndCustomerPOs();
       // Textos da demonstração antiga em português → inglês (só valores ainda idênticos aos originais).

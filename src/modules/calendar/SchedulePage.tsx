@@ -43,7 +43,9 @@ export function SchedulePage() {
   const canEdit = useCan()('schedule.edit');
   const { params, path: routePath } = useRoute();
   const employees = useCollection('employees');
-  const projects = useCollection('projects');
+  // Arquivados (concluídos) ficam fora da Agenda; recuperados voltam.
+  const allProjects = useCollection('projects');
+  const projects = useMemo(() => allProjects.filter((p) => !p.archived), [allProjects]);
   const assignments = useCollection('assignments');
   const absences = useCollection('absences');
   const purchaseOrders = useCollection('purchaseOrders');

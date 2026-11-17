@@ -489,6 +489,10 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   material do projeto ligado à linha (prontidão, GR, último valor pago).
 - **QR único do chão de fábrica** `#/shop` (`ShopHubPage`): "Log my hours" (`#/clock`) / "Request material" (`#/shop-request`);
   os cartazes de QR (Workshop hours → Settings e Shop floor requests) apontam para ele.
+- **Arquivo de projetos** (`Project.archived/archivedAt`, `isArchived`): concluído (pelo Office ou pelas fases do ponto) ⇒
+  arquivado automaticamente; some da Agenda, TV e Workshop hours (By project) e vai para a seção **Archive** no fim de Projects
+  (exportar horas, abrir a ficha). **Restore** = `TypeToConfirm` digitando o nº do projeto → `archived: false` (não volta a arquivar
+  sozinho; "archive" manual em `scheduleService.archiveProject`). Migração: concluídos existentes vão para o arquivo uma vez.
 - **Projects**: "New project" e "Edit project" abrem a mesma ficha da Agenda na própria tela. **Employees**: PIN do ponto na ficha.
   Telefone sem máscara BR. **Office** vê em Purchase Orders só *Requisitions* e *Readiness*.
 

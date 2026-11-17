@@ -471,6 +471,16 @@ export const en: Dictionary = {
     },
   },
   projects: {
+    archive: {
+      title: 'Archive',
+      hint: 'Completed projects. They are hidden from the schedule, TV and workshop hours. Restoring brings the project back to every screen.',
+      empty: 'No archived projects.',
+      archivedOn: 'Archived {date}',
+      restore: 'Restore',
+      restoreTitle: 'Restore project {number}?',
+      restoreMessage: 'The project returns to the schedule, TV, workshop hours and every related screen. This is recorded in the project history.',
+      restored: 'Project {number} restored.',
+    },
     phasesProgress: '{done}/{total} phases',
     hours: 'Workshop hours',
     noHours: 'No hours recorded',
