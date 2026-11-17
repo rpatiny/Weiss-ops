@@ -2,6 +2,8 @@ import type { Dictionary } from './types';
 
 export const de: Dictionary = {
   shopfloor: {
+    pageTitle: 'Werkstatt-Anfragen',
+    pageDescription: 'Bestellanfragen über den Werkstatt-QR-Code: Foto, Artikel, Lieferant und Code. Die ältesten ohne Aktion stehen oben.',
     title: 'Bestellanfrage',
     stepOf: 'Schritt {n} von {total}',
     fields: { photo: 'Foto des Artikels', description: 'Artikelbeschreibung', quantity: 'Menge', supplier: 'Lieferant', supplierCode: 'Lieferantencode' },
@@ -101,7 +103,9 @@ export const de: Dictionary = {
     themeLight: 'Helles Design',
     themeDark: 'Dunkles Design',
     language: 'Sprache',
+    section: { operations: 'Betrieb', purchasing: 'Einkauf', finance: 'Finanzen' },
     nav: {
+      shopfloor: 'Werkstatt-Anfragen',
       timesheet: 'Werkstattstunden',
       projects: 'Projekte',
       calendar: 'Touren & Kalender',

@@ -2,6 +2,8 @@ import type { Dictionary } from './types';
 
 export const en: Dictionary = {
   shopfloor: {
+    pageTitle: 'Shop floor requests',
+    pageDescription: 'Purchase requests from the shop floor QR code: photo, item, supplier and code. The oldest without action come first.',
     title: 'Purchase request',
     stepOf: 'Step {n} of {total}',
     fields: { photo: 'Photo of the item', description: 'Item description', quantity: 'Quantity', supplier: 'Supplier', supplierCode: 'Supplier code' },
@@ -101,7 +103,9 @@ export const en: Dictionary = {
     themeLight: 'Light theme',
     themeDark: 'Dark theme',
     language: 'Language',
+    section: { operations: 'Operations', purchasing: 'Purchasing', finance: 'Finance' },
     nav: {
+      shopfloor: 'Shop floor requests',
       timesheet: 'Workshop hours',
       projects: 'Projects',
       calendar: 'Schedule & Routes',

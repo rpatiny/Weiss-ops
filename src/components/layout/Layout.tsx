@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Languages, LogOut, Menu, Moon, Sun, X, RotateCw, Smartphone } from 'lucide-react';
 import { logout, useCurrentUser } from '@/app/session';
 import { enumLabel } from '@/domain/labels';
-import { usePendingCounts, usePendingExtensions, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
+import { usePendingCounts, usePendingExtensions, usePendingShopfloor, useRequesterExtensionUpdates, useRequesterRejections, useRequesterUpdates } from './usePendingCounts';
 import { SyncIndicator } from './SyncIndicator';
 import { OnlineButton } from './OnlineButton';
 import { announcePresence } from '@/data/cloud/presence';
@@ -13,7 +13,7 @@ import { navigate, useRoute } from '@/app/router';
 import { useTheme } from '@/app/theme';
 import { LOCALES, useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
-import { NAV_FOOTER, NAV_ITEMS, type NavItem } from './nav';
+import { NAV_FOOTER, navSections, type NavItem } from './nav';
 import { BrandLogo } from './BrandLogo';
 import { enterLandscape, exitLandscape } from '@/app/landscape';
 import { usePersistentState } from '@/lib/usePersistentState';
@@ -112,6 +112,7 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
   const user = useCurrentUser();
   const pending = usePendingCounts();
   const pendingExt = usePendingExtensions();
+  const pendingShopfloor = usePendingShopfloor();
   const myUpdates = useRequesterUpdates();
   const myExtUpdates = useRequesterExtensionUpdates();
   const myRejections = useRequesterRejections();
@@ -121,11 +122,21 @@ function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
         <Brand />
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Main">
-        <p className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t('app.sectionOperation')}</p>
-        {NAV_ITEMS.map((item) => (
-          <NavLink key={item.path} item={item} active={path === item.path} onNavigate={onNavigate} badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : undefined} goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined}
-            warnBadge={item.path === '/purchase-orders' ? myRejections.requisitions : item.path === '/extensions' ? myRejections.extensions : undefined}
-          />
+        {navSections(user?.role).map((section, i) => (
+          <div key={section.id} className={cn('space-y-1', i > 0 && 'pt-4')}>
+            <p className="px-3 pb-1 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">{t(section.labelKey)}</p>
+            {section.items.map((item) => (
+              <NavLink
+                key={item.path}
+                item={item}
+                active={path === item.path}
+                onNavigate={onNavigate}
+                badge={item.path === '/purchase-orders' ? pending : item.path === '/extensions' ? pendingExt : item.path === '/shopfloor' ? pendingShopfloor : undefined}
+                goodBadge={item.path === '/purchase-orders' ? myUpdates : item.path === '/extensions' ? myExtUpdates : undefined}
+                warnBadge={item.path === '/purchase-orders' ? myRejections.requisitions : item.path === '/extensions' ? myRejections.extensions : undefined}
+              />
+            ))}
+          </div>
         ))}
       </nav>
       <div className="space-y-1 border-t border-slate-800 px-3 py-3">

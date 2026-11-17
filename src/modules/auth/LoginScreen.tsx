@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { KeyRound, LogIn, Info } from 'lucide-react';
 import { login } from '@/app/session';
 import { navigate } from '@/app/router';
+import { homeRoute } from '@/components/layout/nav';
 import { repos } from '@/data/db';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +31,9 @@ export function LoginScreen({ revealMaster = false }: { revealMaster?: boolean }
     setBusy(true);
     const ok = await login(userId, pin);
     setBusy(false);
-    if (ok && window.location.hash.startsWith('#/admin')) navigate('/calendar');
+    // Tela inicial por perfil (Logística → Compras); um deep-link aberto (#/projects…) é respeitado.
+    const h = window.location.hash;
+    if (ok && (h.startsWith('#/admin') || h === '' || h === '#' || h === '#/' || h.startsWith('#/calendar'))) navigate(homeRoute(repos.users.getById(userId)?.role));
     if (!ok) {
       setError(true);
       setPin('');

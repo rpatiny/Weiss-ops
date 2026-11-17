@@ -335,9 +335,9 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     **foto** (câmera; `lib/image.ts` reduz p/ JPEG ≤1024 px) → descrição → quantidade → fornecedor (sugestões do cadastro) →
     código do fornecedor — **todos obrigatórios** (`validateShopfloorField`) → revisão → nome + **PIN do ponto** (reusa `WhoStep`/
     `PinStep` do ponto) → "Request sent". Rascunho some após 3 min sem uso.
-  - Logística/Master (`requisition.process`): aba **Shop floor** em Ordens de Compra (`ShopfloorTab`): foto (ampliar), item,
+  - Logística/Master (`requisition.process`): página **Shop floor requests** (`#/shopfloor`, item próprio no menu, `ShopfloorPage` → `ShopfloorTab`): foto (ampliar), item,
     fornecedor/código, quem pediu; "Marcar como pedido" (nº da PO) / "Recusar" (motivo) / "Reabrir". QR/cartaz via
-    `components/ui/QrPoster.tsx` (também usado no QR do ponto). Badge do menu soma os pedidos sem ação.
+    `components/ui/QrPoster.tsx` (também usado no QR do ponto). Contador próprio no menu (`usePendingShopfloor`, só Logística/Master).
   - **Aging** (`shopfloorAge` em dias úteis sem ação, `agingBucket`): Novo 0–1 · Aguardando 2–3 · Virando prioridade 4–6 ·
     Urgente 7+; cards com cor/anel por faixa, contadores por faixa, pendentes ordenados do mais velho para o mais novo.
   - Excel: aba `Shopfloor_Requests` (sem foto). Backup: coleção opcional (backups antigos ok).
@@ -349,7 +349,11 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   na tela até entrar), F alterna, cursor some após 3 s parado, Wake Lock mantém a tela acesa. `index.html` injeta
   `public/tv.webmanifest` (display fullscreen, landscape) em `#/tv` — instalar a página como app abre sem barra; demais
   rotas usam `public/app.webmanifest` (standalone).
-- **Navegação:** Colaboradores fica no rodapé da barra lateral, junto de Dados & Backup e Tema escuro.
+- **Navegação** (`components/layout/nav.ts`): menu em seções por prioridade do perfil (`navSections`) — **Operations**
+  (Schedule & Routes, Projects, Workshop hours) · **Purchasing** (Purchase Orders, Shop floor requests, Extensions) ·
+  **Finance** (Financial Hub). Logística vê Purchasing primeiro e entra em `/purchase-orders` (`homeRoute`, aplicado no login
+  quando não há deep-link); Office/Master veem Operations primeiro e entram na Agenda. Colaboradores fica no rodapé, junto de
+  Dados & Backup e Tema escuro.
 
 - **Hub Financeiro** (`domain/financial.ts`, permissão `financial.edit` = Master e Office; Logística só lê):
   - Valor faturado de uma unidade entregue = `invoicedValue`, senão `quotedValue` (avisado na aba Entregas).

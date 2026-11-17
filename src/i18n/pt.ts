@@ -5,6 +5,8 @@
  */
 export const pt = {
   shopfloor: {
+    pageTitle: 'Pedidos do shop floor',
+    pageDescription: 'Pedidos de compra feitos pelo QR code do shop floor: foto, item, fornecedor e código. Os mais antigos sem ação aparecem primeiro.',
     title: 'Pedido de compra',
     stepOf: 'Passo {n} de {total}',
     fields: { photo: 'Foto do item', description: 'Descrição do item', quantity: 'Quantidade', supplier: 'Fornecedor', supplierCode: 'Código do fornecedor' },
@@ -104,7 +106,9 @@ export const pt = {
     themeLight: 'Tema claro',
     themeDark: 'Tema escuro',
     language: 'Idioma',
+    section: { operations: 'Operação', purchasing: 'Compras', finance: 'Financeiro' },
     nav: {
+      shopfloor: 'Pedidos do shop floor',
       timesheet: 'Horas da oficina',
       projects: 'Projetos',
       calendar: 'Agenda & Rotas',

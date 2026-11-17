@@ -10,6 +10,7 @@ import { ProjectsPage } from '@/modules/projects/ProjectsPage';
 import { ClockPage } from '@/modules/clock/ClockPage';
 import { TvBoard } from '@/modules/tv/TvBoard';
 import { ShopRequestPage } from '@/modules/shopfloor/ShopRequestPage';
+import { ShopfloorPage } from '@/modules/shopfloor/ShopfloorPage';
 import { TimesheetPage } from '@/modules/timesheet/TimesheetPage';
 import { lazy, Suspense } from 'react';
 
@@ -27,6 +28,8 @@ function Page({ path }: { path: RoutePath }) {
       return <SchedulePage />;
     case '/purchase-orders':
       return <PurchaseOrdersPage />;
+    case '/shopfloor':
+      return <ShopfloorPage />;
     case '/projects':
       return <ProjectsPage />;
     case '/timesheet':

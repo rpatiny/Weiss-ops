@@ -4,16 +4,14 @@ import { useCollection } from '@/data/hooks';
 import { unseenExtensionDone, unseenExtensionRejected } from '@/domain/extensions';
 import { effectiveStatus, needsLogistics, openQty, requisitionItemViews, unseenPOEvents, unseenRejection } from '@/domain/requisitions';
 
-/** Pendências do perfil atual (badge no menu): logística = requisições + linhas sem GR + pedidos do shop floor sem ação. */
+/** Pendências do perfil atual (badge no menu): logística = requisições + linhas sem GR. */
 export function usePendingCounts(): number {
   const user = useCurrentUser();
   const requisitions = useCollection('requisitions');
   const projects = useCollection('projects');
   const pos = useCollection('purchaseOrders');
-  const shopfloor = useCollection('shopfloorRequests');
   return useMemo(() => {
     if (!user || user.role === 'office') return 0;
-    const sfNew = shopfloor.filter((r) => r.status === 'new').length;
     const poById = new Map(pos.map((p) => [p.id, p]));
     const prPending = requisitions.filter((r) => needsLogistics(effectiveStatus(r, requisitionItemViews(r, projects.find((p) => p.id === r.projectId), poById)))).length;
     const today = new Date().toISOString().slice(0, 10);
@@ -21,8 +19,15 @@ export function usePendingCounts(): number {
       .filter((p) => p.kind === 'purchase' && p.status !== 'canceled')
       .flatMap((p) => p.lines)
       .filter((l) => l.status !== 'canceled' && openQty(l) > 0 && l.expectedDeliveryDate <= today).length;
-    return prPending + lateLines + sfNew;
-  }, [user, requisitions, projects, pos, shopfloor]);
+    return prPending + lateLines;
+  }, [user, requisitions, projects, pos]);
+}
+
+/** Pedidos do shop floor sem ação (para quem processa: logística e master). */
+export function usePendingShopfloor(): number {
+  const user = useCurrentUser();
+  const list = useCollection('shopfloorRequests');
+  return useMemo(() => (!user || user.role === 'office' ? 0 : list.filter((r) => r.status === 'new').length), [user, list]);
 }
 
 /** Pedidos de extensão em aberto (para quem executa: logística e master). */
