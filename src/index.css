@@ -63,6 +63,48 @@ html {
   }
 }
 
+/*
+ * Cor do menu lateral (e do topo no celular) por perfil — redefine a paleta "slate" só dentro de [data-role-theme]:
+ * - office: preto do logo (neutro);
+ * - logistics: preto com fundo avermelhado (família do vermelho Weiss) — parecido, mas dá para distinguir;
+ * - master: vermelho Weiss forte (chamativo); destaques viram branco para não sumir no vermelho.
+ */
+[data-role-theme='office'] {
+  --color-slate-950: #0a0a0a;
+  --color-slate-900: #141414;
+  --color-slate-800: #262626;
+  --color-slate-700: #3a3a3a;
+  --color-slate-600: #525252;
+  --color-slate-500: #7a7a7a;
+  --color-slate-400: #a8a8a8;
+  --color-slate-300: #d4d4d4;
+  --color-slate-200: #e8e8e8;
+}
+[data-role-theme='logistics'] {
+  --color-slate-950: #12070a;
+  --color-slate-900: #1f0c10;
+  --color-slate-800: #3a161c;
+  --color-slate-700: #52212a;
+  --color-slate-600: #6e3a42;
+  --color-slate-500: #a0727a;
+  --color-slate-400: #c9a3a9;
+  --color-slate-300: #e6cdd1;
+  --color-slate-200: #f3e6e8;
+}
+[data-role-theme='master'] {
+  --color-slate-950: #7a0808;
+  --color-slate-900: #b10c0c;
+  --color-slate-800: #d01d1d;
+  --color-slate-700: #e23b3b;
+  --color-slate-600: #f06b6b;
+  --color-slate-500: #ffc9c9;
+  --color-slate-400: #ffe1e1;
+  --color-slate-300: #fff0f0;
+  --color-slate-200: #fff7f7;
+  --color-brand-400: #ffffff;
+  --color-brand-500: #ffffff;
+}
+
 @layer components {
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;

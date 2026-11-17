@@ -20,9 +20,17 @@ import { usePersistentState } from '@/lib/usePersistentState';
 
 function Brand() {
   const { t } = useI18n();
+  // Master tem menu vermelho: o W vermelho sumiria — logo de letras pretas numa placa branca.
+  const master = useCurrentUser()?.role === 'master';
   return (
     <div>
-      <BrandLogo className="w-36" />
+      {master ? (
+        <span className="inline-block rounded-lg bg-white px-2.5 pt-1.5 pb-1 shadow-sm">
+          <BrandLogo onDark={false} className="w-32" />
+        </span>
+      ) : (
+        <BrandLogo className="w-36" />
+      )}
       <p className="mt-1 text-[11px] text-slate-400">
         <span className="font-semibold text-slate-200">Ops</span> · {t('app.tagline')}
       </p>
@@ -50,7 +58,7 @@ function NavLink({ item, active, onNavigate, badge, goodBadge, warnBadge }: { it
       <Icon className={cn('size-[18px] shrink-0', active ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300')} />
       <span className="truncate">{t(item.labelKey)}</span>
       {goodBadge ? (
-        <span className="ml-auto rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white tabular-nums" title={item.path === '/extensions' ? t('extensions.newDone', { count: goodBadge }) : t('process.newPOs', { count: goodBadge })}>
+        <span className="ml-auto rounded-full bg-green-500 px-1.5 text-[11px] font-bold text-white tabular-nums ring-1 ring-white/60" title={item.path === '/extensions' ? t('extensions.newDone', { count: goodBadge }) : t('process.newPOs', { count: goodBadge })}>
           {goodBadge}
         </span>
       ) : null}
@@ -62,7 +70,7 @@ function NavLink({ item, active, onNavigate, badge, goodBadge, warnBadge }: { it
           {warnBadge}
         </span>
       ) : null}
-      {badge ? <span className={cn('rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums', !goodBadge && !warnBadge && 'ml-auto')}>{badge}</span> : null}
+      {badge ? <span className={cn('rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white tabular-nums ring-1 ring-white/60', !goodBadge && !warnBadge && 'ml-auto')}>{badge}</span> : null}
       {active && <span className={cn('h-5 w-1 rounded-full bg-brand-500', !badge && !goodBadge && !warnBadge && 'ml-auto')} />}
     </a>
   );
@@ -159,6 +167,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const close = () => setMobileOpen(false);
   const me = useCurrentUser();
   const { path } = useRoute();
+  /** Cor do menu por perfil (paletas em index.css, `[data-role-theme]`). */
+  const roleTheme = me?.role ?? 'office';
   // Presença (modo nuvem): anuncia quem está nesta aba e em qual página.
   useEffect(() => {
     announcePresence(me ? { userId: me.id, name: me.name, role: me.role, page: path } : null);
@@ -174,12 +184,18 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-800 bg-slate-900 lg:block dark:bg-slate-950">
+      <aside data-role-theme={roleTheme} className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-800 bg-slate-900 lg:block dark:bg-slate-950">
         <SidebarContent onNavigate={close} />
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 lg:hidden">
-        <BrandLogo className="h-8 w-auto" />
+      <header data-role-theme={roleTheme} className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 lg:hidden">
+        {roleTheme === 'master' ? (
+          <span className="rounded-md bg-white px-1.5 py-0.5">
+            <BrandLogo onDark={false} className="h-7 w-auto" />
+          </span>
+        ) : (
+          <BrandLogo className="h-8 w-auto" />
+        )}
         <div className="flex items-center gap-1">
           <button
             onClick={() => setLandscape((v) => !v)}
@@ -200,7 +216,7 @@ export function Layout({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="animate-fade-in absolute inset-0 bg-slate-950/60" onClick={close} />
-          <aside className="animate-slide-in-left absolute inset-y-0 left-0 w-72 bg-slate-900 shadow-2xl">
+          <aside data-role-theme={roleTheme} className="animate-slide-in-left absolute inset-y-0 left-0 w-72 bg-slate-900 shadow-2xl">
             <button onClick={close} className="absolute top-4 right-3 rounded-lg p-1.5 text-slate-400 hover:bg-slate-800" aria-label={t('common.closeMenu')}>
               <X className="size-5" />
             </button>
