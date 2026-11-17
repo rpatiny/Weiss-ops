@@ -455,6 +455,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
       (`Colaboradores`, `Agenda_Rotas`, `Ordens_Compra`, `Itens_PO`, `Spindles`, `Forecast`), backup/restore JSON
       com validação, revisão final de UX e build de produção.
 
+> **Walkthrough das telas** (conexões, redundâncias e ajustes priorizados): `docs/WALKTHROUGH.md` (17/11/2026).
+
 ## Ideias para o futuro
 
 > Lista combinada com o usuário (17/11/2026), em ordem de prioridade sugerida. A nº 3 virou o **Portal do cliente** (feito — ver "Portal do cliente").
