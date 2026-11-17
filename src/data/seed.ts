@@ -457,9 +457,13 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   ];
 
   // ───────────── Oficina: fases e apontamentos de horas ─────────────
-  const workPhases: WorkPhase[] = [
-    'Disassembly', 'Inspection / Diagnosis', 'Cleaning', 'Reassembly', 'Balancing', 'Testing', 'Packing',
-  ].map((name, i) => ({ id: `ph_${i + 1}`, name, order: i + 1, active: true }));
+  // Ids fixos (ph_5 = antigo Balancing, removido): apontamentos e migrações dependem deles.
+  const workPhases: WorkPhase[] = (
+    [
+      ['ph_1', 'Disassembly'], ['ph_2', 'Inspection / Diagnosis'], ['ph_3', 'Cleaning'], ['ph_4', 'Reassembly'],
+      ['ph_6', 'Testing'], ['ph_7', 'Packaging & Delivery'],
+    ] as const
+  ).map(([id, name], i) => ({ id, name, order: i + 1, active: true }));
   /** Dias úteis a partir de hoje (apontamentos ficam sempre no passado recente). */
   const bd = (n: number) => addBusinessDays(today, n);
   /** Data/hora local → ISO completo. */
@@ -482,8 +486,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     entry('emp_carlos', 'prj_006', 2, at(bd(-6), '10:30'), at(bd(-6), '16:45'), done),
     entry('emp_carlos', 'prj_006', 3, at(bd(-5), '08:05'), at(bd(-5), '09:40'), done),
     entry('emp_carlos', 'prj_006', 4, at(bd(-5), '09:40'), at(bd(-5), '17:00'), done),
-    entry('emp_carlos', 'prj_006', 5, at(bd(-4), '08:00'), at(bd(-4), '11:15'), done),
-    entry('emp_carlos', 'prj_006', 6, at(bd(-4), '11:15'), at(bd(-4), '15:50'), done),
+    entry('emp_carlos', 'prj_006', 6, at(bd(-4), '08:00'), at(bd(-4), '15:50'), done),
     entry('emp_carlos', 'prj_006', 7, at(bd(-4), '15:50'), at(bd(-4), '16:40'), done),
     // 1000BKXA (prj_001): Dave nas fases em ordem; Rupert ajudou na limpeza; agora em Teste.
     entry('emp_juliana', 'prj_001', 1, at(bd(-3), '08:02'), at(bd(-3), '12:05'), done),
@@ -491,7 +494,6 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     entry('emp_marcos', 'prj_001', 3, at(bd(-2), '08:30'), at(bd(-2), '11:45'), done),
     entry('emp_juliana', 'prj_001', 4, at(bd(-2), '12:00'), at(bd(-2), '16:40')), // pausa (fim do dia)
     entry('emp_juliana', 'prj_001', 4, at(bd(-1), '08:05'), at(bd(-1), '11:30'), done),
-    entry('emp_juliana', 'prj_001', 5, at(bd(-1), '11:30'), at(bd(-1), '17:02'), done),
     entry('emp_juliana', 'prj_001', 6, minutesAgo(95)),
     // Esqueceu de encerrar ontem: aparece para revisão da supervisão.
     entry('emp_marcos', 'prj_009', 1, at(bd(-1), '14:20')),

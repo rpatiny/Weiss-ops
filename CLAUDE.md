@@ -273,7 +273,7 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 - **Nº do projeto:** `1000` + 4 caracteres; em teste os 4 são **letras** (`1000BKXA`…). `nextProjectNumber` = maior existente + 1
   em base 26 (`PROJECT_NUMBER_RE`). Demo: `DEMO_PROJECT_NUMBERS`; números antigos `PRJ-AAMM-NNN` da demo são migrados.
 - **Dados de demonstração em inglês (UK):** clientes PCS, Gestamp, BAE Systems, CNC Speedwell + GKN Aerospace, JCB, Rolls-Royce,
-  Renishaw (endereço "United Kingdom" — preencher os reais); fornecedores UK fictícios; fases Disassembly → … → Packing;
+  Renishaw (endereço "United Kingdom" — preencher os reais); fornecedores UK fictícios; fases Disassembly → Inspection / Diagnosis → Cleaning → Reassembly → Testing → Packaging & Delivery (sem Balancing; ids fixos `ph_1..4`, `ph_6`, `ph_7`);
   cotações `QUO-`; telefones de exemplo (07700 900xxx / 01632 960xxx).
 - **Projetos** (`domain/projects.ts`, tela `#/projects`): ficha por projeto montada só com dados derivados (`buildDossier`):
   cotação do spindle (nº, `quoteDate`, valor, status), PO do cliente, produção (fase, período, equipe pelas alocações),
@@ -296,7 +296,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     encerra a fase aberta como pausa) e corrigir "Fase concluída" no apontamento.
   - Aberto desde um dia anterior ou > 12 h ⇒ **para revisar** (nunca fechado com hora inventada); fora dos totais.
   - Supervisão `#/timesheet` (`time.manage` = Master/Office corrigem; demais só leem): Agora, Apontamentos (filtros,
-    horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Serviços (fases ✓/em andamento/próxima, Liberar), Equipe & PINs, Fases (editáveis, ordem, ativa),
+    horas por fase, lançar/corrigir → `source: 'manual'` + `editedBy`), Serviços (fases ✓/em andamento/próxima, Liberar), Equipe & PINs, Fases (editáveis, ordem, ativa; **lixeira remove de vez** com confirmação — se houver apontamentos,
+    eles também são apagados e o aviso diz quantos; `savePhases` remove as fases fora da lista e seus apontamentos),
     QR code (imprimir cartaz / baixar PNG; URL = origem do site + `#/clock`). Card do projeto mostra horas por fase.
   - **Relatório de horas por projeto** (`domain/hoursReport.ts`, botão `HoursReportButton`, `time.manage`): Excel com abas
     Resumo, Por_Fase, Por_Colaborador (colaborador × fase) e Apontamentos. **Só existe com o serviço concluído**
@@ -313,7 +314,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     (Resumo projeto × fase + Apontamentos agrupados por projeto) e "Exportar horas por funcionário" (um ou todos,
     `exportEmployeeHoursReport`: Resumo, Por_Projeto, Apontamentos). Todos só com projetos concluídos.
   - Coleções `workPhases` e `timeEntries` são opcionais em backups antigos; `db.ensureDefaults()` cria as fases padrão.
-    Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
+    `ensureDefaults` renomeia `ph_7` Packing/Delivery → "Packaging & Delivery" e remove `ph_5` "Balancing" se só tiver apontamentos
+    da demo (ids `te_<n>`). Excel: aba `Horas_Oficina`. Demo: PIN do ponto 1111 para todos.
 - **Tela da TV** (`#/tv`, `#/tv?view=biweekly`, `modules/tv/TvBoard.tsx`): rota da equipe só leitura para a TV da oficina,
   sem login, sem aviso modal; dias (fim de semana estreito e acinzentado) × colaboradores ativos, hoje destacado, férias hachuradas, barra com anel verde
   + "● fase" quando o técnico está marcando horas naquele projeto; rodapé "Agora na oficina" (flags). Tudo em vh/vw

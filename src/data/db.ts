@@ -81,6 +81,8 @@ const LEGACY_RENAMES = {
     ['ph_5', 'Balanceamento', 'Balancing'],
     ['ph_6', 'Teste', 'Testing'],
     ['ph_7', 'Embalagem', 'Packing'],
+    ['ph_7', 'Packing', 'Packaging & Delivery'],
+    ['ph_7', 'Delivery', 'Packaging & Delivery'],
   ],
 } as const;
 
@@ -182,6 +184,16 @@ export const db = {
     for (const [id, from, to] of LEGACY_RENAMES.phases) {
       const ph = repos.workPhases.getById(id);
       if (ph?.name === from) repos.workPhases.upsert({ ...ph, name: to });
+    }
+    // Fase "Balancing" da demo foi retirada do padrão: some se ainda tiver o nome original e só houver apontamentos
+    // da demonstração nela (ids `te_<n>`; apontamentos reais têm id gerado por newId e preservam a fase).
+    const bal = repos.workPhases.getById('ph_5');
+    if (bal && /^(Balancing|Balanceamento)$/.test(bal.name)) {
+      const balEntries = repos.timeEntries.getAll().filter((e) => e.phaseId === bal.id);
+      if (balEntries.every((e) => /^te_\d{1,3}$/.test(e.id))) {
+        if (balEntries.length) repos.timeEntries.replaceAll(repos.timeEntries.getAll().filter((e) => e.phaseId !== bal.id));
+        repos.workPhases.replaceAll(repos.workPhases.getAll().filter((p) => p.id !== bal.id).sort((x, y) => x.order - y.order).map((p, i) => ({ ...p, order: i + 1 })));
+      }
     }
     // Nº de projeto antigo da demo (PRJ-AAMM-NNN) → formato 1000 + 4 letras.
     for (const p of repos.projects.getAll()) {

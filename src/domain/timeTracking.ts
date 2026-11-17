@@ -190,8 +190,15 @@ export const timesheetService = {
     else delete next.clockPinHash;
     repos.employees.upsert(next);
   },
+  /**
+   * Salva a lista (ordem = posição). Fases fora da lista são removidas; os apontamentos delas também
+   * (a tela pede confirmação mostrando quantos). Fases restantes são renumeradas.
+   */
   savePhases(phases: WorkPhase[]): void {
     assertCan('time.manage');
+    const keep = new Set(phases.map((p) => p.id));
+    const removed = new Set(repos.workPhases.getAll().filter((p) => !keep.has(p.id)).map((p) => p.id));
+    if (removed.size) repos.timeEntries.replaceAll(repos.timeEntries.getAll().filter((e) => !removed.has(e.phaseId)));
     repos.workPhases.replaceAll(phases.map((p, i) => ({ ...p, order: i + 1 })));
   },
 };

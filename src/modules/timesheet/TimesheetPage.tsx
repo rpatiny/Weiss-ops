@@ -688,10 +688,19 @@ function PhasesTab() {
   const { t } = useI18n();
   const toast = useToast();
   const phases = useCollection('workPhases');
+  const entries = useCollection('timeEntries');
   const allowed = useCan()('time.manage');
+  /** Nº de apontamentos por fase: fase com histórico não pode ser removida (só desativada). */
+  const usage = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of entries) m.set(e.phaseId, (m.get(e.phaseId) ?? 0) + 1);
+    return m;
+  }, [entries]);
   const [list, setList] = useState<WorkPhase[]>([]);
   const [error, setError] = useState('');
+  const [removing, setRemoving] = useState<WorkPhase>();
   useEffect(() => setList([...phases].sort((a, b) => a.order - b.order)), [phases]);
+  const saved = (id: string) => phases.some((p) => p.id === id);
 
   const move = (i: number, dir: -1 | 1) =>
     setList((l) => {
@@ -722,6 +731,16 @@ function PhasesTab() {
             </label>
             <Button size="sm" variant="ghost" icon={ArrowUp} aria-label={t('timesheet.moveUp')} onClick={() => move(i, -1)} disabled={i === 0} />
             <Button size="sm" variant="ghost" icon={ArrowDown} aria-label={t('timesheet.moveDown')} onClick={() => move(i, 1)} disabled={i === list.length - 1} />
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={Trash2}
+              className="text-red-600 hover:text-red-700 dark:text-red-400"
+              aria-label={t('timesheet.removePhase')}
+              title={t('timesheet.removePhase')}
+              disabled={list.length <= 1}
+              onClick={() => setRemoving(p)}
+            />
           </div>
         ))}
       </fieldset>
@@ -740,6 +759,29 @@ function PhasesTab() {
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={!!removing}
+        title={t('timesheet.removePhaseTitle', { name: removing?.name || '—' })}
+        message={
+          removing && usage.get(removing.id)
+            ? t('timesheet.removePhaseWithEntries', { count: usage.get(removing.id) ?? 0 })
+            : t('timesheet.removePhaseMsg')
+        }
+        confirmLabel={t('timesheet.removePhase')}
+        onCancel={() => setRemoving(undefined)}
+        onConfirm={() => {
+          const ph = removing;
+          setRemoving(undefined);
+          if (!ph) return;
+          const rest = list.filter((x) => x.id !== ph.id);
+          // Fase ainda não salva: só sai da lista. Salva: remove já (com os apontamentos), mantendo as outras edições.
+          if (!saved(ph.id)) return setList(rest);
+          if (rest.some((p) => !p.name.trim())) return setError(t('timesheet.phaseEmpty'));
+          timesheetService.savePhases(rest.map((p) => ({ ...p, name: p.name.trim() })));
+          setError('');
+          toast.success(t('timesheet.phaseRemoved', { name: ph.name }));
+        }}
+      />
     </div>
   );
 }
