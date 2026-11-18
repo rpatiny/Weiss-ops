@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, Check, CheckCheck, Clock3, CloudCheck, CloudOff, Delete, Loader2, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
+import { ArrowLeft, Check, CheckCheck, CalendarX, Clock3, CloudCheck, CloudOff, Delete, Loader2, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 import { Avatar } from '@/components/ui/misc';
@@ -8,7 +8,7 @@ import { CLOUD, syncQueue } from '@/data/cloud/runtime';
 import { isProjectActive } from '@/domain/purchasing';
 import { MAX_UPDATE_PHOTOS, updateService } from '@/domain/portal';
 import { PhotoPicker } from '@/components/ui/PhotoPicker';
-import { canClock, clockService, currentJobOf, entryMinutes, formatMinutes, jobProgress, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
+import { canClock, clockService, currentJobOf, isScheduledOn, entryMinutes, formatMinutes, jobProgress, needsReview, openEntryOf, verifyClockPin } from '@/domain/timeTracking';
 import { LOCALES, useI18n } from '@/i18n';
 import type { TranslationKey } from '@/i18n/types';
 import { cn } from '@/lib/cn';
@@ -215,27 +215,19 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   const job = jobId ? projectById.get(jobId) : undefined;
   const progress = jobId ? jobProgress(jobId, phases, entries) : undefined;
 
-  // Serviços livres para escolher (sem serviço atual): ativos e com fase pendente; os do cronograma de hoje primeiro.
-  const { mine, others } = useMemo(() => {
-    const today = todayISO();
-    const mineIds = new Set(assignments.filter((a) => a.employeeId === employee.id && a.startDate <= today && a.endDate >= today).map((a) => a.projectId));
-    const startOf = new Map<string, string>();
-    for (const a of assignments) if (!startOf.has(a.projectId) || a.startDate < startOf.get(a.projectId)!) startOf.set(a.projectId, a.startDate);
+  // Serviços para escolher: SÓ os que a agenda manda para este colaborador hoje (ativos, não arquivados, com fase pendente).
+  const today = todayISO();
+  const scheduledToday = (projectId: string) => isScheduledOn(employee.id, projectId, today, assignments);
+  const mine = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = projects
-      .filter(isProjectActive)
+    return projects
+      .filter((p) => isProjectActive(p) && !p.archived && isScheduledOn(employee.id, p.id, today, assignments))
       .map((p) => ({ p, prog: jobProgress(p.id, phases, entries) }))
       .filter(({ prog }) => !prog.complete && prog.next)
       .filter(({ p }) => !q || `${p.projectNumber} ${p.customer} ${p.description}`.toLowerCase().includes(q))
-      // Prioridade: serviços já iniciados primeiro; depois pela data de início no cronograma (mais cedo = mais urgente).
-      .sort(
-        (a, b) =>
-          Number(b.prog.started) - Number(a.prog.started) ||
-          (startOf.get(a.p.id) ?? '9999').localeCompare(startOf.get(b.p.id) ?? '9999') ||
-          a.p.projectNumber.localeCompare(b.p.projectNumber),
-      );
-    return { mine: list.filter(({ p }) => mineIds.has(p.id)), others: list.filter(({ p }) => !mineIds.has(p.id)) };
-  }, [projects, phases, entries, assignments, employee.id, query]);
+      // Serviços já iniciados primeiro.
+      .sort((a, b) => Number(b.prog.started) - Number(a.prog.started) || a.p.projectNumber.localeCompare(b.p.projectNumber));
+  }, [projects, phases, entries, assignments, employee.id, query, today]);
 
   const fail = (r: { error: Parameters<typeof t>[0]; vars?: Record<string, string> }) => setError(t(r.error, r.vars));
   const start = (projectId: string) => {
@@ -351,11 +343,16 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
             <p className="mt-1 text-center text-xs text-slate-500">{t('clock.pauseHint')}</p>
           </section>
         ) : (
-          phase && (
+          phase &&
+          (!scheduledToday(job.id) ? (
+            <p className="flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+              <CalendarX className="size-5 shrink-0" /> {t('clock.errors.notScheduled', { project: job.projectNumber })}
+            </p>
+          ) : (
             <button onClick={() => start(job.id)} className="flex h-16 w-full items-center justify-center gap-2 rounded-xl bg-green-600 text-lg font-semibold text-white shadow-lg active:scale-[0.99]">
               <Play className="size-5 fill-current" /> {resumed ? t('clock.resume', { phase: phase.name }) : t('clock.startPhase', { phase: phase.name })}
             </button>
-          )
+          ))
         )}
         <p className="mt-4 flex gap-2 text-xs text-slate-500">
           <Lock className="size-4 shrink-0" /> {t('clock.jobHint')}
@@ -365,7 +362,7 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   }
 
   // ── Livre: escolher o próximo serviço ──
-  const picked = [...mine, ...others].find(({ p }) => p.id === pickedId);
+  const picked = mine.find(({ p }) => p.id === pickedId);
   const projectBtn = ({ p, prog }: (typeof mine)[number]) => {
     const busy = [...new Set(entries.filter((e) => e.projectId === p.id && !e.end).map((e) => empName(e.employeeId)))].filter(Boolean);
     return (
@@ -407,13 +404,11 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
           <ul className="grid grid-cols-1 gap-2 p-0.5">{mine.map(projectBtn)}</ul>
         </>
       )}
-      {others.length > 0 && (
-        <>
-          <p className="mt-3 mb-1 text-xs text-slate-500">{t('clock.otherProjects')}</p>
-          <ul className="grid grid-cols-1 gap-2 p-0.5">{others.map(projectBtn)}</ul>
-        </>
+      {mine.length === 0 && (
+        <p className="flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+          <CalendarX className="size-5 shrink-0" /> {query.trim() ? t('clock.noProjects') : t('clock.notScheduledToday')}
+        </p>
       )}
-      {mine.length + others.length === 0 && <p className="text-sm text-slate-500">{t('clock.noProjects')}</p>}
       <button
         onClick={() => picked && start(picked.p.id)}
         disabled={!picked}

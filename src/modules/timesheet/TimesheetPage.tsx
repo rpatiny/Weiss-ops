@@ -12,7 +12,7 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { canClock, entryMinutes, jobFlag, workerStatus, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft } from '@/domain/timeTracking';
+import { canClock, entryMinutes, jobFlag, workerStatus, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft, isOffSchedule } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { addDays, startOfWeek, todayISO } from '@/lib/dates';
@@ -262,6 +262,7 @@ function NowTab() {
 function EntriesTab() {
   const { t } = useI18n();
   const entries = useCollection('timeEntries');
+  const assignments = useCollection('assignments');
   const { employees, projects, emp, prj, ph } = useLookups();
   const allowed = useCan()('time.manage');
   const today = todayISO();
@@ -340,7 +341,14 @@ function EntriesTab() {
                 const rv = needsReview(e);
                 return (
                   <tr key={e.id} className={cn(rv && 'bg-amber-50/60 dark:bg-amber-500/5')}>
-                    <td className="td font-medium">{emp.get(e.employeeId)?.name}</td>
+                    <td className="td font-medium">
+                      {emp.get(e.employeeId)?.name}
+                      {isOffSchedule(e, assignments) && (
+                        <Badge tone="red" className="ml-1.5">
+                          {t('timesheet.offSchedule')}
+                        </Badge>
+                      )}
+                    </td>
                     <td className="td">
                       <span className="font-mono text-xs">{prj.get(e.projectId)?.projectNumber}</span> <span className="text-slate-500">{prj.get(e.projectId)?.customer}</span>
                     </td>

@@ -532,6 +532,7 @@ export const en: Dictionary = {
   },
 
   clock: {
+    notScheduledToday: 'No project is scheduled for you today. Ask the office to add you in Schedule & Routes.',
     sync: { saving: 'Sending to the system…', saved: 'Saved to the system', offline: 'No connection: kept on this phone — it will be sent automatically when the network is back' },
     reportTitle: 'Customer report (optional)',
     reportHint: 'Add photos and a short note about this phase. Office reviews everything before the customer sees it.',
@@ -575,7 +576,7 @@ export const en: Dictionary = {
     switchTitle: 'Switch phase / job',
     project: 'Job / project',
     searchProject: 'Search project or customer…',
-    yourProjects: 'Your projects in the schedule',
+    yourProjects: 'Your projects scheduled for today',
     otherProjects: 'Other active projects',
     noProjects: 'No active projects found.',
     phase: 'Phase',
@@ -590,6 +591,7 @@ export const en: Dictionary = {
     closeNow: 'Close',
     review: 'Note: this phase has been open since {date}. A supervisor will review the time.',
     errors: {
+      notScheduled: 'Not on your schedule: {project} has no allocation for you today in Schedule & Routes. Ask the office to add you to the schedule.',
       locked: 'Complete every phase of {project} before starting another job.',
       projectDone: 'This job has already gone through every phase.',
       pin: 'Wrong PIN.',
@@ -600,6 +602,8 @@ export const en: Dictionary = {
   },
 
   timesheet: {
+    offSchedule: 'Off schedule',
+    offScheduleHint: 'Hours recorded on a day this engineer was not scheduled on this project in Schedule & Routes.',
     manual: {
       warning: 'Hours should come from the engineers through the time clock. Adding or correcting hours by hand is recorded with your name and needs a reason and a typed confirmation.',
       reason: 'Reason for the manual change',

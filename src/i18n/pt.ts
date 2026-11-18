@@ -535,6 +535,7 @@ export const pt = {
   },
 
   clock: {
+    notScheduledToday: 'Nenhum projeto agendado para você hoje. Peça ao escritório para incluir você em Agenda & Rotas.',
     sync: { saving: 'Enviando para o sistema…', saved: 'Salvo no sistema', offline: 'Sem conexão: guardado neste celular — será enviado sozinho quando a rede voltar' },
     reportTitle: 'Relatório do cliente (opcional)',
     reportHint: 'Adicione fotos e uma nota curta sobre esta fase. O Office revisa tudo antes de o cliente ver.',
@@ -578,7 +579,7 @@ export const pt = {
     switchTitle: 'Trocar de fase / serviço',
     project: 'Serviço / projeto',
     searchProject: 'Buscar projeto ou cliente…',
-    yourProjects: 'Seus projetos no cronograma',
+    yourProjects: 'Seus projetos agendados para hoje',
     otherProjects: 'Outros projetos ativos',
     noProjects: 'Nenhum projeto ativo encontrado.',
     phase: 'Fase',
@@ -593,6 +594,7 @@ export const pt = {
     closeNow: 'Fechar',
     review: 'Atenção: esta fase está aberta desde {date}. A supervisão vai revisar o horário.',
     errors: {
+      notScheduled: 'Fora da sua agenda: {project} não tem alocação para você hoje em Agenda & Rotas. Peça ao escritório para incluir você na agenda.',
       locked: 'Conclua todas as fases de {project} antes de iniciar outro serviço.',
       projectDone: 'Este serviço já passou por todas as fases.',
       pin: 'PIN incorreto.',
@@ -603,6 +605,8 @@ export const pt = {
   },
 
   timesheet: {
+    offSchedule: 'Fora da agenda',
+    offScheduleHint: 'Horas marcadas num dia em que este engenheiro não estava escalado neste projeto em Agenda & Rotas.',
     manual: {
       warning: 'As horas devem vir dos engenheiros pelo ponto. Lançar ou corrigir horas à mão fica registrado com o seu nome e exige motivo e confirmação digitada.',
       reason: 'Motivo da alteração manual',

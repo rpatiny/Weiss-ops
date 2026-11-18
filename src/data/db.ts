@@ -2,7 +2,7 @@ import { APP_CONFIG } from '@/lib/config';
 import type { AppDatabase, Client, CollectionName, EntityOf } from '@/types/models';
 import type { Entity } from './repository';
 import { StoredRepository, type Repository } from './repository';
-import { buildSeed, DEMO_PROJECT_NUMBERS, demoClients } from './seed';
+import { alignDemoHours, buildSeed, DEMO_PROJECT_NUMBERS, demoClients } from './seed';
 import { LEGACY_DEMO_VALUES } from './legacyDemo';
 import { AUDITED, audited, withoutAudit } from './audit';
 import { createLocalStorageDriver } from './storage';
@@ -360,6 +360,12 @@ export const db = {
       for (const p of repos.projects.getAll()) if (p.status === 'completed' && p.archived === undefined) repos.projects.update(p.id, { archived: true, archivedAt: new Date().toISOString() });
       // Pedidos de compra antigos: fornecedores por item vêm do catálogo (cotação válida vira preço) e da PO já registrada.
       migrateRequisitionSuppliers();
+      // Demonstração já carregada: horas da demo fora da agenda passam a bater com a agenda (só ids da demo).
+      {
+        const r = alignDemoHours(repos.timeEntries.getAll(), repos.assignments.getAll(), repos.absences.getAll());
+        for (const a of r.added) repos.assignments.create(a);
+        if (r.changed) for (const e of r.entries) if (repos.timeEntries.getById(e.id)?.employeeId !== e.employeeId) repos.timeEntries.update(e.id, { employeeId: e.employeeId });
+      }
       // Cadastro único de clientes + PO do cliente dentro do projeto (bases criadas antes destas mudanças).
       migrateClientsAndCustomerPOs();
       // Textos da demonstração antiga em português → inglês (só valores ainda idênticos aos originais).

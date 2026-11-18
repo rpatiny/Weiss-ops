@@ -532,6 +532,7 @@ export const de: Dictionary = {
   },
 
   clock: {
+    notScheduledToday: 'Heute ist kein Projekt für Sie eingeplant. Bitten Sie das Büro, Sie in Einsatzplan & Routen einzutragen.',
     sync: { saving: 'Wird an das System gesendet…', saved: 'Im System gespeichert', offline: 'Keine Verbindung: auf diesem Handy gespeichert — wird automatisch gesendet, sobald das Netz zurück ist' },
     reportTitle: 'Kundenbericht (optional)',
     reportHint: 'Fotos und eine kurze Notiz zu dieser Phase hinzufügen. Das Office prüft alles, bevor der Kunde es sieht.',
@@ -575,7 +576,7 @@ export const de: Dictionary = {
     switchTitle: 'Phase / Auftrag wechseln',
     project: 'Auftrag / Projekt',
     searchProject: 'Projekt oder Kunde suchen…',
-    yourProjects: 'Ihre Projekte im Zeitplan',
+    yourProjects: 'Ihre heute eingeplanten Projekte',
     otherProjects: 'Weitere aktive Projekte',
     noProjects: 'Keine aktiven Projekte gefunden.',
     phase: 'Phase',
@@ -590,6 +591,7 @@ export const de: Dictionary = {
     closeNow: 'Schließen',
     review: 'Hinweis: Diese Phase ist seit {date} offen. Die Leitung prüft die Zeit.',
     errors: {
+      notScheduled: 'Nicht in Ihrem Plan: {project} ist heute in Einsatzplan & Routen nicht für Sie eingeplant. Bitten Sie das Büro, Sie einzuplanen.',
       locked: 'Schließen Sie alle Phasen von {project} ab, bevor Sie einen anderen Auftrag starten.',
       projectDone: 'Dieser Auftrag hat bereits alle Phasen durchlaufen.',
       pin: 'Falsche PIN.',
@@ -600,6 +602,8 @@ export const de: Dictionary = {
   },
 
   timesheet: {
+    offSchedule: 'Nicht eingeplant',
+    offScheduleHint: 'Stunden an einem Tag, an dem dieser Techniker in Einsatzplan & Routen nicht für dieses Projekt eingeplant war.',
     manual: {
       warning: 'Stunden sollen von den Technikern über die Stempeluhr kommen. Manuelles Erfassen oder Korrigieren wird mit Ihrem Namen gespeichert und braucht einen Grund und eine getippte Bestätigung.',
       reason: 'Grund der manuellen Änderung',

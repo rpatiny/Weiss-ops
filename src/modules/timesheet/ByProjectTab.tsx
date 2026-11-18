@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { reportCheck } from '@/domain/hoursReport';
 import { isProjectActive } from '@/domain/purchasing';
-import { currentJobOf, entryMinutes, formatMinutes, jobFlag, localDay, needsReview, timesheetService, type JobFlag } from '@/domain/timeTracking';
+import { currentJobOf, entryMinutes, isOffSchedule, formatMinutes, jobFlag, localDay, needsReview, timesheetService, type JobFlag } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate, getFormatLocale } from '@/lib/format';
@@ -136,6 +136,7 @@ type Row = {
 
 function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: Map<string, Employee>; expanded: boolean; onToggle: () => void; onEditEntry: (e: TimeEntry) => void }) {
   const { t } = useI18n();
+  const assignments = useCollection('assignments');
   const toast = useToast();
   const allowed = useCan()('time.manage');
   const [openPhase, setOpenPhase] = useState<string | null>(null);
@@ -232,6 +233,11 @@ function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: 
                         <li key={e.id} className={cn('flex items-center gap-2 rounded-md px-2 py-1 text-xs', needsReview(e) ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-white dark:bg-slate-900')}>
                           <span className="min-w-0 flex-1">
                             <span className="font-medium">{emp.get(e.employeeId)?.name}</span>
+                            {isOffSchedule(e, assignments) && (
+                              <Badge tone="red" className="ml-1.5">
+                                {t('timesheet.offSchedule')}
+                              </Badge>
+                            )}
                             <span className="block text-slate-500 tabular-nums">
                               {stamp(e.start)} → {e.end ? timeOf(e.end) : needsReview(e) ? t('timesheet.byProject.forgotOut') : t('timesheet.inProgress')}
                             </span>
@@ -304,7 +310,8 @@ function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: 
                               {stamp(e.start)} → {e.end ? timeOf(e.end) : needsReview(e) ? <span className="font-medium text-amber-700 dark:text-amber-400">{t('timesheet.byProject.forgotOut')}</span> : <span className="font-medium text-blue-600">{t('timesheet.inProgress')}</span>}
                             </td>
                             <td className="py-1 pr-2">
-                              {e.completesPhase && <Badge tone="green">{t('timesheet.state.done')}</Badge>} {e.source === 'manual' && <Badge tone="violet">{t('timesheet.source.manual')}</Badge>}
+                              {e.completesPhase && <Badge tone="green">{t('timesheet.state.done')}</Badge>} {e.source === 'manual' && <Badge tone="violet">{t('timesheet.source.manual')}</Badge>}{' '}
+                              {isOffSchedule(e, assignments) && <Badge tone="red">{t('timesheet.offSchedule')}</Badge>}
                             </td>
                             <td className="py-1 text-right">
                               {allowed && (

@@ -3,7 +3,7 @@
  * Todas as datas são RELATIVAS ao dia em que o seed é gerado, para que a demo
  * sempre mostre atividades da semana, POs atrasadas, entregas do mês etc.
  */
-import { addBusinessDays, addDays, addMonths, parseISODate, startOfWeek, todayISO } from '@/lib/dates';
+import { addBusinessDays, addDays, addMonths, parseISODate, startOfWeek, toISODate, todayISO } from '@/lib/dates';
 import { clockPinHash } from '@/lib/sha256';
 import { DEFAULT_EMPLOYEE_ROLE } from '@/lib/config';
 import type {
@@ -517,7 +517,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   });
   // Ordem obrigatória: cada fase é concluída ("Concluir fase") antes da próxima; pausa = sem `completesPhase`.
   const done = { completesPhase: true } as const;
-  const timeEntries: TimeEntry[] = [
+  const rawTimeEntries: TimeEntry[] = [
     // 1000HTVB (prj_006): serviço já concluído na oficina (todas as fases) — Emma ficou livre.
     entry('emp_carlos', 'prj_006', 1, at(bd(-6), '08:00'), at(bd(-6), '10:30'), done),
     entry('emp_carlos', 'prj_006', 2, at(bd(-6), '10:30'), at(bd(-6), '16:45'), done),
@@ -537,6 +537,9 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     // Em andamento agora.
     entry('emp_patricia', 'prj_004', 1, minutesAgo(40)),
   ];
+  const aligned = alignDemoHours(rawTimeEntries, assignments, absences);
+  assignments.push(...aligned.added);
+  const timeEntries = aligned.entries;
 
   return {
     users,
@@ -560,4 +563,38 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     auditLog: [],
     clients: demoClients(new Date().toISOString()),
   };
+}
+
+/** Id dos apontamentos da demonstração (`te_1`, `te_2`…); os reais usam `newId('te')`. */
+export const isDemoEntryId = (id: string) => /^te_\d+$/.test(id);
+
+/**
+ * Demonstração coerente com a regra "só marca horas quem está na agenda": as horas da demo e a agenda usam âncoras de
+ * data diferentes (hoje × segunda-feira), então um apontamento podia cair num dia em que a pessoa não estava escalada.
+ * Para cada apontamento da demo fora da agenda: passa para um colaborador escalado nesse projeto nesse dia (sem
+ * férias/ausência); se não houver, cria a alocação desse dia na agenda.
+ */
+export function alignDemoHours(
+  entries: readonly TimeEntry[],
+  assignments: readonly ProjectAssignment[],
+  absences: readonly Absence[],
+): { entries: TimeEntry[]; added: ProjectAssignment[]; changed: boolean } {
+  const day = (iso: string) => toISODate(new Date(iso));
+  const all = [...assignments];
+  const added: ProjectAssignment[] = [];
+  const absent = (emp: string, d: string) => absences.some((a) => a.employeeId === emp && a.startDate <= d && a.endDate >= d);
+  const covers = (emp: string, prj: string, d: string) => all.some((a) => a.employeeId === emp && a.projectId === prj && a.startDate <= d && a.endDate >= d);
+  let changed = false;
+  const out = entries.map((e) => {
+    const d = day(e.start);
+    if (!isDemoEntryId(e.id) || covers(e.employeeId, e.projectId, d)) return e;
+    changed = true;
+    const other = all.find((a) => a.projectId === e.projectId && a.startDate <= d && a.endDate >= d && !absent(a.employeeId, d));
+    if (other) return { ...e, employeeId: other.employeeId };
+    const asg: ProjectAssignment = { id: `asg_demo_${e.id}`, projectId: e.projectId, employeeId: e.employeeId, startDate: d, endDate: d };
+    all.push(asg);
+    added.push(asg);
+    return e;
+  });
+  return { entries: out, added, changed };
 }

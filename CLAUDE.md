@@ -320,6 +320,12 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     "Concluir fase" (toque duplo) grava `completesPhase` e libera a próxima; "Pausar" só para o relógio.
     Última fase concluída ⇒ "Serviço concluído!" e o técnico fica livre. Lista para escolher: iniciados primeiro,
     depois por data de início no cronograma. `clockService.start/stop` validam a regra (não só a UI).
+  - **Só marca horas quem está na agenda (18/11/2026):** o ponto lista apenas os projetos com alocação do colaborador HOJE em
+    Agenda & Rotas (`isScheduledOn`); `clockService.start` recusa iniciar/retomar fora da agenda (`clock.errors.notScheduled`), também
+    projeto arquivado. Pausar/concluir a fase aberta continua permitido. Sem projeto na agenda ⇒ aviso "peça ao escritório para incluir
+    você". Apontamentos fora da agenda (antigos ou lançados à mão) ganham etiqueta vermelha **Off schedule** (`isOffSchedule`) em
+    By project e Timesheet. Demo: `alignDemoHours` (seed e `ensureDefaults`, só ids `te_<n>`) passa a hora para quem está escalado
+    naquele dia ou cria a alocação daquele dia.
   - Supervisão pode **Liberar** um técnico de um serviço parado (aba Serviços; grava `released` no último apontamento,
     encerra a fase aberta como pausa) e corrigir "Fase concluída" no apontamento.
   - Aberto desde um dia anterior ou > 12 h ⇒ **para revisar** (nunca fechado com hora inventada); fora dos totais.

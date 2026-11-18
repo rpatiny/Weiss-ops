@@ -17,13 +17,20 @@ import { repos } from '@/data/db';
 import { toISODate } from '@/lib/dates';
 import { newId } from '@/lib/id';
 import { clockPinHash } from '@/lib/sha256';
-import type { Employee, Project, TimeEntry, WorkPhase } from '@/types/models';
+import type { Employee, Project, ProjectAssignment, TimeEntry, WorkPhase } from '@/types/models';
 import type { TranslationKey } from '@/i18n/types';
 
 export const REVIEW_AFTER_HOURS = 12;
 
 /** Data local (YYYY-MM-DD) de um instante ISO. */
 export const localDay = (iso: string) => toISODate(new Date(iso));
+
+/** O colaborador está na agenda (Schedule & Routes) deste projeto neste dia? Só assim pode marcar horas pelo ponto. */
+export const isScheduledOn = (employeeId: string, projectId: string, day: string, assignments: readonly ProjectAssignment[]) =>
+  assignments.some((a) => a.employeeId === employeeId && a.projectId === projectId && a.startDate <= day && a.endDate >= day);
+
+/** Apontamento fora da agenda (feito antes da regra, ou lançado à mão pela supervisão). */
+export const isOffSchedule = (e: TimeEntry, assignments: readonly ProjectAssignment[]) => !isScheduledOn(e.employeeId, e.projectId, localDay(e.start), assignments);
 
 /** Duração em minutos (até agora, se em andamento). */
 export function entryMinutes(e: Pick<TimeEntry, 'start' | 'end'>, now = Date.now()): number {
@@ -149,13 +156,15 @@ export const clockService = {
     if (!verifyClockPin(employeeId, pin)) return { ok: false, error: 'clock.errors.pin' };
     const projects = projectsMap();
     const project = projects.get(projectId);
-    if (!project || !isProjectActive(project)) return { ok: false, error: 'clock.errors.project' };
+    if (!project || !isProjectActive(project) || project.archived) return { ok: false, error: 'clock.errors.project' };
     const entries = repos.timeEntries.getAll();
     const phases = repos.workPhases.getAll();
     const current = currentJobOf(employeeId, entries, phases, projects);
     if (current && current !== projectId) return { ok: false, error: 'clock.errors.locked', vars: { project: projects.get(current)?.projectNumber ?? '' } };
     const open = openEntryOf(employeeId, entries);
     if (open) return { ok: true, entry: open };
+    // Só marca horas no que a agenda manda: alocação deste colaborador neste projeto hoje.
+    if (!isScheduledOn(employeeId, projectId, toISODate(now), repos.assignments.getAll())) return { ok: false, error: 'clock.errors.notScheduled', vars: { project: project.projectNumber } };
     const progress = jobProgress(projectId, phases, entries);
     if (progress.complete || !progress.next) return { ok: false, error: 'clock.errors.projectDone' };
     const entry: TimeEntry = { id: newId('te'), employeeId, projectId, phaseId: progress.next.id, start: now.toISOString(), source: 'qr', note: '' };
