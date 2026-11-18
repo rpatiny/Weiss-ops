@@ -48,7 +48,12 @@ export function CloudGate({ children }: { children: ReactNode }) {
       const me = (await withTimeout(b.fetchProfiles())).find((p) => p.id === session.userId);
       if (!me || me.role === 'pending' || !me.active) return setPhase({ kind: 'blocked', session, profile: me });
       await withTimeout(connectCloud(), 45);
-      db.ensureDefaults();
+      // Ajustes automáticos de dados nunca impedem a entrada (um erro neles fica só no console).
+      try {
+        db.ensureDefaults();
+      } catch (err) {
+        console.error('ensureDefaults failed', err);
+      }
       setSessionUser(session.userId);
       setPhase({ kind: 'ready' });
     } catch (e) {
@@ -63,7 +68,12 @@ export function CloudGate({ children }: { children: ReactNode }) {
       await getCloudBackend();
       await withTimeout(connectCloud(), 45);
       db.ensureUsers();
-      db.ensureDefaults();
+      // Ajustes automáticos de dados nunca impedem a entrada (um erro neles fica só no console).
+      try {
+        db.ensureDefaults();
+      } catch (err) {
+        console.error('ensureDefaults failed', err);
+      }
       setPhase({ kind: 'ready' });
     } catch (e) {
       fail(e);

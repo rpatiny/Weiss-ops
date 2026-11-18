@@ -587,7 +587,8 @@ export function alignDemoHours(
   let changed = false;
   const out = entries.map((e) => {
     const d = day(e.start);
-    if (!isDemoEntryId(e.id) || covers(e.employeeId, e.projectId, d)) return e;
+    // Já ajustado antes (alocação criada aqui ou por outro aparelho, talvez movida depois na agenda): não mexe de novo.
+    if (!isDemoEntryId(e.id) || covers(e.employeeId, e.projectId, d) || all.some((a) => a.id === `asg_demo_${e.id}`)) return e;
     changed = true;
     const other = all.find((a) => a.projectId === e.projectId && a.startDate <= d && a.endDate >= d && !absent(a.employeeId, d));
     if (other) return { ...e, employeeId: other.employeeId };
