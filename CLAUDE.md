@@ -197,7 +197,13 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
     Durante o arraste as linhas não encolhem (evita "pulo" sob o ponteiro).
   - **Férias/ausências** (`Absence`): faixa hachurada com cadeado "Férias · até dd/mm" na linha; impede alocações.
     Cadastrar férias por cima de alocações existentes é permitido com aviso (viram conflito).
-  - **Conflito** = mesmo colaborador com duas alocações sobrepostas → borda vermelha, banner, KPI que filtra.
+  - **Exclusividade (18/11/2026) — um projeto tem UMA pessoa por vez e uma pessoa está em UM projeto por vez** (evita horas em
+    dobro): `checkPlacement(…, ctx)` / `placementClash` bloqueiam na ficha do projeto, no arraste do Gantt (prévia vermelha + toast
+    com quem/qual projeto) e no serviço (`assertExclusive` em `addAssignment`/`updateAssignment`). No ponto: `projectBusyBy` recusa
+    iniciar se outra pessoa está com o relógio ligado no projeto (o projeto aparece desabilitado na lista); horas manuais:
+    `entryOverlap` recusa sobrepor outra pessoa no mesmo projeto ou a mesma pessoa em outro apontamento.
+  - **Conflito** = dados antigos que ferem a exclusividade (mesmo colaborador em dois projetos ou duas pessoas no mesmo projeto ao
+    mesmo tempo) → borda vermelha, banner, KPI que filtra. Demo: `alignDemoHours` também desfaz alocações automáticas que a ferem.
   - Sobreposições na mesma linha são empilhadas em raias (`computeLanes`).
   - Ocupação por colaborador (dias alocados / dias úteis disponíveis − ausências) exibida na coluna de nomes.
   - **Materiais do projeto**: status efetivo derivado da linha de PO vinculada (entregue → `received`; aberta → `ordered`;
@@ -541,6 +547,8 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
 10. **Fotos e documentos no projeto** (chegada, desmontagem, entrega, laudo, certificado).
 11. **Página de acompanhamento para o cliente** (fase atual do reparo) — coberta pelo portal do cliente.
 12. **Backup automático diário** + **offline-first** (abaixo).
+13. **Secondary work** (pedido em 18/11/2026, para depois): atividade secundária na agenda para quando alguém precisa fazer outra
+    coisa, já que um projeto só aceita uma pessoa por vez e cada pessoa um projeto por vez.
 
 - **Servidor próprio (on-premise):** Supabase self-hosted (Docker) numa VM Linux da empresa (4 vCPU / 8 GB / 100 GB SSD),
   HTTPS com certificado interno, porta 443 + WebSocket liberados, VPN para acesso externo, backup diário fora do servidor.

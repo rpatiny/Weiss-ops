@@ -12,6 +12,7 @@ import { jobProgress } from '@/domain/timeTracking';
 import { enumLabel, enumValues } from '@/domain/labels';
 import {
   checkPlacement,
+  placementClash,
   findConflicts,
   getVisibleDays,
   materialViews,
@@ -164,8 +165,14 @@ export function SchedulePage() {
     const p = a && projectsById.get(a.projectId);
     if (!a || !p) return;
     const emp = employees.find((e) => e.id === next.employeeId);
-    const err = checkPlacement(emp, next.startDate, next.endDate, absences, a.employeeId);
+    const err = checkPlacement(emp, next.startDate, next.endDate, absences, a.employeeId, { projectId: a.projectId, assignments, selfId: a.id });
     if (err === 'absence') return toast.error(t('calendar.toast.blockedAbsence', { employee: emp?.name ?? '' }));
+    if (err === 'projectTaken' || err === 'employeeBusy') {
+      const other = placementClash(next.employeeId, next.startDate, next.endDate, { projectId: a.projectId, assignments, selfId: a.id })?.other;
+      return err === 'projectTaken'
+        ? toast.error(t('calendar.toast.projectTaken', { number: p.projectNumber, employee: employees.find((e) => e.id === other?.employeeId)?.name ?? '' }))
+        : toast.error(t('calendar.toast.employeeBusy', { employee: emp?.name ?? '', number: projectsById.get(other?.projectId ?? '')?.projectNumber ?? '' }));
+    }
     if (err) return toast.error(t('calendar.toast.inactiveTarget'));
     scheduleService.updateAssignment(id, next);
     if (next.employeeId !== a.employeeId) toast.success(t('calendar.toast.reassigned', { number: p.projectNumber, employee: emp?.name ?? '' }));

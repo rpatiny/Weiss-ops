@@ -363,7 +363,8 @@ export const db = {
       // Demonstração já carregada: horas da demo fora da agenda passam a bater com a agenda (só ids da demo).
       // Nunca impede o app de abrir: um ajuste de demonstração que falhe é só ignorado.
       try {
-        const r = alignDemoHours(repos.timeEntries.getAll(), repos.assignments.getAll(), repos.absences.getAll());
+        const r = alignDemoHours(repos.timeEntries.getAll(), repos.assignments.getAll(), repos.absences.getAll(), repos.employees.getAll().filter((e) => e.status === 'active').map((e) => e.id));
+        for (const id of r.removed) repos.assignments.remove(id);
         for (const a of r.added) if (!repos.assignments.getById(a.id)) repos.assignments.create(a);
         if (r.changed) for (const e of r.entries) if (repos.timeEntries.getById(e.id)?.employeeId !== e.employeeId) repos.timeEntries.update(e.id, { employeeId: e.employeeId });
       } catch (err) {

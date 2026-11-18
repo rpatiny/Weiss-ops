@@ -594,6 +594,7 @@ export const pt = {
     closeNow: 'Fechar',
     review: 'Atenção: esta fase está aberta desde {date}. A supervisão vai revisar o horário.',
     errors: {
+      projectBusy: '{project} está sendo trabalhado por {name} agora — só uma pessoa por projeto. Aguarde a pausa ou a conclusão da fase.',
       notScheduled: 'Fora da sua agenda: {project} não tem alocação para você hoje em Agenda & Rotas. Peça ao escritório para incluir você na agenda.',
       locked: 'Conclua todas as fases de {project} antes de iniciar outro serviço.',
       projectDone: 'Este serviço já passou por todas as fases.',
@@ -795,6 +796,8 @@ export const pt = {
     hoursByPhase: 'Horas por fase',
     readOnly: 'Somente leitura: apenas Master e Office corrigem apontamentos.',
     errors: {
+      projectOverlap: 'Outro engenheiro tem horas neste projeto no mesmo horário — só uma pessoa por projeto.',
+      employeeOverlap: 'Este engenheiro já tem horas no mesmo horário (outro apontamento) — um projeto por vez.',
       notComplete: 'O serviço ainda não passou por todas as fases. Não existe relatório parcial: confira as horas na tela.',
       openEntries: 'Ainda há apontamento aberto neste serviço. Encerre ou corrija antes de exportar.',
       employee: 'Escolha o colaborador.',
@@ -858,6 +861,8 @@ export const pt = {
       ok: 'Materiais OK',
     },
     toast: {
+      projectTaken: '{number} já tem {employee} neste período — só uma pessoa por projeto.',
+      employeeBusy: '{employee} já está em {number} neste período — um projeto por vez.',
       moved: '{number}: {start} → {end}.',
       resized: '{number}: {days} dia útil. || {number}: {days} dias úteis.',
       reassigned: '{number} alocado para {employee}.',
@@ -957,6 +962,8 @@ export const pt = {
       until: 'até {date}',
     },
     validation: {
+      projectTaken: 'Outro engenheiro já está agendado neste projeto neste período. Uma pessoa por projeto.',
+      employeeBusy: 'Este engenheiro já está em outro projeto neste período. Um projeto por vez.',
       employeeRequired: 'Selecione um colaborador.',
       employeeInactive: 'Colaborador inativo não pode receber novas alocações.',
       customerRequired: 'Informe o cliente/local.',

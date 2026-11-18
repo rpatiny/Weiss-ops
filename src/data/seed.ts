@@ -355,10 +355,10 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
   });
 
   const assignments: ProjectAssignment[] = [
-    // Emma — campo (conflito proposital: prj_004 × prj_005 em wd(3))
+    // Emma — campo (um projeto por vez; um projeto tem uma pessoa por vez)
     asg('prj_003', 'emp_carlos', wd(-6), wd(-4)),
     asg('prj_004', 'emp_carlos', wd(0), wd(3)),
-    asg('prj_005', 'emp_carlos', wd(3), wd(5)),
+    asg('prj_005', 'emp_carlos', wd(4), wd(5)),
     asg('prj_006', 'emp_carlos', wd(8), wd(14)),
     // Dave — bancada
     asg('prj_001', 'emp_juliana', wd(-3), wd(4)),
@@ -537,7 +537,7 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     // Em andamento agora.
     entry('emp_patricia', 'prj_004', 1, minutesAgo(40)),
   ];
-  const aligned = alignDemoHours(rawTimeEntries, assignments, absences);
+  const aligned = alignDemoHours(rawTimeEntries, assignments, absences, employees.map((e) => e.id));
   assignments.push(...aligned.added);
   const timeEntries = aligned.entries;
 
@@ -578,24 +578,36 @@ export function alignDemoHours(
   entries: readonly TimeEntry[],
   assignments: readonly ProjectAssignment[],
   absences: readonly Absence[],
-): { entries: TimeEntry[]; added: ProjectAssignment[]; changed: boolean } {
+  employeeIds: readonly string[] = [],
+): { entries: TimeEntry[]; added: ProjectAssignment[]; removed: string[]; changed: boolean } {
   const day = (iso: string) => toISODate(new Date(iso));
-  const all = [...assignments];
+  const overlaps = (a: ProjectAssignment, b: ProjectAssignment) => a.startDate <= b.endDate && b.startDate <= a.endDate;
+  const clashes = (a: ProjectAssignment, list: readonly ProjectAssignment[]) =>
+    list.some((b) => b.id !== a.id && overlaps(a, b) && ((b.employeeId === a.employeeId) !== (b.projectId === a.projectId)));
+  // Alocações automáticas antigas que ferem "uma pessoa por projeto / um projeto por pessoa" saem e são refeitas.
+  const removed = assignments.filter((a) => a.id.startsWith('asg_demo_') && clashes(a, assignments)).map((a) => a.id);
+  const all = assignments.filter((a) => !removed.includes(a.id));
   const added: ProjectAssignment[] = [];
   const absent = (emp: string, d: string) => absences.some((a) => a.employeeId === emp && a.startDate <= d && a.endDate >= d);
   const covers = (emp: string, prj: string, d: string) => all.some((a) => a.employeeId === emp && a.projectId === prj && a.startDate <= d && a.endDate >= d);
-  let changed = false;
+  const busyElsewhere = (emp: string, prj: string, d: string) => all.some((a) => a.employeeId === emp && a.projectId !== prj && a.startDate <= d && a.endDate >= d);
+  const pool = [...new Set([...employeeIds, ...all.map((a) => a.employeeId), ...entries.map((e) => e.employeeId)])];
+  let changed = removed.length > 0;
   const out = entries.map((e) => {
     const d = day(e.start);
-    // Já ajustado antes (alocação criada aqui ou por outro aparelho, talvez movida depois na agenda): não mexe de novo.
-    if (!isDemoEntryId(e.id) || covers(e.employeeId, e.projectId, d) || all.some((a) => a.id === `asg_demo_${e.id}`)) return e;
+    if (!isDemoEntryId(e.id) || covers(e.employeeId, e.projectId, d)) return e;
+    if (all.some((a) => a.id === `asg_demo_${e.id}`)) return e;
     changed = true;
+    // Alguém já está no projeto nesse dia: a hora é dele (uma pessoa por projeto).
     const other = all.find((a) => a.projectId === e.projectId && a.startDate <= d && a.endDate >= d && !absent(a.employeeId, d));
     if (other) return { ...e, employeeId: other.employeeId };
-    const asg: ProjectAssignment = { id: `asg_demo_${e.id}`, projectId: e.projectId, employeeId: e.employeeId, startDate: d, endDate: d };
+    // Ninguém no projeto: quem marcou, se estiver livre; senão outro colaborador livre nesse dia.
+    const emp = [e.employeeId, ...pool].find((x) => !absent(x, d) && !busyElsewhere(x, e.projectId, d));
+    if (!emp) return e;
+    const asg: ProjectAssignment = { id: `asg_demo_${e.id}`, projectId: e.projectId, employeeId: emp, startDate: d, endDate: d };
     all.push(asg);
     added.push(asg);
-    return e;
+    return emp === e.employeeId ? e : { ...e, employeeId: emp };
   });
-  return { entries: out, added, changed };
+  return { entries: out, added, removed, changed };
 }

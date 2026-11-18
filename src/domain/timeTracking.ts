@@ -163,6 +163,9 @@ export const clockService = {
     if (current && current !== projectId) return { ok: false, error: 'clock.errors.locked', vars: { project: projects.get(current)?.projectNumber ?? '' } };
     const open = openEntryOf(employeeId, entries);
     if (open) return { ok: true, entry: open };
+    // Uma pessoa por projeto: se outro engenheiro está com o relógio ligado neste projeto, não inicia (evita horas em dobro).
+    const busy = projectBusyBy(projectId, employeeId, entries, now.getTime());
+    if (busy) return { ok: false, error: 'clock.errors.projectBusy', vars: { project: project.projectNumber, name: repos.employees.getById(busy.employeeId)?.name ?? '' } };
     // Só marca horas no que a agenda manda: alocação deste colaborador neste projeto hoje.
     if (!isScheduledOn(employeeId, projectId, toISODate(now), repos.assignments.getAll())) return { ok: false, error: 'clock.errors.notScheduled', vars: { project: project.projectNumber } };
     const progress = jobProgress(projectId, phases, entries);
@@ -199,9 +202,33 @@ export function validateEntry(d: EntryDraft): TranslationKey | undefined {
   return undefined;
 }
 
+/** Outro colaborador com o relógio ligado neste projeto agora (apontamento aberto que não está "para revisar"). */
+export function projectBusyBy(projectId: string, employeeId: string, entries: readonly TimeEntry[], now = Date.now()): TimeEntry | undefined {
+  return entries.find((e) => e.projectId === projectId && e.employeeId !== employeeId && !e.end && !needsReview(e, now));
+}
+
+/**
+ * Horas lançadas à mão não podem sobrepor: outra pessoa no mesmo projeto (horas em dobro) nem a mesma pessoa em outro
+ * apontamento (dois projetos ao mesmo tempo). Aberto = até agora.
+ */
+export function entryOverlap(d: EntryDraft, id: string | undefined, entries: readonly TimeEntry[], now = Date.now()): TranslationKey | undefined {
+  const s = Date.parse(d.start);
+  const e = d.end ? Date.parse(d.end) : now;
+  for (const x of entries) {
+    if (x.id === id) continue;
+    if (x.employeeId !== d.employeeId && x.projectId !== d.projectId) continue;
+    const xs = Date.parse(x.start);
+    const xe = x.end ? Date.parse(x.end) : needsReview(x, now) ? xs : now;
+    if (xs < e && s < xe) return x.employeeId === d.employeeId ? 'timesheet.errors.employeeOverlap' : 'timesheet.errors.projectOverlap';
+  }
+  return undefined;
+}
+
 export const timesheetService = {
   save(d: EntryDraft, id?: string): TimeEntry {
     const user = assertCan('time.manage');
+    const clash = entryOverlap(d, id, repos.timeEntries.getAll());
+    if (clash) throw new Error(clash);
     const prev = id ? repos.timeEntries.getById(id) : undefined;
     const entry: TimeEntry = { ...(prev ?? { autoClosed: undefined }), ...d, id: id ?? newId('te'), source: 'manual', editedBy: user.id };
     if (!entry.end) delete entry.end;

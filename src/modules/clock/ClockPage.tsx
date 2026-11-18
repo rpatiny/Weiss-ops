@@ -364,13 +364,15 @@ function HomeStep({ employee, pin, onDone, onExit }: { employee: Employee; pin: 
   // ── Livre: escolher o próximo serviço ──
   const picked = mine.find(({ p }) => p.id === pickedId);
   const projectBtn = ({ p, prog }: (typeof mine)[number]) => {
-    const busy = [...new Set(entries.filter((e) => e.projectId === p.id && !e.end).map((e) => empName(e.employeeId)))].filter(Boolean);
+    const busy = [...new Set(entries.filter((e) => e.projectId === p.id && e.employeeId !== employee.id && !e.end && !needsReview(e)).map((e) => empName(e.employeeId)))].filter(Boolean);
     return (
       <li key={p.id} className="min-w-0">
         <button
           onClick={() => setPickedId(p.id)}
           aria-pressed={pickedId === p.id}
-          className={cn('flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border-2 bg-white p-3 text-left dark:bg-slate-900', pickedId === p.id ? 'border-brand-500' : 'border-transparent shadow-sm')}
+          // Uma pessoa por projeto: com alguém trabalhando nele agora, não dá para escolher.
+          disabled={busy.length > 0}
+          className={cn('flex w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl border-2 bg-white p-3 text-left disabled:opacity-50 dark:bg-slate-900', pickedId === p.id ? 'border-brand-500' : 'border-transparent shadow-sm')}
         >
           <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
           <span className="min-w-0 flex-1">

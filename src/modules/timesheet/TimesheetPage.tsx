@@ -12,7 +12,7 @@ import { Avatar, EmptyState, PageHeader, StatCard } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
 import { isProjectActive } from '@/domain/purchasing';
-import { canClock, entryMinutes, jobFlag, workerStatus, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft, isOffSchedule } from '@/domain/timeTracking';
+import { canClock, entryMinutes, jobFlag, workerStatus, formatHoursDecimal, formatMinutes, localDay, needsReview, timesheetService, validateEntry, type EntryDraft, isOffSchedule, entryOverlap } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { addDays, startOfWeek, todayISO } from '@/lib/dates';
@@ -398,6 +398,7 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
   const { t } = useI18n();
   const toast = useToast();
   const { employees, projects, phases } = useLookups();
+  const entries = useCollection('timeEntries');
   const open = isNew || !!entry;
   const blank: EntryDraft = { employeeId: '', projectId: '', phaseId: '', start: '', end: '', note: '', completesPhase: false };
   const [d, setD] = useState<EntryDraft>(blank);
@@ -415,7 +416,7 @@ function EntryDrawer({ entry, isNew, onClose }: { entry: TimeEntry | null; isNew
   const save = (ev: React.FormEvent) => {
     ev.preventDefault();
     const draft = { ...d, end: d.end || undefined };
-    const err = validateEntry(draft);
+    const err = validateEntry(draft) ?? entryOverlap(draft, entry?.id, entries);
     if (err) return setError(t(err));
     if (!d.note.trim()) return setError(t('timesheet.manual.reasonRequired'));
     setError('');

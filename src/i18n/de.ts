@@ -591,6 +591,7 @@ export const de: Dictionary = {
     closeNow: 'Schließen',
     review: 'Hinweis: Diese Phase ist seit {date} offen. Die Leitung prüft die Zeit.',
     errors: {
+      projectBusy: 'An {project} arbeitet gerade {name} — nur eine Person pro Projekt. Warten Sie, bis die Phase pausiert oder abgeschlossen ist.',
       notScheduled: 'Nicht in Ihrem Plan: {project} ist heute in Einsatzplan & Routen nicht für Sie eingeplant. Bitten Sie das Büro, Sie einzuplanen.',
       locked: 'Schließen Sie alle Phasen von {project} ab, bevor Sie einen anderen Auftrag starten.',
       projectDone: 'Dieser Auftrag hat bereits alle Phasen durchlaufen.',
@@ -792,6 +793,8 @@ export const de: Dictionary = {
     hoursByPhase: 'Stunden pro Phase',
     readOnly: 'Nur Lesen: Nur Master und Office korrigieren Buchungen.',
     errors: {
+      projectOverlap: 'Ein anderer Techniker hat zur selben Zeit Stunden in diesem Projekt — nur eine Person pro Projekt.',
+      employeeOverlap: 'Dieser Techniker hat zur selben Zeit bereits Stunden (anderer Eintrag) — ein Projekt zur Zeit.',
       notComplete: 'Der Auftrag hat noch nicht alle Phasen durchlaufen. Es gibt keinen Teilbericht: Stunden bitte am Bildschirm prüfen.',
       openEntries: 'In diesem Auftrag ist noch eine Buchung offen. Bitte vor dem Export beenden oder korrigieren.',
       employee: 'Bitte Mitarbeiter wählen.',
@@ -855,6 +858,8 @@ export const de: Dictionary = {
       ok: 'Material OK',
     },
     toast: {
+      projectTaken: '{number} hat in diesem Zeitraum bereits {employee} — nur eine Person pro Projekt.',
+      employeeBusy: '{employee} ist in diesem Zeitraum bereits in {number} — ein Projekt zur Zeit.',
       moved: '{number}: {start} → {end}.',
       resized: '{number}: {days} Arbeitstag. || {number}: {days} Arbeitstage.',
       reassigned: '{number} an {employee} zugewiesen.',
@@ -954,6 +959,8 @@ export const de: Dictionary = {
       until: 'bis {date}',
     },
     validation: {
+      projectTaken: 'In diesem Zeitraum ist bereits ein anderer Techniker für dieses Projekt eingeplant. Eine Person pro Projekt.',
+      employeeBusy: 'Dieser Techniker ist in diesem Zeitraum bereits in einem anderen Projekt. Ein Projekt zur Zeit.',
       employeeRequired: 'Bitte einen Mitarbeiter auswählen.',
       employeeInactive: 'Inaktive Mitarbeiter können keine neuen Zuordnungen erhalten.',
       customerRequired: 'Bitte Kunde/Ort angeben.',

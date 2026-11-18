@@ -135,7 +135,17 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
   const empOptions = [{ value: '', label: t('calendar.project.selectEmployee') }, ...activeEmployees.map((e) => ({ value: e.id, label: e.name }))];
 
   const placementMsg = (err: ReturnType<typeof checkPlacement>) =>
-    err === 'absence' ? t('calendar.validation.blockedAbsence') : err === 'inactive' ? t('calendar.validation.employeeInactive') : err === 'order' ? t('calendar.validation.dateOrder') : undefined;
+    err === 'absence'
+      ? t('calendar.validation.blockedAbsence')
+      : err === 'inactive'
+        ? t('calendar.validation.employeeInactive')
+        : err === 'order'
+          ? t('calendar.validation.dateOrder')
+          : err === 'projectTaken'
+            ? t('calendar.validation.projectTaken')
+            : err === 'employeeBusy'
+              ? t('calendar.validation.employeeBusy')
+              : undefined;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -157,7 +167,7 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     if (first.employeeId) {
       const s = snapForward(first.startDate);
       const en = snapBackward(first.endDate);
-      const err = checkPlacement(employees.find((x) => x.id === first.employeeId), s, en, absences);
+      const err = checkPlacement(employees.find((x) => x.id === first.employeeId), s, en, absences, undefined, { projectId: '__new__', assignments });
       if (err) {
         setFirstError(placementMsg(err));
         return;
@@ -407,6 +417,7 @@ function TeamTab({
   const toast = useToast();
   const employees = useCollection('employees');
   const absences = useCollection('absences');
+  const allAssignments = useCollection('assignments');
   const empById = new Map(employees.map((e) => [e.id, e]));
   const start0 = snapForward(items.at(-1)?.endDate ?? todayISO());
   const [add, setAdd] = useState({ employeeId: '', startDate: start0, endDate: addBusinessDays(start0, 2) });
@@ -417,7 +428,7 @@ function TeamTab({
     const next = { ...a, ...patch };
     const s = snapForward(next.startDate);
     const e = snapBackward(next.endDate);
-    const err = checkPlacement(empById.get(next.employeeId), s, e, absences, a.employeeId);
+    const err = checkPlacement(empById.get(next.employeeId), s, e, absences, a.employeeId, { projectId, assignments: allAssignments, selfId: a.id });
     if (err) {
       setRowError({ ...rowError, [a.id]: placementMsg(err) ?? '' });
       return;
@@ -433,7 +444,7 @@ function TeamTab({
     }
     const s = snapForward(add.startDate);
     const e = snapBackward(add.endDate);
-    const err = checkPlacement(empById.get(add.employeeId), s, e, absences);
+    const err = checkPlacement(empById.get(add.employeeId), s, e, absences, undefined, { projectId, assignments: allAssignments });
     if (err) {
       setError(placementMsg(err));
       return;

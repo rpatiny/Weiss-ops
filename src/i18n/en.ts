@@ -591,6 +591,7 @@ export const en: Dictionary = {
     closeNow: 'Close',
     review: 'Note: this phase has been open since {date}. A supervisor will review the time.',
     errors: {
+      projectBusy: '{project} is being worked on by {name} right now — only one person per project. Wait until they pause or finish the phase.',
       notScheduled: 'Not on your schedule: {project} has no allocation for you today in Schedule & Routes. Ask the office to add you to the schedule.',
       locked: 'Complete every phase of {project} before starting another job.',
       projectDone: 'This job has already gone through every phase.',
@@ -792,6 +793,8 @@ export const en: Dictionary = {
     hoursByPhase: 'Hours per phase',
     readOnly: 'Read-only: only Master and Office can correct entries.',
     errors: {
+      projectOverlap: 'Another engineer has hours on this project at the same time — only one person per project.',
+      employeeOverlap: 'This engineer already has hours at the same time (another entry) — one project at a time.',
       notComplete: 'This job has not gone through every phase yet. There is no partial report: check the hours on screen.',
       openEntries: 'There is still an open entry on this job. End or fix it before exporting.',
       employee: 'Choose the employee.',
@@ -855,6 +858,8 @@ export const en: Dictionary = {
       ok: 'Materials OK',
     },
     toast: {
+      projectTaken: '{number} already has {employee} in this period — only one person per project.',
+      employeeBusy: '{employee} is already on {number} in this period — one project at a time.',
       moved: '{number}: {start} → {end}.',
       resized: '{number}: {days} working day. || {number}: {days} working days.',
       reassigned: '{number} assigned to {employee}.',
@@ -954,6 +959,8 @@ export const en: Dictionary = {
       until: 'until {date}',
     },
     validation: {
+      projectTaken: 'Another engineer is already scheduled on this project in this period. One person per project.',
+      employeeBusy: 'This engineer is already on another project in this period. One project at a time.',
       employeeRequired: 'Select an employee.',
       employeeInactive: 'Inactive employees cannot receive new allocations.',
       customerRequired: 'Enter the customer/location.',

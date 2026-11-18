@@ -185,7 +185,11 @@ export function GanttChart(props: Props) {
   );
   const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees]);
   const previewInvalid = drag?.moved
-    ? checkPlacement(empById.get(drag.preview.employeeId), drag.preview.startDate, drag.preview.endDate, absences, drag.orig.employeeId) !== null
+    ? checkPlacement(empById.get(drag.preview.employeeId), drag.preview.startDate, drag.preview.endDate, absences, drag.orig.employeeId, {
+        projectId: assignments.find((x) => x.id === drag.id)?.projectId ?? '',
+        assignments,
+        selfId: drag.id,
+      }) !== null
     : false;
 
   return (

@@ -100,6 +100,20 @@ export function findConflicts(assignments: readonly ProjectAssignment[], project
         }
       }
   }
+  // Também é conflito: duas pessoas no MESMO projeto no mesmo período (gera horas em dobro). Só aparece em dados antigos —
+  // novas alocações assim são bloqueadas (`checkPlacement`).
+  const byPrj = new Map<string, ProjectAssignment[]>();
+  for (const a of active) byPrj.set(a.projectId, [...(byPrj.get(a.projectId) ?? []), a]);
+  for (const list of byPrj.values())
+    for (let i = 0; i < list.length; i++)
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i]!;
+        const b = list[j]!;
+        if (a.employeeId !== b.employeeId && rangesOverlap(a.startDate, a.endDate, b.startDate, b.endDate)) {
+          if (!result.get(a.id)?.includes(b.id)) result.set(a.id, [...(result.get(a.id) ?? []), b.id]);
+          if (!result.get(b.id)?.includes(a.id)) result.set(b.id, [...(result.get(b.id) ?? []), a.id]);
+        }
+      }
   return result;
 }
 
@@ -108,7 +122,27 @@ export function absencesOverlapping(absences: readonly Absence[], employeeId: st
   return absences.filter((x) => x.employeeId === employeeId && rangesOverlap(x.startDate, x.endDate, start, end));
 }
 
-export type PlacementError = 'absence' | 'inactive' | 'order';
+export type PlacementError = 'absence' | 'inactive' | 'order' | 'projectTaken' | 'employeeBusy';
+
+/** Contexto para as regras de exclusividade: quem já está na agenda. */
+export interface PlacementContext {
+  projectId: string;
+  assignments: readonly ProjectAssignment[];
+  /** Alocação sendo editada/arrastada (não conta contra ela mesma). */
+  selfId?: string;
+}
+
+/**
+ * Exclusividade da agenda: um projeto tem UMA pessoa por vez e uma pessoa está em UM projeto por vez.
+ * Devolve a alocação que impede (para mostrar quem/qual projeto).
+ */
+export function placementClash(employeeId: string, start: string, end: string, ctx: PlacementContext): { kind: 'projectTaken' | 'employeeBusy'; other: ProjectAssignment } | null {
+  const hits = ctx.assignments.filter((a) => a.id !== ctx.selfId && rangesOverlap(a.startDate, a.endDate, start, end));
+  const taken = hits.find((a) => a.projectId === ctx.projectId && a.employeeId !== employeeId);
+  if (taken) return { kind: 'projectTaken', other: taken };
+  const busy = hits.find((a) => a.employeeId === employeeId && a.projectId !== ctx.projectId);
+  return busy ? { kind: 'employeeBusy', other: busy } : null;
+}
 
 /** Valida se uma alocação pode ocupar o período (férias bloqueiam; inativos não recebem). */
 export function checkPlacement(
@@ -117,10 +151,12 @@ export function checkPlacement(
   end: string,
   absences: readonly Absence[],
   originalEmployeeId?: string,
+  ctx?: PlacementContext,
 ): PlacementError | null {
   if (end < start) return 'order';
   if (!employee || (employee.status === 'inactive' && employee.id !== originalEmployeeId)) return 'inactive';
   if (absencesOverlapping(absences, employee.id, start, end).length) return 'absence';
+  if (ctx) return placementClash(employee.id, start, end, ctx)?.kind ?? null;
   return null;
 }
 
@@ -291,6 +327,12 @@ export function nextProjectColor(all: readonly Project[]): string {
 
 // ───────────── Comandos ─────────────
 
+/** Regra também no serviço (não só na tela): projeto com uma pessoa por vez; pessoa com um projeto por vez. */
+function assertExclusive(a: ProjectAssignment) {
+  const clash = placementClash(a.employeeId, a.startDate, a.endDate, { projectId: a.projectId, assignments: repos.assignments.getAll(), selfId: a.id });
+  if (clash) throw new Error(clash.kind === 'projectTaken' ? 'calendar.validation.projectTaken' : 'calendar.validation.employeeBusy');
+}
+
 export const scheduleService = {
   createProject(draft: ProjectDraft, firstAssignment?: AssignmentDraft): Project {
     assertCan('schedule.edit');
@@ -324,10 +366,14 @@ export const scheduleService = {
 
   addAssignment(projectId: string, d: AssignmentDraft): ProjectAssignment {
     assertCan('schedule.edit');
-    return repos.assignments.create({ id: newId('asg'), projectId, employeeId: d.employeeId, startDate: snapForward(d.startDate), endDate: snapBackward(d.endDate) });
+    const next = { id: newId('asg'), projectId, employeeId: d.employeeId, startDate: snapForward(d.startDate), endDate: snapBackward(d.endDate) };
+    assertExclusive(next);
+    return repos.assignments.create(next);
   },
   updateAssignment(id: string, patch: Partial<AssignmentDraft>): ProjectAssignment {
     assertCan('schedule.edit');
+    const cur = repos.assignments.getById(id);
+    if (cur) assertExclusive({ ...cur, ...patch });
     return repos.assignments.update(id, patch);
   },
   removeAssignment(id: string): void {
