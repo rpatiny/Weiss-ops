@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, CheckCheck, Clock3, Delete, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { ArrowLeft, Check, CheckCheck, Clock3, CloudCheck, CloudOff, Delete, Loader2, Lock, LogOut, Pause, Play, Search, TriangleAlert, Trophy } from 'lucide-react';
 import { DisclaimerStrip } from '@/components/layout/Disclaimer';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 import { Avatar } from '@/components/ui/misc';
 import { useCollection } from '@/data/hooks';
+import { CLOUD, syncQueue } from '@/data/cloud/runtime';
 import { isProjectActive } from '@/domain/purchasing';
 import { MAX_UPDATE_PHOTOS, updateService } from '@/domain/portal';
 import { PhotoPicker } from '@/components/ui/PhotoPicker';
@@ -436,9 +437,14 @@ function DoneStep({ step, onClose }: { step: Extract<Step, { kind: 'done' }>; on
     const id = setInterval(() => setLeft((s) => s - 1), 1000);
     return () => clearInterval(id);
   }, []);
+  const sync = useSyncExternalStore(
+    (cb) => (CLOUD ? syncQueue.subscribe(cb) : () => {}),
+    () => (CLOUD ? syncQueue.state : 'synced'),
+  );
+  // Não fecha enquanto ainda está enviando (até 30 s a mais); sem rede, fica guardado no celular e envia depois.
   useEffect(() => {
-    if (left <= 0) onClose();
-  }, [left, onClose]);
+    if (left <= 0 && (sync !== 'saving' || left <= -30)) onClose();
+  }, [left, onClose, sync]);
 
   const phase = phases.find((p) => p.id === step.entry.phaseId)?.name ?? '';
   const project = projects.find((p) => p.id === step.entry.projectId);
@@ -453,6 +459,17 @@ function DoneStep({ step, onClose }: { step: Extract<Step, { kind: 'done' }>; on
       <p className="text-sm text-slate-600 dark:text-slate-300">{t('clock.doneDetail', { phase, project: project?.projectNumber ?? '', time: timeOf(ended ? step.entry.end! : step.entry.start) })}</p>
       {ended && <p className="text-sm font-semibold text-slate-700 tabular-nums dark:text-slate-200">{formatMinutes(entryMinutes(step.entry))}</p>}
       {step.hint && <p className="mt-1 text-sm text-slate-500">{step.hint}</p>}
+      {CLOUD && (
+        <p
+          className={cn(
+            'mt-2 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+            sync === 'synced' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' : sync === 'saving' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300',
+          )}
+        >
+          {sync === 'synced' ? <CloudCheck className="size-3.5" /> : sync === 'saving' ? <Loader2 className="size-3.5 animate-spin" /> : <CloudOff className="size-3.5" />}
+          {sync === 'synced' ? t('clock.sync.saved') : sync === 'saving' ? t('clock.sync.saving') : t('clock.sync.offline')}
+        </p>
+      )}
       <button onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-white dark:text-slate-900">
         {t('clock.closeNow')} · {t('clock.closing', { s: Math.max(0, left) })}
       </button>

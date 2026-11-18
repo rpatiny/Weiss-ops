@@ -40,9 +40,15 @@ export class RemoteRepository<T extends Entity> implements Repository<T> {
     this.emit();
   }
 
-  /** Carga inicial (substitui o cache sem enviar nada). */
-  hydrate(items: T[]): void {
-    this.set(items);
+  /** Carga da nuvem (substitui o cache sem enviar nada), mantendo por cima o que ainda não foi enviado deste aparelho. */
+  hydrate(items: T[], local?: { upserts: { id: string; data: unknown }[]; deletes: string[] }): void {
+    if (!local) return this.set(items);
+    const del = new Set(local.deletes);
+    const up = new Map(local.upserts.map((u) => [u.id, { ...(u.data as T), id: u.id }]));
+    const merged = items.filter((x) => !del.has(x.id) && !up.has(x.id));
+    const next = [...merged, ...up.values()];
+    if (next.length === this.cache.length && stableStringify(next) === stableStringify(this.cache)) return;
+    this.set(next);
   }
 
   /** Alteração vinda do servidor (outro usuário ou eco da própria gravação). */

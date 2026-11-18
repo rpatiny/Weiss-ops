@@ -436,6 +436,13 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   devolve à fila e tenta de novo com backoff 1s→30s; evento `online` força envio). Eventos remotos de ids com
   gravação pendente são ignorados (a versão local mais nova prevalece). Conflito entre usuários: último a gravar vence
   por registro. `replaceAll` envia só a diferença. Comparação com JSON de chaves ordenadas (jsonb reordena chaves).
+- **Nada se perde no celular / telas sempre atualizadas (18/11/2026):** a fila de envio fica **guardada no aparelho**
+  (`spindleops:cloud-pending`, inclui o lote em envio); se a página fechar ou o celular bloquear antes de enviar, ela é retomada na
+  próxima abertura (`syncQueue.resume()` após conectar) e reaplicada por cima da carga da nuvem (`hydrate(items, pendentes)`).
+  Ao sair da tela (`pagehide`/`visibilitychange`) tenta enviar na hora. **Ressincronização** (`resyncCloud` em `connect.ts`): o tempo
+  real não entrega o que aconteceu com a conexão caída, então recarrega tudo ao reconectar o tempo real, ao voltar para a aba
+  (> 5 s fora), no evento `online` e a cada 2 min com a tela visível (TV/PC do escritório). O ponto mostra no "registrado" se foi
+  **salvo no sistema**, **enviando** ou **sem conexão (guardado no celular)** e espera até 30 s enquanto envia.
 - **Boot:** `CloudGate` → sessão do Supabase → perfil (pendente/inativo ⇒ tela "Aguardando liberação") → `connectCloud()`
   (carga de tudo + tempo real) → `setSessionUser`. Logout encerra a sessão no Supabase e recarrega.
 - **Usuários na nuvem:** sem PIN; contas criadas por "Criar conta"; Master define perfil/ativo. Backups não substituem

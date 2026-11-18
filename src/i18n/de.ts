@@ -532,6 +532,7 @@ export const de: Dictionary = {
   },
 
   clock: {
+    sync: { saving: 'Wird an das System gesendet…', saved: 'Im System gespeichert', offline: 'Keine Verbindung: auf diesem Handy gespeichert — wird automatisch gesendet, sobald das Netz zurück ist' },
     reportTitle: 'Kundenbericht (optional)',
     reportHint: 'Fotos und eine kurze Notiz zu dieser Phase hinzufügen. Das Office prüft alles, bevor der Kunde es sieht.',
     addPhotos: 'Fotos hinzufügen',

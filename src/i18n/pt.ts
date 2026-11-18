@@ -535,6 +535,7 @@ export const pt = {
   },
 
   clock: {
+    sync: { saving: 'Enviando para o sistema…', saved: 'Salvo no sistema', offline: 'Sem conexão: guardado neste celular — será enviado sozinho quando a rede voltar' },
     reportTitle: 'Relatório do cliente (opcional)',
     reportHint: 'Adicione fotos e uma nota curta sobre esta fase. O Office revisa tudo antes de o cliente ver.',
     addPhotos: 'Adicionar fotos',
