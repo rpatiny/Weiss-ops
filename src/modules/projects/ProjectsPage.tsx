@@ -38,7 +38,8 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { usePersistentState } from '@/lib/usePersistentState';
 import { usePurchasingData } from '@/modules/purchasing/usePurchasingData';
 import type { ProjectAssignment } from '@/types/models';
-import { formatHoursDecimal, formatMinutes, jobProgress, type JobProgress } from '@/domain/timeTracking';
+import { forecastLevel, formatHoursDecimal, formatMinutes, jobProgress, totalForecastHours, type JobProgress } from '@/domain/timeTracking';
+import { ForecastMeter } from '@/components/ui/ForecastMeter';
 import { HoursReportButton } from '@/modules/timesheet/HoursReportButton';
 import { TypeToConfirm } from '@/components/ui/TypeToConfirm';
 import { useToast } from '@/components/ui/Toast';
@@ -255,7 +256,11 @@ function ProjectCard({ d, job, onOpen }: { d: ProjectDossier; job: JobProgress; 
               <>
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge tone={job.complete ? 'green' : 'blue'}>{t('projects.phasesProgress', { done: job.done, total: job.total })}</Badge>
-                  <span className="font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal(job.phases.reduce((a, r) => a + r.minutes, 0)) })}</span>
+                  {totalForecastHours(d.project) > 0 ? (
+                    <ForecastMeter minutes={job.phases.reduce((a, r) => a + r.minutes, 0)} hours={totalForecastHours(d.project, job.phases.map((x) => x.phase.id))} compact />
+                  ) : (
+                    <span className="font-semibold tabular-nums">{t('projects.hoursTotal', { h: formatHoursDecimal(job.phases.reduce((a, r) => a + r.minutes, 0)) })}</span>
+                  )}
                   {job.complete && <HoursReportButton projectId={d.project.id} />}
                   <LinkBtn className="ml-auto font-sans text-xs" onClick={() => navigate('/timesheet')}>
                     {t('timesheet.title')} →
@@ -276,7 +281,25 @@ function ProjectCard({ d, job, onOpen }: { d: ProjectDossier; job: JobProgress; 
                     >
                       {state === 'done' && <Check className="size-3" strokeWidth={3} />}
                       {phase.name}
-                      {minutes > 0 && <span className="tabular-nums opacity-80">· {formatMinutes(minutes)}</span>}
+                      {(() => {
+                        const fh = d.project.phaseForecast?.[phase.id];
+                        const lv = forecastLevel(minutes, fh);
+                        if (lv === 'none') return minutes > 0 ? <span className="tabular-nums opacity-80">· {formatMinutes(minutes)}</span> : null;
+                        return (
+                          <span
+                            title={t(`timesheet.forecast.level.${lv}`)}
+                            className={cn(
+                              'rounded-full px-1.5 tabular-nums',
+                              lv === 'ok' && 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300',
+                              lv === 'near' && 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300',
+                              lv === 'limit' && 'bg-orange-200 text-orange-900 dark:bg-orange-500/25 dark:text-orange-200',
+                              lv === 'over' && 'bg-red-600 text-white',
+                            )}
+                          >
+                            {formatMinutes(minutes)}/{formatMinutes(fh! * 60)}
+                          </span>
+                        );
+                      })()}
                     </li>
                   ))}
                 </ol>

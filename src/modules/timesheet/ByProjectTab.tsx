@@ -8,9 +8,10 @@ import { Modal } from '@/components/ui/Modal';
 import { Avatar, EmptyState } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
+import { ForecastMeter } from '@/components/ui/ForecastMeter';
 import { reportCheck } from '@/domain/hoursReport';
 import { isProjectActive } from '@/domain/purchasing';
-import { currentJobOf, entryMinutes, isOffSchedule, formatMinutes, jobFlag, localDay, needsReview, timesheetService, type JobFlag } from '@/domain/timeTracking';
+import { currentJobOf, entryMinutes, isOffSchedule, totalForecastHours, formatMinutes, jobFlag, localDay, needsReview, timesheetService, type JobFlag } from '@/domain/timeTracking';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/cn';
 import { formatDate, getFormatLocale } from '@/lib/format';
@@ -194,7 +195,11 @@ function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: 
           )}
           <span className="text-right">
             <span className="block text-[11px] text-slate-500 uppercase">{t('timesheet.total')}</span>
-            <span className="text-lg font-bold text-slate-900 tabular-nums dark:text-white">{formatMinutes(r.total)}</span>
+            {totalForecastHours(r.p) > 0 ? (
+              <ForecastMeter minutes={r.total} hours={totalForecastHours(r.p, progress.phases.map((x) => x.phase.id))} />
+            ) : (
+              <span className="text-lg font-bold text-slate-900 tabular-nums dark:text-white">{formatMinutes(r.total)}</span>
+            )}
           </span>
         </div>
       </div>
@@ -214,7 +219,7 @@ function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: 
                     <span className={cn('font-medium', state === 'pending' ? 'text-slate-400' : 'text-slate-900 dark:text-white')}>{phase.name}</span>
                     {state === 'done' && <CheckCheck className="size-4 text-green-600" />}
                     {state === 'active' && <Badge tone="blue">{t('timesheet.state.active')}</Badge>}
-                    <span className="ml-auto font-semibold tabular-nums">{minutes ? formatMinutes(minutes) : '—'}</span>
+                    <ForecastMeter className="ml-auto" minutes={minutes} hours={r.p.phaseForecast?.[phase.id]} compact />
                   </button>
                   {list.length > 0 && (
                     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 pl-4 text-xs text-slate-600 dark:text-slate-300">
@@ -287,7 +292,9 @@ function ProjectRow({ r, emp, expanded, onToggle, onEditEntry }: { r: Row; emp: 
                             {state === 'next' && <Badge tone="slate">{t('timesheet.state.next')}</Badge>}
                           </button>
                         </td>
-                        <td className="py-2 pr-2 text-right font-semibold tabular-nums">{minutes ? formatMinutes(minutes) : '—'}</td>
+                        <td className="py-2 pr-2 text-right">
+                          <ForecastMeter minutes={minutes} hours={r.p.phaseForecast?.[phase.id]} />
+                        </td>
                         <td className="py-2 pr-2">
                           <span className="flex flex-wrap gap-1.5">
                             {byEngineer(list).map(({ id, minutes: m }) => (

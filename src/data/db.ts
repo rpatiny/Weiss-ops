@@ -2,7 +2,7 @@ import { APP_CONFIG } from '@/lib/config';
 import type { AppDatabase, Client, CollectionName, EntityOf } from '@/types/models';
 import type { Entity } from './repository';
 import { StoredRepository, type Repository } from './repository';
-import { alignDemoHours, buildSeed, DEMO_PROJECT_NUMBERS, demoClients } from './seed';
+import { alignDemoHours, buildSeed, SERVICE_TYPE_TEXT, DEMO_PROJECT_NUMBERS, demoClients } from './seed';
 import { LEGACY_DEMO_VALUES } from './legacyDemo';
 import { AUDITED, audited, withoutAudit } from './audit';
 import { createLocalStorageDriver } from './storage';
@@ -360,6 +360,12 @@ export const db = {
       for (const p of repos.projects.getAll()) if (p.status === 'completed' && p.archived === undefined) repos.projects.update(p.id, { archived: true, archivedAt: new Date().toISOString() });
       // Pedidos de compra antigos: fornecedores por item vêm do catálogo (cotação válida vira preço) e da PO já registrada.
       migrateRequisitionSuppliers();
+      // Tipo de serviço virou texto livre: códigos antigos (bench_repair…) passam a ser o texto em inglês.
+      for (const p of repos.projects.getAll()) {
+        const text = SERVICE_TYPE_TEXT[p.serviceType];
+        const movedCountry = p.address === 'United Kingdom' && !p.country;
+        if (text || movedCountry) repos.projects.update(p.id, { ...(text ? { serviceType: text } : {}), ...(movedCountry ? { address: '', country: 'United Kingdom' } : {}) });
+      }
       // Demonstração já carregada: horas da demo fora da agenda passam a bater com a agenda (só ids da demo).
       // Nunca impede o app de abrir: um ajuste de demonstração que falhe é só ignorado.
       try {

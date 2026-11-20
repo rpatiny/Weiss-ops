@@ -603,6 +603,7 @@ export const en: Dictionary = {
   },
 
   timesheet: {
+    forecast: { level: { none: 'No forecast', ok: 'Within forecast', near: 'Getting close (75%+)', limit: 'At the limit (90%+)', over: 'Over forecast' }, over: '+{time} over', left: '{time} left', column: 'Hours / forecast' },
     offSchedule: 'Off schedule',
     offScheduleHint: 'Hours recorded on a day this engineer was not scheduled on this project in Schedule & Routes.',
     manual: {
@@ -880,6 +881,13 @@ export const en: Dictionary = {
       materialDeleted: 'Material removed.',
     },
     project: {
+      postcode: 'Postcode',
+      city: 'City',
+      country: 'Country',
+      serviceTypePlaceholder: 'e.g. Bench repair, Site visit, Installation…',
+      forecastTitle: 'Forecasted hours per phase',
+      forecastHint: 'Hours you expect each phase to take. In the project details the hours turn amber, orange and red as they get close to and go over the forecast.',
+      forecastTotal: 'Total forecast: {h} h',
       customerPoTitle: 'Customer PO (one per project)',
       customerPoNumber: 'PO number',
       customerPoDate: 'PO date',
@@ -959,6 +967,7 @@ export const en: Dictionary = {
       until: 'until {date}',
     },
     validation: {
+      serviceTypeRequired: 'Enter the service type.',
       projectTaken: 'Another engineer is already scheduled on this project in this period. One person per project.',
       employeeBusy: 'This engineer is already on another project in this period. One project at a time.',
       employeeRequired: 'Select an employee.',

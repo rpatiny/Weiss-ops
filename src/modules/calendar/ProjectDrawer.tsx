@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { AlertTriangle, Check, ExternalLink, Lock, MapPin, Plus, Save, Trash2, UserPlus } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Lock, Plus, Save, Trash2, UserPlus } from 'lucide-react';
 import { navigate } from '@/app/router';
 import { useCan } from '@/app/session';
 import { Button } from '@/components/ui/Button';
@@ -13,7 +13,7 @@ import { APP_CONFIG } from '@/lib/config';
 import { Avatar } from '@/components/ui/misc';
 import { useToast } from '@/components/ui/Toast';
 import { useCollection } from '@/data/hooks';
-import { enumOptions } from '@/domain/labels';
+import { enumOptions, serviceTypeLabel } from '@/domain/labels';
 import {
   checkPlacement,
   findConflicts,
@@ -52,7 +52,10 @@ const emptyDraft = (): ProjectDraft => ({
   projectNumber: '',
   customer: '',
   address: '',
-  serviceType: 'bench_repair',
+  postcode: '',
+  city: '',
+  country: '',
+  serviceType: '',
   description: '',
   status: 'planned',
   color: PROJECT_COLORS[0]!,
@@ -94,6 +97,8 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
       const { id: _id, materials: _m, ...rest } = p;
       setDraft({
         ...rest,
+        // Bases antigas: código (bench_repair…) vira o texto, que agora é livre.
+        serviceType: serviceTypeLabel(t, p.serviceType),
         customerPoRef: p.customerPoRef ?? projectPoRef(p, new Map(purchaseOrders.map((x) => [x.id, x]))),
         spindleRef: projectSpindleRef(p, new Map(spindles.map((x) => [x.id, x]))),
       });
@@ -114,19 +119,39 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
   // Cliente vem do cadastro único; endereço do serviço sugerido = endereço de ENTREGA do cliente.
   const clients = useCollection('clients');
   const knownCustomers = useMemo(() => new Map(clients.map((c) => [c.name, formatAddress(deliveryAddressOf(c))])), [clients]);
+  // Endereço do serviço sugerido = endereço de ENTREGA do cliente (rua, postcode, cidade e país em campos separados).
+  const addressOf = (name: string) => {
+    const c = clients.find((x) => x.name === name);
+    if (!c) return undefined;
+    const a = deliveryAddressOf(c);
+    return { address: [a.line1, a.line2].filter(Boolean).join(', '), postcode: a.postcode, city: a.city, country: a.country };
+  };
+  const workPhases = useCollection('workPhases');
+  const forecastPhases = useMemo(() => [...workPhases].filter((p) => p.active).sort((a, b) => a.order - b.order), [workPhases]);
+  // Sugestões para o tipo de serviço (texto livre): os já usados + os nomes antigos.
+  const serviceTypeSuggestions = useMemo(
+    () => [...new Set([...projects.map((p) => serviceTypeLabel(t, p.serviceType)), ...enumOptions(t, 'serviceType').map((o) => o.label)].filter(Boolean))].sort(),
+    [projects, t],
+  );
   const client = findClientByName(draft.customer, clients);
 
   const set = <K extends keyof ProjectDraft>(k: K, v: ProjectDraft[K]) => {
     const next = { ...draft, [k]: v };
-    if (k === 'customer' && !draft.address.trim()) next.address = knownCustomers.get(String(v)) ?? '';
+    const fillAddress = (name: string) => {
+      if (draft.address.trim()) return;
+      const a = addressOf(name);
+      if (a) Object.assign(next, a);
+    };
+    if (k === 'customer') fillAddress(String(v));
     if (k === 'spindleRef') {
       const sp = findSpindleByRef(String(v ?? ''), spindles);
       if (sp && !draft.customer.trim()) {
         next.customer = sp.customer;
-        next.address = draft.address || (knownCustomers.get(sp.customer) ?? '');
+        fillAddress(sp.customer);
       }
     }
     setDraft(next);
+    if (errors[k as keyof typeof errors]) setErrors({ ...errors, [k]: undefined });
   };
 
   const linkedSpindle = findSpindleByRef(draft.spindleRef, spindles);
@@ -188,8 +213,6 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
     setConfirmDelete(false);
     onClose();
   };
-
-  const mapsUrl = draft.address.trim() ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(draft.address.trim())}` : '';
 
   const tabs: { id: ProjectTab; label: string; disabled?: boolean; count?: number }[] = [
     { id: 'details', label: t('calendar.project.tabs.details') },
@@ -275,21 +298,31 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
               ))}
             </datalist>
             <Field label={t('calendar.project.address')}>
-              {(id) => (
-                <div className="flex gap-2">
-                  <Input id={id} name="address" value={draft.address} onChange={(e) => set('address', e.target.value)} placeholder={t('calendar.project.addressPlaceholder')} />
-                  {mapsUrl && (
-                    <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800" title={t('calendar.openMaps')}>
-                      <MapPin className="size-4" />
-                      <span className="hidden sm:inline">Maps</span>
-                    </a>
-                  )}
-                </div>
-              )}
+              {(id) => <Input id={id} name="address" autoComplete="street-address" value={draft.address} onChange={(e) => set('address', e.target.value)} placeholder={t('calendar.project.addressPlaceholder')} />}
             </Field>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label={t('calendar.project.postcode')}>
+                {(id) => <Input id={id} name="postcode" autoComplete="postal-code" className="uppercase" value={draft.postcode ?? ''} onChange={(e) => set('postcode', e.target.value)} />}
+              </Field>
+              <Field label={t('calendar.project.city')}>
+                {(id) => <Input id={id} name="city" autoComplete="address-level2" value={draft.city ?? ''} onChange={(e) => set('city', e.target.value)} />}
+              </Field>
+              <Field label={t('calendar.project.country')}>
+                {(id) => <Input id={id} name="country" autoComplete="country-name" value={draft.country ?? ''} onChange={(e) => set('country', e.target.value)} />}
+              </Field>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('calendar.project.serviceType')}>
-                {(id) => <Select id={id} value={draft.serviceType} onChange={(v) => set('serviceType', v)} options={enumOptions(t, 'serviceType')} />}
+              <Field label={t('calendar.project.serviceType')} required error={errors.serviceType && t(errors.serviceType)}>
+                {(id) => (
+                  <>
+                    <Input id={id} name="serviceType" list="project-service-types" value={draft.serviceType} onChange={(e) => set('serviceType', e.target.value)} placeholder={t('calendar.project.serviceTypePlaceholder')} invalid={!!errors.serviceType} />
+                    <datalist id="project-service-types">
+                      {serviceTypeSuggestions.map((s) => (
+                        <option key={s} value={s} />
+                      ))}
+                    </datalist>
+                  </>
+                )}
               </Field>
               <Field label={t('common.status')}>
                 {(id) => <Select id={id} value={draft.status} onChange={(v) => set('status', v)} options={enumOptions(t, 'projectStatus')} />}
@@ -309,6 +342,39 @@ export function ProjectDrawer({ open, projectId: initialId, initialTab = 'detail
                 </div>
               )}
             </Field>
+            {/* Horas previstas por fase: comparadas com as horas do ponto (a cor muda perto/acima do previsto). */}
+            <fieldset className="space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+              <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t('calendar.project.forecastTitle')}</legend>
+              <p className="-mt-1 text-xs text-slate-500">{t('calendar.project.forecastHint')}</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {forecastPhases.map((ph, i) => (
+                  <Field key={ph.id} label={`${i + 1}. ${ph.name}`}>
+                    {(id) => (
+                      <Input
+                        id={id}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.5"
+                        className="text-right tabular-nums"
+                        placeholder="h"
+                        value={draft.phaseForecast?.[ph.id] ?? ''}
+                        onChange={(e) => {
+                          const next = { ...(draft.phaseForecast ?? {}) };
+                          const n = Number(e.target.value);
+                          if (e.target.value === '' || !(n > 0)) delete next[ph.id];
+                          else next[ph.id] = n;
+                          set('phaseForecast', Object.keys(next).length ? next : undefined);
+                        }}
+                      />
+                    )}
+                  </Field>
+                ))}
+              </div>
+              <p className="text-right text-sm text-slate-600 dark:text-slate-300">
+                {t('calendar.project.forecastTotal', { h: forecastPhases.reduce((s, ph) => s + (draft.phaseForecast?.[ph.id] ?? 0), 0) })}
+              </p>
+            </fieldset>
             {/* PO do cliente: UMA por projeto. Número, data e valor travados — editar exige confirmação. */}
             <fieldset className="space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
               <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{t('calendar.project.customerPoTitle')}</legend>

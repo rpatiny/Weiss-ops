@@ -81,6 +81,14 @@ export function demoClients(now: string): Client[] {
 export const DEMO_PROJECT_NUMBERS = ['1000BKXA', '1000CMRT', '1000DHWL', '1000FJQE', '1000GNPS', '1000HTVB', '1000KRZD', '1000LWCF', '1000MPXG', '1000NQAH'];
 
 const SHOP_ADDRESS = 'Weiss UK workshop';
+/** Tipo de serviço é texto livre; a demo usa os nomes em inglês (bases antigas tinham códigos). */
+export const SERVICE_TYPE_TEXT: Record<string, string> = {
+  site_visit: 'Site visit',
+  pickup: 'Pickup',
+  delivery: 'Delivery',
+  bench_repair: 'Bench repair',
+  installation: 'Installation',
+};
 
 const employees: Employee[] = [
   { id: 'emp_carlos', name: 'Emma', role: DEFAULT_EMPLOYEE_ROLE, phone: '07700 900101', email: 'emma@example.com', color: '#2563eb', status: 'active' },
@@ -289,8 +297,10 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     id: `prj_${String(n).padStart(3, '0')}`,
     projectNumber: DEMO_PROJECT_NUMBERS[n - 1]!,
     customer: customer.name,
-    address: customer.address,
-    serviceType,
+    // Endereços reais dos clientes ainda não preenchidos (TBC): só o país.
+    address: customer.address === 'United Kingdom' ? '' : customer.address,
+    country: 'United Kingdom',
+    serviceType: SERVICE_TYPE_TEXT[serviceType] ?? serviceType,
     description,
     status: statusFor(span[0], span[1]),
     color,
@@ -302,6 +312,8 @@ export function buildSeed(today: string = todayISO()): AppDatabase {
     prj(1, CUSTOMERS.usinagem, 'bench_repair', 'Full repair + installation of Fischer MFW-2310 spindle (S/N FS-22871)', '#2563eb', [wd(-3), wd(12)], {
       poId: 'po_4500918',
       spindleId: 'sp_fs22871',
+      // Horas previstas por fase (demonstra as cores: dentro, perto, no limite, acima).
+      phaseForecast: { ph_1: 5, ph_2: 4, ph_3: 4, ph_4: 8.5, ph_6: 6, ph_7: 2 },
       materials: [
         { id: 'mat_01', requisitionId: 'rc_1', partNumber: 'SKF-7014CD/P4A', description: 'SKF 7014 CD/P4A angular contact bearing (pair)', quantity: 2, status: 'ordered', poId: 'po_skf33012', poLineId: 'pol_9', neededBy: wd(-1) },
         { id: 'mat_02', requisitionId: 'rc_1', partNumber: 'SKF-7012ACD/HCP4A', description: 'SKF 7012 ACD/HCP4A hybrid bearing (pair)', quantity: 1, status: 'ordered', poId: 'po_skf33012', poLineId: 'pol_10', neededBy: wd(1) },

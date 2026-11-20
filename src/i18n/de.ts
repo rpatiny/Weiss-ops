@@ -603,6 +603,7 @@ export const de: Dictionary = {
   },
 
   timesheet: {
+    forecast: { level: { none: 'Keine Planung', ok: 'Im Plan', near: 'Nähert sich (75%+)', limit: 'Am Limit (90%+)', over: 'Über Plan' }, over: '+{time} drüber', left: 'noch {time}', column: 'Stunden / Plan' },
     offSchedule: 'Nicht eingeplant',
     offScheduleHint: 'Stunden an einem Tag, an dem dieser Techniker in Einsatzplan & Routen nicht für dieses Projekt eingeplant war.',
     manual: {
@@ -880,6 +881,13 @@ export const de: Dictionary = {
       materialDeleted: 'Material entfernt.',
     },
     project: {
+      postcode: 'Postleitzahl',
+      city: 'Stadt',
+      country: 'Land',
+      serviceTypePlaceholder: 'z. B. Werkstattreparatur, Vor-Ort-Termin, Installation…',
+      forecastTitle: 'Geplante Stunden pro Phase',
+      forecastHint: 'Wie lange jede Phase voraussichtlich dauert. In den Projektdetails werden die Stunden gelb, orange und rot, je näher sie an die Planung kommen bzw. sie überschreiten.',
+      forecastTotal: 'Geplant gesamt: {h} h',
       customerPoTitle: 'Kundenbestellung (eine pro Projekt)',
       customerPoNumber: 'Bestellnummer',
       customerPoDate: 'Bestelldatum',
@@ -959,6 +967,7 @@ export const de: Dictionary = {
       until: 'bis {date}',
     },
     validation: {
+      serviceTypeRequired: 'Serviceart eingeben.',
       projectTaken: 'In diesem Zeitraum ist bereits ein anderer Techniker für dieses Projekt eingeplant. Eine Person pro Projekt.',
       employeeBusy: 'Dieser Techniker ist in diesem Zeitraum bereits in einem anderen Projekt. Ein Projekt zur Zeit.',
       employeeRequired: 'Bitte einen Mitarbeiter auswählen.',

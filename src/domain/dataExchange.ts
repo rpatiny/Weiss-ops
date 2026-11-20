@@ -18,6 +18,7 @@ import { shopfloorAge } from './shopfloor';
 import { deliveryAddressOf, deliveryContactOf, formatAddress } from './clients';
 
 const label = (key: string) => translate('en-GB', key as TranslationKey);
+import { serviceTypeLabel } from './labels';
 const d = (iso?: string) => (iso ? parseISODate(iso) : undefined);
 /** Hora local HH:MM de um instante ISO. */
 const hhmm = (iso: string) => {
@@ -53,7 +54,11 @@ export function buildWorkbookSheets(data: AppDatabase): Record<string, Record<st
           'Project no.': p?.projectNumber ?? '',
           Customer: p?.customer ?? '',
           Address: p?.address ?? '',
-          'Service type': p ? label(`enums.serviceType.${p.serviceType}`) : '',
+          Postcode: p?.postcode ?? '',
+          City: p?.city ?? '',
+          Country: p?.country ?? '',
+          'Forecast hours': p ? Object.values(p.phaseForecast ?? {}).reduce((a, h) => a + h, 0) || '' : '',
+          'Service type': p ? serviceTypeLabel(label, p.serviceType) : '',
           Description: p?.description ?? '',
           Employee: emp.get(a.employeeId)?.name ?? a.employeeId,
           Start: d(a.startDate),

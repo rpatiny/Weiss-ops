@@ -90,3 +90,9 @@ export const EMPLOYEE_COLORS = [
   '#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2',
   '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea',
 ];
+
+/** Tipo de serviço é texto livre; bases antigas guardavam um código (site_visit…) que é exibido traduzido. */
+export function serviceTypeLabel(t: (k: TranslationKey) => string, v: string | undefined): string {
+  if (!v) return '';
+  return v in ENUM_TONES.serviceType ? t(`enums.serviceType.${v}` as TranslationKey) : v;
+}

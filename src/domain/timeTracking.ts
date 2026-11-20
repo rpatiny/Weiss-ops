@@ -65,6 +65,19 @@ export function minutesByPhase(projectId: string, entries: readonly TimeEntry[],
   return out;
 }
 
+/**
+ * Horas reais × previstas (por fase ou total do projeto). Faixas: até 75% normal · 75–90% atenção · 90–100% no limite ·
+ * acima de 100% estourou.
+ */
+export type ForecastLevel = 'none' | 'ok' | 'near' | 'limit' | 'over';
+export function forecastLevel(minutes: number, forecastHours: number | undefined): ForecastLevel {
+  if (!forecastHours || forecastHours <= 0) return 'none';
+  const r = minutes / (forecastHours * 60);
+  return r > 1 ? 'over' : r >= 0.9 ? 'limit' : r >= 0.75 ? 'near' : 'ok';
+}
+export const totalForecastHours = (p: Pick<Project, 'phaseForecast'>, phaseIds?: readonly string[]) =>
+  Object.entries(p.phaseForecast ?? {}).reduce((s, [id, h]) => s + (!phaseIds || phaseIds.includes(id) ? h || 0 : 0), 0);
+
 export const canClock = (e: Employee) => e.status === 'active' && !!e.clockPinHash;
 
 // ───────────── Progresso do serviço pelas fases ─────────────

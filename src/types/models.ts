@@ -86,10 +86,17 @@ export interface Project {
   id: ID;
   projectNumber: string;
   customer: string;
+  /** Endereço do serviço (rua/linha). */
   address: string;
-  serviceType: ServiceType;
+  postcode?: string;
+  city?: string;
+  country?: string;
+  /** Tipo de serviço — TEXTO LIVRE, obrigatório (bases antigas podem ter um código `ServiceType`, exibido traduzido). */
+  serviceType: string;
   description: string;
   status: ProjectStatus;
+  /** Horas previstas por fase (id da fase → horas). Comparadas com as horas do ponto (cor muda perto/acima do previsto). */
+  phaseForecast?: Record<ID, number>;
   /** Cor do retângulo no cronograma (identifica o projeto em várias linhas). */
   color: string;
   /** Nº da PO do cliente — texto livre (fonte da verdade). */

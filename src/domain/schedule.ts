@@ -248,6 +248,7 @@ export function validateProject(d: ProjectDraft, all: readonly Project[], selfId
   else if (all.some((p) => p.id !== selfId && p.projectNumber.trim().toLowerCase() === d.projectNumber.trim().toLowerCase()))
     e.projectNumber = 'calendar.validation.numberDuplicate';
   if (!d.customer.trim()) e.customer = 'calendar.validation.customerRequired';
+  if (!d.serviceType?.trim()) e.serviceType = 'calendar.validation.serviceTypeRequired';
   return e;
 }
 

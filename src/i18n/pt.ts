@@ -606,6 +606,7 @@ export const pt = {
   },
 
   timesheet: {
+    forecast: { level: { none: 'Sem previsão', ok: 'Dentro do previsto', near: 'Aproximando (75%+)', limit: 'No limite (90%+)', over: 'Passou do previsto' }, over: '+{time} acima', left: 'faltam {time}', column: 'Horas / previsto' },
     offSchedule: 'Fora da agenda',
     offScheduleHint: 'Horas marcadas num dia em que este engenheiro não estava escalado neste projeto em Agenda & Rotas.',
     manual: {
@@ -883,6 +884,13 @@ export const pt = {
       materialDeleted: 'Material removido.',
     },
     project: {
+      postcode: 'Código postal (postcode)',
+      city: 'Cidade',
+      country: 'País',
+      serviceTypePlaceholder: 'ex.: Reparo de bancada, Visita técnica, Instalação…',
+      forecastTitle: 'Horas previstas por fase',
+      forecastHint: 'Quanto tempo você espera que cada fase leve. Nos detalhes do projeto as horas ficam âmbar, laranja e vermelhas conforme se aproximam e passam do previsto.',
+      forecastTotal: 'Total previsto: {h} h',
       customerPoTitle: 'PO do cliente (uma por projeto)',
       customerPoNumber: 'Nº da PO',
       customerPoDate: 'Data da PO',
@@ -962,6 +970,7 @@ export const pt = {
       until: 'até {date}',
     },
     validation: {
+      serviceTypeRequired: 'Informe o tipo de serviço.',
       projectTaken: 'Outro engenheiro já está agendado neste projeto neste período. Uma pessoa por projeto.',
       employeeBusy: 'Este engenheiro já está em outro projeto neste período. Um projeto por vez.',
       employeeRequired: 'Selecione um colaborador.',

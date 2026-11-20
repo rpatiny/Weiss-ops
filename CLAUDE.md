@@ -215,6 +215,13 @@ valor ponderado do forecast (`estimatedValue × probability/100`), taxa de aprov
   - **PO do cliente e Spindle/Motor são texto livre** (`customerPoRef`/`spindleRef`, com sugestões por datalist). Ao salvar,
     `normalizeProjectDraft` liga `poId`/`spindleId` se o texto for igual a um nº de PO / nº de série cadastrado (botão de link
     aparece); senão fica só o texto. Exibição via `projectPoRef`/`projectSpindleRef` (bases antigas só têm o vínculo).
+  - **Ficha do projeto (20/11/2026):** **tipo de serviço = texto livre obrigatório** (`calendar.validation.serviceTypeRequired`, sugestões
+    por datalist; códigos antigos `bench_repair`… viram o texto em inglês na migração de `ensureDefaults` e `serviceTypeLabel` exibe
+    qualquer código restante). **Endereço em campos**: `address` (rua) + `postcode` + `city` + `country` (preenchidos pelo endereço de
+    ENTREGA do cliente); **sem link do Maps** na ficha. Excel: colunas Postcode/City/Country/Forecast hours.
+  - **Horas previstas por fase** (`Project.phaseForecast`, horas por id de fase; campo numérico por fase ativa na ficha, opcional, com
+    total). `forecastLevel` (até 75% ok · 75–90% âmbar · 90–100% laranja · >100% vermelho) + `ForecastMeter` ("3h20 / 4h00", barra,
+    "faltam"/"+x acima") em Workshop hours → By project (cada fase e o total) e no card de Projects (chips coloridos por fase + total).
   - Deep-link: `#/calendar?open=<projectId>`. Links para `#/purchase-orders?open=<poId>` e `#/financial?open=<spindleId>`
     (telas de destino nas Fases 3/4). Google Maps: link de busca pelo endereço do projeto.
 
